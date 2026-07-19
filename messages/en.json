@@ -70,6 +70,12 @@
       "unknown": "Unknown",
       "other": "Other"
     },
+    "balloon": {
+      "setStart": "Set start here",
+      "setDest": "Set destination here",
+      "addVia": "Add as via point",
+      "remove": "Remove from route"
+    },
     "highlights": {
       "toggle": "Highlights",
       "add": "Add highlight",

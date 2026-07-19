@@ -26,16 +26,27 @@ export default function SearchField({
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
+  // True when WE cleared the value because the user is retyping — that null
+  // must not wipe the input. External nulls (map-balloon remove, undo) must.
+  const typingRef = useRef(false);
 
-  // Sync input text when a waypoint is set programmatically (select/reverse).
-  // Deliberately does NOT clear on value=null — the user may be mid-typing.
+  // Sync input text when the waypoint changes programmatically.
   useEffect(() => {
-    if (value) setText(value.name);
+    if (value) {
+      setText(value.name);
+    } else if (typingRef.current) {
+      typingRef.current = false; // user is mid-typing — keep their text
+    } else {
+      setText(""); // removed externally — clear the field
+    }
   }, [value]);
 
   function handleChange(q: string) {
     setText(q);
-    if (value) onSelect(null);
+    if (value) {
+      typingRef.current = true;
+      onSelect(null);
+    }
     clearTimeout(timer.current);
     if (q.trim().length < 2) {
       setSuggestions([]);

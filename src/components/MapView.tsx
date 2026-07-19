@@ -36,6 +36,12 @@ type Props = {
   // GEN-115: community-POI layer (optional — TourView doesn't pass these).
   highlights?: GeoJSON.FeatureCollection | null;
   onHighlightClick?: (h: HighlightClick) => void;
+  // Komoot-style click balloon: anchor position + React content, rendered
+  // as an overlay that tracks the map camera. Optional (TourView skips it).
+  balloonAt?: { lon: number; lat: number } | null;
+  balloonContent?: React.ReactNode;
+  // Click on an existing waypoint marker (to open its remove/edit balloon).
+  onMarkerClick?: (slotIndex: number) => void;
 };
 
 export default function MapView({
@@ -47,14 +53,30 @@ export default function MapView({
   onRouteDrop,
   highlights,
   onHighlightClick,
+  balloonAt,
+  balloonContent,
+  onMarkerClick,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const [ready, setReady] = useState(false);
+  const [balloonXY, setBalloonXY] = useState<{ x: number; y: number } | null>(null);
   // Keep latest callbacks without re-binding map listeners.
-  const cbRef = useRef({ onMapClick, onMarkerDragEnd, onRouteDrop, onHighlightClick });
-  cbRef.current = { onMapClick, onMarkerDragEnd, onRouteDrop, onHighlightClick };
+  const cbRef = useRef({
+    onMapClick,
+    onMarkerDragEnd,
+    onRouteDrop,
+    onHighlightClick,
+    onMarkerClick,
+  });
+  cbRef.current = {
+    onMapClick,
+    onMarkerDragEnd,
+    onRouteDrop,
+    onHighlightClick,
+    onMarkerClick,
+  };
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -298,7 +320,7 @@ export default function MapView({
     );
   }, [hoverPoint, ready]);
 
-  // Sync waypoint markers (draggable)
+  // Sync waypoint markers (draggable, clickable → balloon)
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -314,13 +336,61 @@ export default function MapView({
       })
         .setLngLat([wp.lon, wp.lat])
         .addTo(map);
+      // A drag fires a click on the element afterwards — swallow that one.
+      let justDragged = false;
       marker.on("dragend", () => {
+        justDragged = true;
+        setTimeout(() => {
+          justDragged = false;
+        }, 150);
         const p = marker.getLngLat();
         cbRef.current.onMarkerDragEnd(slotIndex, p.lng, p.lat);
       });
+      marker.getElement().addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        if (justDragged) return;
+        cbRef.current.onMarkerClick?.(slotIndex);
+      });
+      marker.getElement().style.cursor = "pointer";
       markersRef.current.push(marker);
     });
   }, [waypoints]);
 
-  return <div ref={containerRef} className="h-dvh w-full" />;
+  // Project the balloon anchor to screen coords; track the camera while open.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !balloonAt) {
+      setBalloonXY(null);
+      return;
+    }
+    const update = () => {
+      const p = map.project([balloonAt.lon, balloonAt.lat]);
+      setBalloonXY({ x: p.x, y: p.y });
+    };
+    update();
+    map.on("move", update);
+    return () => {
+      map.off("move", update);
+    };
+  }, [balloonAt, ready]);
+
+  return (
+    <div className="relative h-dvh w-full">
+      <div ref={containerRef} className="h-full w-full" />
+      {balloonXY && balloonContent && (
+        <div
+          className="absolute z-20"
+          style={{
+            left: balloonXY.x,
+            top: balloonXY.y,
+            transform: "translate(-50%, calc(-100% - 12px))",
+          }}
+        >
+          {balloonContent}
+          {/* little pointer tip */}
+          <div className="absolute left-1/2 top-full -translate-x-1/2 border-8 border-transparent border-t-white/95" />
+        </div>
+      )}
+    </div>
+  );
 }

@@ -454,13 +454,14 @@ export default function PlannerApp() {
     fetchRoute();
   }, [fetchRoute]);
 
-  // Keyboard undo/redo
+  // Keyboard: undo/redo + Esc closes the click balloon
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
         dispatch({ type: e.shiftKey ? "redo" : "undo" });
       }
+      if (e.key === "Escape") setBalloon(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -616,8 +617,17 @@ export default function PlannerApp() {
     }
   }, [filled, rtTargetKm, sport, patchName]);
 
-  // Map click → fill first empty slot, else append at the end.
-  // In add-highlight mode the click drops the new-highlight pin instead.
+  // --- Komoot-style click balloon ---
+  // Map click opens a balloon with explicit choices (start / destination /
+  // via) instead of instantly mutating the route. slotIndex != null means the
+  // balloon belongs to an existing waypoint (shows remove instead).
+  const [balloon, setBalloon] = useState<{
+    lon: number;
+    lat: number;
+    name: string;
+    slotIndex: number | null;
+  } | null>(null);
+
   const handleMapClick = useCallback(
     (lon: number, lat: number) => {
       if (addingHl) {
@@ -625,24 +635,91 @@ export default function PlannerApp() {
         setAddingHl(false);
         return;
       }
-      const wp = { name: `${lat.toFixed(4)}, ${lon.toFixed(4)}`, lon, lat };
-      const firstEmpty = plan.slots.findIndex((s) => s === null);
-      if (firstEmpty >= 0) dispatch({ type: "set", index: firstEmpty, wp });
-      else dispatch({ type: "insert", index: plan.slots.length, wp });
-      patchName(lon, lat);
+      setSelectedHl(null);
+      setBalloon({ lon, lat, name: coordName(lon, lat), slotIndex: null });
+      // Patch in the reverse-geocoded name if the balloon is still here.
+      reverseName(lon, lat).then((name) =>
+        setBalloon((prev) =>
+          prev && prev.lon === lon && prev.lat === lat ? { ...prev, name } : prev,
+        ),
+      );
     },
-    [plan.slots, patchName, addingHl],
+    [addingHl],
   );
 
-  // Highlight popup → add this POI as a named waypoint (the Komoot move).
-  const addHlAsWaypoint = useCallback(() => {
-    if (!selectedHl) return;
-    const wp = { name: selectedHl.name, lon: selectedHl.lon, lat: selectedHl.lat };
-    const firstEmpty = plan.slots.findIndex((s) => s === null);
-    if (firstEmpty >= 0) dispatch({ type: "set", index: firstEmpty, wp });
-    else dispatch({ type: "insert", index: plan.slots.length, wp });
-    setSelectedHl(null);
-  }, [selectedHl, plan.slots]);
+  // Waypoint marker click → balloon on that waypoint (remove / make start).
+  const handleMarkerClick = useCallback(
+    (slotIndex: number) => {
+      const wp = plan.slots[slotIndex];
+      if (!wp) return;
+      setSelectedHl(null);
+      setBalloon({ lon: wp.lon, lat: wp.lat, name: wp.name, slotIndex });
+    },
+    [plan.slots],
+  );
+
+  // Where along the route should a via at (lon,lat) be inserted? Returns the
+  // slot index, or null when there's no route to bracket against.
+  const viaSlotIndexFor = useCallback(
+    (lon: number, lat: number): number | null => {
+      if (!route || filled.length < 2) return null;
+      const coords = (route.geometry.geometry as GeoJSON.LineString).coordinates;
+      const nearestIdx = (pLon: number, pLat: number) => {
+        let best = 0;
+        let bestD = Infinity;
+        for (let i = 0; i < coords.length; i++) {
+          const dx = coords[i][0] - pLon;
+          const dy = coords[i][1] - pLat;
+          const d = dx * dx + dy * dy;
+          if (d < bestD) {
+            bestD = d;
+            best = i;
+          }
+        }
+        return best;
+      };
+      const dropIdx = nearestIdx(lon, lat);
+      let insertBeforeOrder = filled.length - 1;
+      for (let o = 1; o < filled.length; o++) {
+        if (nearestIdx(filled[o].lon, filled[o].lat) >= dropIdx) {
+          insertBeforeOrder = o;
+          break;
+        }
+      }
+      let seen = -1;
+      for (let i = 0; i < plan.slots.length; i++) {
+        if (plan.slots[i] !== null) {
+          seen++;
+          if (seen === insertBeforeOrder) return i;
+        }
+      }
+      return plan.slots.length;
+    },
+    [route, filled, plan.slots],
+  );
+
+  // Place a (possibly named) point as start / destination / via.
+  const placePoint = useCallback(
+    (wp: Waypoint, mode: "start" | "dest" | "via") => {
+      if (mode === "start") {
+        dispatch({ type: "set", index: 0, wp });
+      } else if (mode === "dest") {
+        dispatch({ type: "set", index: plan.slots.length - 1, wp });
+      } else {
+        const bracketed = viaSlotIndexFor(wp.lon, wp.lat);
+        if (bracketed !== null) {
+          dispatch({ type: "insert", index: bracketed, wp });
+        } else {
+          const firstEmpty = plan.slots.findIndex((s) => s === null);
+          if (firstEmpty >= 0) dispatch({ type: "set", index: firstEmpty, wp });
+          else dispatch({ type: "insert", index: plan.slots.length, wp });
+        }
+      }
+      setBalloon(null);
+      setSelectedHl(null);
+    },
+    [plan.slots, viaSlotIndexFor],
+  );
 
   // Marker drag → move that waypoint
   const handleMarkerDragEnd = useCallback(
@@ -660,43 +737,8 @@ export default function PlannerApp() {
   // Route-line drop → insert a via between the bracketing waypoints
   const handleRouteDrop = useCallback(
     async (lon: number, lat: number) => {
-      if (!route || filled.length < 2) return;
-      const coords = (route.geometry.geometry as GeoJSON.LineString).coordinates;
-      const nearestIdx = (pLon: number, pLat: number) => {
-        let best = 0;
-        let bestD = Infinity;
-        for (let i = 0; i < coords.length; i++) {
-          const dx = coords[i][0] - pLon;
-          const dy = coords[i][1] - pLat;
-          const d = dx * dx + dy * dy;
-          if (d < bestD) {
-            bestD = d;
-            best = i;
-          }
-        }
-        return best;
-      };
-      const dropIdx = nearestIdx(lon, lat);
-      // Find the first waypoint (in route order) that lies beyond the drop.
-      let insertBeforeOrder = filled.length - 1;
-      for (let o = 1; o < filled.length; o++) {
-        if (nearestIdx(filled[o].lon, filled[o].lat) >= dropIdx) {
-          insertBeforeOrder = o;
-          break;
-        }
-      }
-      // Map order-index back to slot-index
-      let seen = -1;
-      let slotIndex = plan.slots.length;
-      for (let i = 0; i < plan.slots.length; i++) {
-        if (plan.slots[i] !== null) {
-          seen++;
-          if (seen === insertBeforeOrder) {
-            slotIndex = i;
-            break;
-          }
-        }
-      }
+      const slotIndex = viaSlotIndexFor(lon, lat);
+      if (slotIndex === null) return;
       dispatch({
         type: "insert",
         index: slotIndex,
@@ -704,7 +746,7 @@ export default function PlannerApp() {
       });
       patchName(lon, lat);
     },
-    [route, filled, plan.slots, patchName],
+    [viaSlotIndexFor, patchName],
   );
 
   const buckets = route?.surfaces.buckets;
@@ -745,6 +787,89 @@ export default function PlannerApp() {
         onRouteDrop={handleRouteDrop}
         highlights={hlFeatures}
         onHighlightClick={handleHighlightClick}
+        onMarkerClick={handleMarkerClick}
+        balloonAt={balloon}
+        balloonContent={
+          balloon && (
+            <div className="w-56 rounded-xl bg-white/95 p-3 shadow-xl backdrop-blur">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 truncate text-xs font-medium text-neutral-900">
+                  {balloon.name}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBalloon(null)}
+                  className="shrink-0 leading-none text-neutral-300 hover:text-neutral-600"
+                  aria-label="close"
+                >
+                  ×
+                </button>
+              </div>
+              {balloon.slotIndex === null ? (
+                <div className="mt-2 flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      placePoint(
+                        { name: balloon.name, lon: balloon.lon, lat: balloon.lat },
+                        "start",
+                      )
+                    }
+                    className="flex items-center gap-2 rounded-lg bg-neutral-50 px-2 py-1.5 text-left text-xs hover:bg-emerald-50"
+                  >
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#16a34a] text-[9px] font-bold text-white">
+                      A
+                    </span>
+                    {t("balloon.setStart")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      placePoint(
+                        { name: balloon.name, lon: balloon.lon, lat: balloon.lat },
+                        "dest",
+                      )
+                    }
+                    className="flex items-center gap-2 rounded-lg bg-neutral-50 px-2 py-1.5 text-left text-xs hover:bg-emerald-50"
+                  >
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#dc2626] text-[9px] font-bold text-white">
+                      B
+                    </span>
+                    {t("balloon.setDest")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      placePoint(
+                        { name: balloon.name, lon: balloon.lon, lat: balloon.lat },
+                        "via",
+                      )
+                    }
+                    className="flex items-center gap-2 rounded-lg bg-neutral-50 px-2 py-1.5 text-left text-xs hover:bg-emerald-50"
+                  >
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#2563eb] text-[9px] font-bold text-white">
+                      +
+                    </span>
+                    {t("balloon.addVia")}
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-2 flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      dispatch({ type: "remove", index: balloon.slotIndex! });
+                      setBalloon(null);
+                    }}
+                    className="flex items-center gap-2 rounded-lg bg-neutral-50 px-2 py-1.5 text-left text-xs text-red-700 hover:bg-red-50"
+                  >
+                    × {t("balloon.remove")}
+                  </button>
+                </div>
+              )}
+            </div>
+          )
+        }
       />
 
       {/* Highlights layer toggle + create button (GEN-115) */}
@@ -833,13 +958,44 @@ export default function PlannerApp() {
                 ▼
               </button>
             </div>
-            <button
-              type="button"
-              onClick={addHlAsWaypoint}
-              className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
-            >
-              + {t("highlights.asWaypoint")}
-            </button>
+            <div className="flex items-center gap-1" title={t("highlights.asWaypoint")}>
+              <button
+                type="button"
+                onClick={() =>
+                  placePoint(
+                    { name: selectedHl.name, lon: selectedHl.lon, lat: selectedHl.lat },
+                    "start",
+                  )
+                }
+                className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#16a34a] text-xs font-bold text-white hover:opacity-90"
+              >
+                A
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  placePoint(
+                    { name: selectedHl.name, lon: selectedHl.lon, lat: selectedHl.lat },
+                    "dest",
+                  )
+                }
+                className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#dc2626] text-xs font-bold text-white hover:opacity-90"
+              >
+                B
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  placePoint(
+                    { name: selectedHl.name, lon: selectedHl.lon, lat: selectedHl.lat },
+                    "via",
+                  )
+                }
+                className="rounded-lg bg-emerald-700 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
+              >
+                + {t("highlights.asWaypoint")}
+              </button>
+            </div>
           </div>
         </div>
       )}

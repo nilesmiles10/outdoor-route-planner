@@ -70,6 +70,12 @@
       "unknown": "Onbekend",
       "other": "Overig"
     },
+    "balloon": {
+      "setStart": "Startpunt hier",
+      "setDest": "Bestemming hier",
+      "addVia": "Tussenpunt toevoegen",
+      "remove": "Verwijder uit route"
+    },
     "highlights": {
       "toggle": "Highlights",
       "add": "Highlight toevoegen",
