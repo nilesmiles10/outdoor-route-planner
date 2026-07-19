@@ -70,6 +70,27 @@
       "unknown": "Unknown",
       "other": "Other"
     },
+    "highlights": {
+      "toggle": "Highlights",
+      "add": "Add highlight",
+      "clickMap": "Click the map…",
+      "asWaypoint": "Add to route",
+      "loginToVote": "Log in to vote",
+      "newTitle": "New highlight",
+      "namePlaceholder": "Name (e.g. Viewpoint over the valley)",
+      "save": "Save",
+      "cancel": "Cancel",
+      "cat": {
+        "peak": "Peak",
+        "viewpoint": "Viewpoint",
+        "hut": "Hut",
+        "water": "Water",
+        "cafe": "Café",
+        "monument": "Monument",
+        "nature": "Nature",
+        "other": "Other"
+      }
+    },
     "roundTrip": "Round trip",
     "importGpx": "Import GPX",
     "generate": "Generate",

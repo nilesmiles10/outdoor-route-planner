@@ -9,13 +9,21 @@ import {
   useState,
 } from "react";
 import { useTranslations } from "next-intl";
-import MapView, { type Waypoint } from "./MapView";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
+import MapView, { type HighlightClick, type Waypoint } from "./MapView";
 import SearchField from "./SearchField";
 import ElevationChart from "./ElevationChart";
 import AccountPanel, { type TourPayload } from "./AccountPanel";
 import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
 import { buildGpx, parseGpx, sampleAnchors } from "@/lib/gpx";
 import { loopVias } from "@/lib/roundtrip";
+import { supabaseBrowser } from "@/lib/supabase/client";
+import {
+  CATEGORY_EMOJI,
+  HIGHLIGHT_CATEGORIES,
+  toFeatureCollection,
+  type HighlightPoint,
+} from "@/lib/highlights";
 
 const SPORTS = ["hike", "run", "touring", "gravel", "mtb", "road", "ebike"] as const;
 type Sport = (typeof SPORTS)[number];
@@ -291,6 +299,105 @@ export default function PlannerApp() {
   const [copied, setCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // --- Highlights layer (GEN-115) ---
+  const sb: SupabaseClient = useMemo(() => supabaseBrowser(), []);
+  const [user, setUser] = useState<User | null>(null);
+  const [showHl, setShowHl] = useState(true);
+  const [hlRows, setHlRows] = useState<HighlightPoint[] | null>(null);
+  const [selectedHl, setSelectedHl] = useState<HighlightClick | null>(null);
+  const [hlScore, setHlScore] = useState<number | null>(null);
+  const [myVote, setMyVote] = useState<0 | 1 | -1>(0);
+  // Create-highlight flow: arm → next map click drops the pin → mini form.
+  const [addingHl, setAddingHl] = useState(false);
+  const [pendingHl, setPendingHl] = useState<{ lon: number; lat: number } | null>(null);
+  const [newHlName, setNewHlName] = useState("");
+  const [newHlCat, setNewHlCat] = useState<string>("viewpoint");
+
+  useEffect(() => {
+    sb.auth.getUser().then(({ data }) => setUser(data.user));
+    const { data: sub } = sb.auth.onAuthStateChange((_e, s) =>
+      setUser(s?.user ?? null),
+    );
+    return () => sub.subscription.unsubscribe();
+  }, [sb]);
+
+  // Load all point-highlights once when the layer is on (~700 rows, tiny).
+  useEffect(() => {
+    if (!showHl || hlRows !== null) return;
+    sb.from("highlights")
+      .select("id,name,category,lon,lat,description")
+      .eq("kind", "point")
+      .limit(2000)
+      .then(({ data }) => setHlRows((data as HighlightPoint[]) ?? []));
+  }, [showHl, hlRows, sb]);
+
+  const hlFeatures = useMemo(
+    () => (showHl && hlRows ? toFeatureCollection(hlRows) : null),
+    [showHl, hlRows],
+  );
+
+  const handleHighlightClick = useCallback(
+    (h: HighlightClick) => {
+      setSelectedHl(h);
+      setHlScore(null);
+      setMyVote(0);
+      sb.from("highlight_votes")
+        .select("user_id,value")
+        .eq("highlight_id", h.id)
+        .then(({ data }) => {
+          const rows = (data as { user_id: string; value: number }[]) ?? [];
+          setHlScore(rows.reduce((s, r) => s + r.value, 0));
+          const mine = user && rows.find((r) => r.user_id === user.id);
+          setMyVote((mine?.value as 1 | -1 | undefined) ?? 0);
+        });
+    },
+    [sb, user],
+  );
+
+  async function voteHl(value: 1 | -1) {
+    if (!selectedHl || !user) return;
+    if (myVote === value) {
+      // clicking the same arrow again removes the vote
+      await sb
+        .from("highlight_votes")
+        .delete()
+        .eq("highlight_id", selectedHl.id)
+        .eq("user_id", user.id);
+      setHlScore((s) => (s === null ? s : s - value));
+      setMyVote(0);
+    } else {
+      await sb
+        .from("highlight_votes")
+        .upsert(
+          { user_id: user.id, highlight_id: selectedHl.id, value },
+          { onConflict: "user_id,highlight_id" },
+        );
+      setHlScore((s) => (s === null ? s : s + value - myVote));
+      setMyVote(value);
+    }
+  }
+
+  async function createHighlight() {
+    if (!pendingHl || !user || !newHlName.trim()) return;
+    const { data, error: err } = await sb
+      .from("highlights")
+      .insert({
+        creator: user.id,
+        name: newHlName.trim(),
+        category: newHlCat,
+        kind: "point",
+        lon: pendingHl.lon,
+        lat: pendingHl.lat,
+      })
+      .select("id,name,category,lon,lat,description")
+      .single();
+    if (!err && data) {
+      setHlRows((rows) => [...(rows ?? []), data as HighlightPoint]);
+      setPendingHl(null);
+      setNewHlName("");
+    }
+  }
+
 
   const filled = plan.slots.filter((s): s is Waypoint => s !== null);
 
@@ -509,17 +616,33 @@ export default function PlannerApp() {
     }
   }, [filled, rtTargetKm, sport, patchName]);
 
-  // Map click → fill first empty slot, else append at the end
+  // Map click → fill first empty slot, else append at the end.
+  // In add-highlight mode the click drops the new-highlight pin instead.
   const handleMapClick = useCallback(
     (lon: number, lat: number) => {
+      if (addingHl) {
+        setPendingHl({ lon, lat });
+        setAddingHl(false);
+        return;
+      }
       const wp = { name: `${lat.toFixed(4)}, ${lon.toFixed(4)}`, lon, lat };
       const firstEmpty = plan.slots.findIndex((s) => s === null);
       if (firstEmpty >= 0) dispatch({ type: "set", index: firstEmpty, wp });
       else dispatch({ type: "insert", index: plan.slots.length, wp });
       patchName(lon, lat);
     },
-    [plan.slots, patchName],
+    [plan.slots, patchName, addingHl],
   );
+
+  // Highlight popup → add this POI as a named waypoint (the Komoot move).
+  const addHlAsWaypoint = useCallback(() => {
+    if (!selectedHl) return;
+    const wp = { name: selectedHl.name, lon: selectedHl.lon, lat: selectedHl.lat };
+    const firstEmpty = plan.slots.findIndex((s) => s === null);
+    if (firstEmpty >= 0) dispatch({ type: "set", index: firstEmpty, wp });
+    else dispatch({ type: "insert", index: plan.slots.length, wp });
+    setSelectedHl(null);
+  }, [selectedHl, plan.slots]);
 
   // Marker drag → move that waypoint
   const handleMarkerDragEnd = useCallback(
@@ -620,7 +743,154 @@ export default function PlannerApp() {
         onMapClick={handleMapClick}
         onMarkerDragEnd={handleMarkerDragEnd}
         onRouteDrop={handleRouteDrop}
+        highlights={hlFeatures}
+        onHighlightClick={handleHighlightClick}
       />
+
+      {/* Highlights layer toggle + create button (GEN-115) */}
+      <div className="absolute bottom-6 right-4 flex flex-col items-end gap-2">
+        {user && showHl && (
+          <button
+            type="button"
+            onClick={() => {
+              setAddingHl((v) => !v);
+              setPendingHl(null);
+            }}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium shadow-lg ${
+              addingHl
+                ? "bg-amber-500 text-white"
+                : "bg-white/95 text-neutral-700 hover:bg-white"
+            }`}
+          >
+            {addingHl ? t("highlights.clickMap") : `+ ${t("highlights.add")}`}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            setShowHl((v) => !v);
+            setSelectedHl(null);
+            setAddingHl(false);
+          }}
+          className={`rounded-full px-3 py-1.5 text-xs font-medium shadow-lg ${
+            showHl ? "bg-emerald-700 text-white" : "bg-white/95 text-neutral-700 hover:bg-white"
+          }`}
+        >
+          ✦ {t("highlights.toggle")}
+        </button>
+      </div>
+
+      {/* Selected highlight card */}
+      {selectedHl && (
+        <div className="absolute right-4 top-16 w-72 rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="font-medium text-neutral-900">
+                {CATEGORY_EMOJI[selectedHl.category] ?? "📍"} {selectedHl.name}
+              </div>
+              <div className="text-xs capitalize text-neutral-500">
+                {t(`highlights.cat.${selectedHl.category}` as never)}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedHl(null)}
+              className="shrink-0 text-neutral-300 hover:text-neutral-600"
+              aria-label="close"
+            >
+              ×
+            </button>
+          </div>
+          {selectedHl.description && (
+            <p className="mt-2 max-h-24 overflow-y-auto text-xs leading-relaxed text-neutral-600">
+              {selectedHl.description}
+            </p>
+          )}
+          <div className="mt-3 flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => voteHl(1)}
+                disabled={!user}
+                title={user ? "" : t("highlights.loginToVote")}
+                className={`rounded-lg px-2 py-1 text-sm disabled:opacity-30 ${
+                  myVote === 1 ? "bg-emerald-100 text-emerald-800" : "bg-neutral-100 hover:bg-neutral-200"
+                }`}
+              >
+                ▲
+              </button>
+              <span className="min-w-6 text-center text-sm font-medium text-neutral-700">
+                {hlScore ?? "…"}
+              </span>
+              <button
+                type="button"
+                onClick={() => voteHl(-1)}
+                disabled={!user}
+                className={`rounded-lg px-2 py-1 text-sm disabled:opacity-30 ${
+                  myVote === -1 ? "bg-red-100 text-red-800" : "bg-neutral-100 hover:bg-neutral-200"
+                }`}
+              >
+                ▼
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={addHlAsWaypoint}
+              className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
+            >
+              + {t("highlights.asWaypoint")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* New-highlight mini form */}
+      {pendingHl && (
+        <div className="absolute right-4 top-16 w-72 rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur">
+          <div className="text-sm font-medium text-neutral-900">
+            {t("highlights.newTitle")}
+          </div>
+          <input
+            value={newHlName}
+            onChange={(e) => setNewHlName(e.target.value)}
+            placeholder={t("highlights.namePlaceholder")}
+            className="mt-2 w-full rounded-lg border border-neutral-200 px-2 py-1.5 text-sm"
+          />
+          <div className="mt-2 flex flex-wrap gap-1">
+            {HIGHLIGHT_CATEGORIES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setNewHlCat(c)}
+                className={`rounded-full px-2 py-0.5 text-[11px] ${
+                  newHlCat === c
+                    ? "bg-emerald-700 text-white"
+                    : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                }`}
+              >
+                {CATEGORY_EMOJI[c]} {t(`highlights.cat.${c}` as never)}
+              </button>
+            ))}
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={createHighlight}
+              disabled={!newHlName.trim()}
+              className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+            >
+              {t("highlights.save")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPendingHl(null)}
+              className="text-xs text-neutral-400 hover:text-neutral-700"
+            >
+              {t("highlights.cancel")}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="absolute left-4 top-16 flex w-[340px] max-h-[calc(100dvh-5rem)] flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur">
         <div className="flex items-start justify-between">

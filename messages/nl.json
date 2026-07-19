@@ -70,6 +70,27 @@
       "unknown": "Onbekend",
       "other": "Overig"
     },
+    "highlights": {
+      "toggle": "Highlights",
+      "add": "Highlight toevoegen",
+      "clickMap": "Klik op de kaart…",
+      "asWaypoint": "In route",
+      "loginToVote": "Log in om te stemmen",
+      "newTitle": "Nieuwe highlight",
+      "namePlaceholder": "Naam (bijv. Uitzicht over het dal)",
+      "save": "Opslaan",
+      "cancel": "Annuleren",
+      "cat": {
+        "peak": "Top",
+        "viewpoint": "Uitzichtpunt",
+        "hut": "Hut",
+        "water": "Water",
+        "cafe": "Café",
+        "monument": "Monument",
+        "nature": "Natuur",
+        "other": "Overig"
+      }
+    },
     "roundTrip": "Rondje",
     "importGpx": "GPX importeren",
     "generate": "Genereer",

@@ -3,11 +3,21 @@
 import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { CATEGORY_COLOR } from "@/lib/highlights";
 
 // OpenFreeMap "liberty": free OSM vector tiles, no API key (see LEGAL.md).
 const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 
 export type Waypoint = { name: string; lon: number; lat: number };
+
+export type HighlightClick = {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  lon: number;
+  lat: number;
+};
 
 const BADGE_COLORS = ["#16a34a", "#dc2626", "#2563eb", "#9333ea", "#ea580c"];
 export function waypointColor(i: number, count: number) {
@@ -23,6 +33,9 @@ type Props = {
   onMapClick: (lon: number, lat: number) => void;
   onMarkerDragEnd: (slotIndex: number, lon: number, lat: number) => void;
   onRouteDrop: (lon: number, lat: number) => void;
+  // GEN-115: community-POI layer (optional — TourView doesn't pass these).
+  highlights?: GeoJSON.FeatureCollection | null;
+  onHighlightClick?: (h: HighlightClick) => void;
 };
 
 export default function MapView({
@@ -32,14 +45,16 @@ export default function MapView({
   onMapClick,
   onMarkerDragEnd,
   onRouteDrop,
+  highlights,
+  onHighlightClick,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const [ready, setReady] = useState(false);
   // Keep latest callbacks without re-binding map listeners.
-  const cbRef = useRef({ onMapClick, onMarkerDragEnd, onRouteDrop });
-  cbRef.current = { onMapClick, onMarkerDragEnd, onRouteDrop };
+  const cbRef = useRef({ onMapClick, onMarkerDragEnd, onRouteDrop, onHighlightClick });
+  cbRef.current = { onMapClick, onMarkerDragEnd, onRouteDrop, onHighlightClick };
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -109,11 +124,64 @@ export default function MapView({
         },
       });
 
+      // GEN-115: community-highlight dots, colored per category. The source
+      // stays empty until the planner enables the layer.
+      map.addSource("highlights", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+      map.addLayer({
+        id: "highlights-dots",
+        type: "circle",
+        source: "highlights",
+        paint: {
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 6, 3, 12, 7],
+          "circle-color": [
+            "match",
+            ["get", "category"],
+            "peak", CATEGORY_COLOR.peak ?? "#b45309",
+            "viewpoint", CATEGORY_COLOR.viewpoint ?? "#0284c7",
+            "hut", CATEGORY_COLOR.hut ?? "#92400e",
+            "water", CATEGORY_COLOR.water ?? "#0ea5e9",
+            "cafe", CATEGORY_COLOR.cafe ?? "#db2777",
+            "monument", CATEGORY_COLOR.monument ?? "#7c3aed",
+            "nature", CATEGORY_COLOR.nature ?? "#16a34a",
+            "#dc2626",
+          ],
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 1.5,
+        },
+      });
+      map.on("mouseenter", "highlights-dots", () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", "highlights-dots", () => {
+        map.getCanvas().style.cursor = "";
+      });
+
       // Click on empty map = add waypoint. Suppressed right after a line-drag.
       let suppressClick = false;
       map.on("click", (e) => {
         if (suppressClick) {
           suppressClick = false;
+          return;
+        }
+        // Highlight dots take priority over adding a waypoint.
+        const hlHits = map.queryRenderedFeatures(e.point, {
+          layers: ["highlights-dots"],
+        });
+        const hl = hlHits[0];
+        if (hl && cbRef.current.onHighlightClick) {
+          const [lon, lat] = (hl.geometry as GeoJSON.Point).coordinates;
+          const p = hl.properties as Record<string, string>;
+          cbRef.current.onHighlightClick({
+            id: p.id ?? "",
+            name: p.name ?? "",
+            category: p.category ?? "other",
+            description: p.description ?? "",
+            lon: lon ?? e.lngLat.lng,
+            lat: lat ?? e.lngLat.lat,
+          });
           return;
         }
         const hits = map.queryRenderedFeatures(e.point, {
@@ -197,6 +265,19 @@ export default function MapView({
       hasFitRef.current = false;
     }
   }, [route, ready]);
+
+  // Sync highlights layer (GEN-115)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const src = map.getSource("highlights") as
+      | maplibregl.GeoJSONSource
+      | undefined;
+    if (!src) return;
+    src.setData(
+      highlights ?? { type: "FeatureCollection", features: [] },
+    );
+  }, [highlights, ready]);
 
   // Sync elevation-hover point
   useEffect(() => {
