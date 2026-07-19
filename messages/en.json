@@ -27,7 +27,9 @@
     "errors": {
       "no_route": "No route found between these points.",
       "router_unavailable": "Route service is temporarily unavailable.",
-      "generic": "Something went wrong. Try again."
+      "generic": "Something went wrong. Try again.",
+      "gpx_invalid": "Could not read that GPX file.",
+      "roundtrip_needs_start": "Set a starting point (A) first."
     },
     "via": "Via point",
     "addWaypoint": "Add waypoint",
@@ -67,6 +69,13 @@
       "sand": "Sand",
       "unknown": "Unknown",
       "other": "Other"
-    }
+    },
+    "roundTrip": "Round trip",
+    "importGpx": "Import GPX",
+    "generate": "Generate",
+    "generating": "Generating…",
+    "roundTripHint": "Set a starting point first",
+    "share": "Share",
+    "copied": "Copied!"
   }
 }

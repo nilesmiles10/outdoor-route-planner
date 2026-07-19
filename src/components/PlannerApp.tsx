@@ -13,6 +13,8 @@ import MapView, { type Waypoint } from "./MapView";
 import SearchField from "./SearchField";
 import ElevationChart from "./ElevationChart";
 import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
+import { buildGpx, parseGpx, sampleAnchors } from "@/lib/gpx";
+import { loopVias } from "@/lib/roundtrip";
 
 const SPORTS = ["hike", "run", "touring", "gravel", "mtb", "road", "ebike"] as const;
 type Sport = (typeof SPORTS)[number];
@@ -40,7 +42,9 @@ type PlanAction =
   | { type: "redo" }
   // Late reverse-geocode result: update the label of the waypoint at these
   // coordinates without touching route state or the undo history.
-  | { type: "rename"; lon: number; lat: number; name: string };
+  | { type: "rename"; lon: number; lat: number; name: string }
+  // Replace the whole plan (share-URL restore, GPX import, round trip).
+  | { type: "load"; slots: Slots };
 
 function planReducer(state: PlanState, action: PlanAction): PlanState {
   const commit = (slots: Slots): PlanState => ({
@@ -94,7 +98,20 @@ function planReducer(state: PlanState, action: PlanAction): PlanState {
       );
       return { ...state, slots };
     }
+    case "load": {
+      let slots = action.slots;
+      while (slots.length < 2) slots = [...slots, null];
+      return { slots, past: [], future: [] };
+    }
   }
+}
+
+function coordName(lon: number, lat: number) {
+  return `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+}
+
+function isSportClient(v: string): v is Sport {
+  return (SPORTS as readonly string[]).includes(v);
 }
 
 function fmtKm(m: number) {
@@ -267,6 +284,13 @@ export default function PlannerApp() {
   const hoverPoint =
     hoverIdx !== null && routeCoords ? routeCoords[hoverIdx] ?? null : null;
 
+  const [rtOpen, setRtOpen] = useState(false);
+  const [rtTargetKm, setRtTargetKm] = useState(40);
+  const [rtBusy, setRtBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+
   const filled = plan.slots.filter((s): s is Waypoint => s !== null);
 
   // Per-leg cache: editing one waypoint only refetches the adjacent legs,
@@ -341,6 +365,139 @@ export default function PlannerApp() {
       dispatch({ type: "rename", lon, lat, name }),
     );
   }, []);
+
+  // --- Share URL: restore on mount, write on change (GEN-108) ---
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const w = params.get("w");
+    if (!w) return;
+    const pts = w
+      .split(";")
+      .map((p) => p.split(",").map(Number))
+      .filter((p) => p.length === 2 && p.every(Number.isFinite));
+    if (pts.length < 2) return;
+    const s = params.get("sport");
+    if (s && isSportClient(s)) setSport(s);
+    dispatch({
+      type: "load",
+      slots: pts.map(([lon, lat]) => ({ name: coordName(lon, lat), lon, lat })),
+    });
+    pts.forEach(([lon, lat]) => patchName(lon, lat));
+  }, [patchName]);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (filled.length >= 2) {
+      url.searchParams.set(
+        "w",
+        filled.map((p) => `${p.lon.toFixed(5)},${p.lat.toFixed(5)}`).join(";"),
+      );
+      url.searchParams.set("sport", sport);
+    } else {
+      url.searchParams.delete("w");
+      url.searchParams.delete("sport");
+    }
+    window.history.replaceState(null, "", url);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(filled), sport]);
+
+  // --- GPX export/import (GEN-108) ---
+  const handleDownloadGpx = useCallback(() => {
+    if (!route || !routeCoords) return;
+    const name =
+      filled.length >= 2
+        ? `${filled[0].name} - ${filled[filled.length - 1].name}`
+        : "route";
+    const gpx = buildGpx(name, routeCoords, route.elevation, filled);
+    const blob = new Blob([gpx], { type: "application/gpx+xml" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${name.replace(/[^\w\- ]+/g, "").slice(0, 60) || "route"}.gpx`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }, [route, routeCoords, filled]);
+
+  const handleImportFile = useCallback(
+    async (file: File) => {
+      const pts = parseGpx(await file.text());
+      if (pts.length < 2) {
+        setError("gpx_invalid");
+        return;
+      }
+      const anchors = sampleAnchors(pts, 6);
+      dispatch({
+        type: "load",
+        slots: anchors.map(([lon, lat]) => ({
+          name: coordName(lon, lat),
+          lon,
+          lat,
+        })),
+      });
+      anchors.forEach(([lon, lat]) => patchName(lon, lat));
+    },
+    [patchName],
+  );
+
+  const handleCopyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard unavailable — ignore
+    }
+  }, []);
+
+  // --- Round trip (GEN-107): synthesize loop, measure once, refine once ---
+  const handleGenerateLoop = useCallback(async () => {
+    const start = filled[0];
+    if (!start) {
+      setError("roundtrip_needs_start");
+      return;
+    }
+    setRtBusy(true);
+    setError(null);
+    try {
+      const bearing = Math.floor(Math.random() * 360);
+      const targetM = rtTargetKm * 1000;
+      const measure = async (scale: number) => {
+        const [p1, p2] = loopVias([start.lon, start.lat], targetM, bearing, scale);
+        const points = [
+          `${start.lon},${start.lat}`,
+          `${p1[0]},${p1[1]}`,
+          `${p2[0]},${p2[1]}`,
+          `${start.lon},${start.lat}`,
+        ].join("|");
+        const res = await fetch(
+          `/api/geo/route?points=${encodeURIComponent(points)}&sport=${sport}`,
+        );
+        if (!res.ok) throw new Error("no_route");
+        const data = (await res.json()) as RouteResult;
+        return { p1, p2, distanceM: data.stats.distanceM };
+      };
+      let attempt = await measure(1);
+      const ratio = targetM / attempt.distanceM;
+      if (Math.abs(1 - ratio) > 0.15) {
+        attempt = await measure(ratio);
+      }
+      const { p1, p2 } = attempt;
+      dispatch({
+        type: "load",
+        slots: [
+          start,
+          { name: coordName(p1[0], p1[1]), lon: p1[0], lat: p1[1] },
+          { name: coordName(p2[0], p2[1]), lon: p2[0], lat: p2[1] },
+          { ...start },
+        ],
+      });
+      patchName(p1[0], p1[1]);
+      patchName(p2[0], p2[1]);
+    } catch {
+      setError("no_route");
+    } finally {
+      setRtBusy(false);
+    }
+  }, [filled, rtTargetKm, sport, patchName]);
 
   // Map click → fill first empty slot, else append at the end
   const handleMapClick = useCallback(
@@ -522,6 +679,59 @@ export default function PlannerApp() {
               ⇅ {t("reverse")}
             </button>
           </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setRtOpen((v) => !v)}
+              className={`text-xs ${rtOpen ? "font-semibold text-emerald-800" : "text-emerald-700"} hover:underline`}
+            >
+              ⟳ {t("roundTrip")}
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="text-xs text-emerald-700 hover:underline"
+            >
+              ⤒ {t("importGpx")}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".gpx,application/gpx+xml"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleImportFile(f);
+                e.target.value = "";
+              }}
+            />
+          </div>
+          {rtOpen && (
+            <div className="flex items-center gap-2 rounded-lg bg-neutral-50 p-2">
+              <input
+                type="number"
+                min={5}
+                max={200}
+                value={rtTargetKm}
+                onChange={(e) => setRtTargetKm(Number(e.target.value))}
+                className="w-16 rounded border border-neutral-200 px-2 py-1 text-xs"
+              />
+              <span className="text-xs text-neutral-500">km</span>
+              <button
+                type="button"
+                onClick={handleGenerateLoop}
+                disabled={rtBusy || !filled[0]}
+                className="rounded-lg bg-emerald-700 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-800 disabled:opacity-40"
+              >
+                {rtBusy ? t("generating") : t("generate")}
+              </button>
+              {!filled[0] && (
+                <span className="text-[10px] text-neutral-400">
+                  {t("roundTripHint")}
+                </span>
+              )}
+            </div>
+          )}
           <p className="text-[11px] text-neutral-400">{t("mapHint")}</p>
         </div>
 
@@ -530,8 +740,13 @@ export default function PlannerApp() {
         )}
         {error && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-            {["no_route", "router_unavailable"].includes(error)
-              ? t(`errors.${error}` as "errors.no_route" | "errors.router_unavailable")
+            {[
+              "no_route",
+              "router_unavailable",
+              "gpx_invalid",
+              "roundtrip_needs_start",
+            ].includes(error)
+              ? t(`errors.${error}` as never)
               : t("errors.generic")}
           </p>
         )}
@@ -557,11 +772,27 @@ export default function PlannerApp() {
                   `difficultyLabels.${difficulty(sport, route.stats.distanceM, route.stats.ascendM)}`,
                 )}
               </span>
-              {climbs.length > 0 && (
-                <span className="text-[11px] text-neutral-500">
-                  {climbs.length} {t("climbs")}
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {climbs.length > 0 && (
+                  <span className="text-[11px] text-neutral-500">
+                    {climbs.length} {t("climbs")}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleDownloadGpx}
+                  className="rounded-lg bg-neutral-100 px-2 py-1 text-[11px] font-medium text-neutral-700 hover:bg-neutral-200"
+                >
+                  ⤓ GPX
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="rounded-lg bg-neutral-100 px-2 py-1 text-[11px] font-medium text-neutral-700 hover:bg-neutral-200"
+                >
+                  {copied ? t("copied") : `⧉ ${t("share")}`}
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-4 gap-2 text-center">
               <div>

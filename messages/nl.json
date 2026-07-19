@@ -27,7 +27,9 @@
     "errors": {
       "no_route": "Geen route gevonden tussen deze punten.",
       "router_unavailable": "Route-service is tijdelijk niet beschikbaar.",
-      "generic": "Er ging iets mis. Probeer opnieuw."
+      "generic": "Er ging iets mis. Probeer opnieuw.",
+      "gpx_invalid": "Kon dit GPX-bestand niet lezen.",
+      "roundtrip_needs_start": "Kies eerst een startpunt (A)."
     },
     "via": "Tussenpunt",
     "addWaypoint": "Waypoint toevoegen",
@@ -67,6 +69,13 @@
       "sand": "Zand",
       "unknown": "Onbekend",
       "other": "Overig"
-    }
+    },
+    "roundTrip": "Rondje",
+    "importGpx": "GPX importeren",
+    "generate": "Genereer",
+    "generating": "Genereren…",
+    "roundTripHint": "Kies eerst een startpunt",
+    "share": "Delen",
+    "copied": "Gekopieerd!"
   }
 }
