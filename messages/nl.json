@@ -102,5 +102,21 @@
   "tourPage": {
     "openInPlanner": "Open in planner",
     "downloadGpx": "GPX downloaden"
+  },
+  "nav": {
+    "planner": "Planner",
+    "myRoutes": "Mijn routes",
+    "login": "Inloggen",
+    "searchPlaceholder": "Zoek routes en plaatsen…",
+    "routes": "Routes",
+    "places": "Plaatsen"
+  },
+  "routesPage": {
+    "title": "Mijn routes",
+    "searchPlaceholder": "Zoek op naam…",
+    "empty": "Geen routes gevonden.",
+    "needLogin": "Log in om je opgeslagen routes te zien.",
+    "openPlanner": "Open in planner",
+    "view": "Bekijk pagina"
   }
 }

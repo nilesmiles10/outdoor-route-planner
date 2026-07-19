@@ -64,7 +64,7 @@ export default function TourView({ geometry, elevation, waypoints, header }: Pro
         onMarkerDragEnd={noop}
         onRouteDrop={noop}
       />
-      <div className="absolute left-4 top-4 flex w-[340px] max-h-[calc(100dvh-2rem)] flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur">
+      <div className="absolute left-4 top-16 flex w-[340px] max-h-[calc(100dvh-5rem)] flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur">
         <div>
           <h1 className="text-lg font-semibold text-neutral-900">{header.name}</h1>
           <p className="text-xs capitalize text-neutral-500">{header.sport}</p>

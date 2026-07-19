@@ -370,6 +370,15 @@ export default function PlannerApp() {
   // --- Share URL: restore on mount, write on change (GEN-108) ---
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    // Header place-search: ?at=lon,lat&atn=Name → prefill start point
+    const at = params.get("at");
+    if (at) {
+      const [lon, lat] = at.split(",").map(Number);
+      if (Number.isFinite(lon) && Number.isFinite(lat)) {
+        const name = params.get("atn") ?? coordName(lon, lat);
+        dispatch({ type: "load", slots: [{ name, lon, lat }, null] });
+      }
+    }
     const w = params.get("w");
     if (!w) return;
     const pts = w
@@ -613,7 +622,7 @@ export default function PlannerApp() {
         onRouteDrop={handleRouteDrop}
       />
 
-      <div className="absolute left-4 top-4 flex w-[340px] max-h-[calc(100dvh-2rem)] flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur">
+      <div className="absolute left-4 top-16 flex w-[340px] max-h-[calc(100dvh-5rem)] flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-lg font-semibold text-neutral-900">

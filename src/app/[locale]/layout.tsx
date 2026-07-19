@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
+import AppHeader from "@/components/AppHeader";
 import "../globals.css";
 
 export const metadata: Metadata = {
@@ -26,7 +27,10 @@ export default function LocaleLayout({
   return (
     <html lang={locale}>
       <body className="antialiased">
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          <AppHeader />
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
   );

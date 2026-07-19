@@ -102,5 +102,21 @@
   "tourPage": {
     "openInPlanner": "Open in planner",
     "downloadGpx": "Download GPX"
+  },
+  "nav": {
+    "planner": "Planner",
+    "myRoutes": "My routes",
+    "login": "Log in",
+    "searchPlaceholder": "Search routes and places…",
+    "routes": "Routes",
+    "places": "Places"
+  },
+  "routesPage": {
+    "title": "My routes",
+    "searchPlaceholder": "Search by name…",
+    "empty": "No routes found.",
+    "needLogin": "Log in to see your saved routes.",
+    "openPlanner": "Open in planner",
+    "view": "View page"
   }
 }
