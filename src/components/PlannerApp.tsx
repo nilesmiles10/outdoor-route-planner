@@ -25,7 +25,10 @@ type PlanAction =
   | { type: "remove"; index: number }
   | { type: "reverse" }
   | { type: "undo" }
-  | { type: "redo" };
+  | { type: "redo" }
+  // Late reverse-geocode result: update the label of the waypoint at these
+  // coordinates without touching route state or the undo history.
+  | { type: "rename"; lon: number; lat: number; name: string };
 
 function planReducer(state: PlanState, action: PlanAction): PlanState {
   const commit = (slots: Slots): PlanState => ({
@@ -70,6 +73,14 @@ function planReducer(state: PlanState, action: PlanAction): PlanState {
         past: [...state.past.slice(-49), state.slots],
         future: state.future.slice(1),
       };
+    }
+    case "rename": {
+      const slots = state.slots.map((s) =>
+        s && s.lon === action.lon && s.lat === action.lat
+          ? { ...s, name: action.name }
+          : s,
+      );
+      return { ...state, slots };
     }
   }
 }
@@ -183,25 +194,37 @@ export default function PlannerApp() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Late name lookup: waypoints appear instantly with a coordinate label,
+  // the reverse-geocoded name patches in when it arrives (no history entry).
+  const patchName = useCallback((lon: number, lat: number) => {
+    reverseName(lon, lat).then((name) =>
+      dispatch({ type: "rename", lon, lat, name }),
+    );
+  }, []);
+
   // Map click → fill first empty slot, else append at the end
   const handleMapClick = useCallback(
-    async (lon: number, lat: number) => {
-      const name = await reverseName(lon, lat);
-      const wp = { name, lon, lat };
+    (lon: number, lat: number) => {
+      const wp = { name: `${lat.toFixed(4)}, ${lon.toFixed(4)}`, lon, lat };
       const firstEmpty = plan.slots.findIndex((s) => s === null);
       if (firstEmpty >= 0) dispatch({ type: "set", index: firstEmpty, wp });
       else dispatch({ type: "insert", index: plan.slots.length, wp });
+      patchName(lon, lat);
     },
-    [plan.slots],
+    [plan.slots, patchName],
   );
 
   // Marker drag → move that waypoint
   const handleMarkerDragEnd = useCallback(
-    async (slotIndex: number, lon: number, lat: number) => {
-      const name = await reverseName(lon, lat);
-      dispatch({ type: "set", index: slotIndex, wp: { name, lon, lat } });
+    (slotIndex: number, lon: number, lat: number) => {
+      dispatch({
+        type: "set",
+        index: slotIndex,
+        wp: { name: `${lat.toFixed(4)}, ${lon.toFixed(4)}`, lon, lat },
+      });
+      patchName(lon, lat);
     },
-    [],
+    [patchName],
   );
 
   // Route-line drop → insert a via between the bracketing waypoints
@@ -244,10 +267,14 @@ export default function PlannerApp() {
           }
         }
       }
-      const name = await reverseName(lon, lat);
-      dispatch({ type: "insert", index: slotIndex, wp: { name, lon, lat } });
+      dispatch({
+        type: "insert",
+        index: slotIndex,
+        wp: { name: `${lat.toFixed(4)}, ${lon.toFixed(4)}`, lon, lat },
+      });
+      patchName(lon, lat);
     },
-    [route, filled, plan.slots],
+    [route, filled, plan.slots, patchName],
   );
 
   const buckets = route?.surfaces.buckets;

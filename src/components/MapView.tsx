@@ -150,7 +150,9 @@ export default function MapView({
     };
   }, []);
 
-  // Sync route line + fit bounds when geometry changes
+  // Sync route line. Fit bounds only when a route first appears — refitting
+  // on every edit makes the planner feel slow and yanks the camera around.
+  const hasFitRef = useRef(false);
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
@@ -158,19 +160,23 @@ export default function MapView({
     if (!src) return;
     if (route) {
       src.setData(route);
-      const coords = (route.geometry as GeoJSON.LineString).coordinates;
-      const bounds = coords.reduce(
-        (bd, c) => bd.extend([c[0], c[1]]),
-        new maplibregl.LngLatBounds(
-          [coords[0][0], coords[0][1]],
-          [coords[0][0], coords[0][1]],
-        ),
-      );
-      map.fitBounds(bounds, {
-        padding: { top: 60, bottom: 60, left: 400, right: 60 },
-      });
+      if (!hasFitRef.current) {
+        const coords = (route.geometry as GeoJSON.LineString).coordinates;
+        const bounds = coords.reduce(
+          (bd, c) => bd.extend([c[0], c[1]]),
+          new maplibregl.LngLatBounds(
+            [coords[0][0], coords[0][1]],
+            [coords[0][0], coords[0][1]],
+          ),
+        );
+        map.fitBounds(bounds, {
+          padding: { top: 60, bottom: 60, left: 400, right: 60 },
+        });
+        hasFitRef.current = true;
+      }
     } else {
       src.setData({ type: "FeatureCollection", features: [] });
+      hasFitRef.current = false;
     }
   }, [route, ready]);
 
