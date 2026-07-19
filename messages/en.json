@@ -2,5 +2,32 @@
   "app": {
     "title": "Outdoor Route Planner",
     "tagline": "Plan your next adventure"
+  },
+  "planner": {
+    "title": "Outdoor Route Planner",
+    "tagline": "Plan your next adventure",
+    "start": "Enter starting point",
+    "destination": "Enter destination",
+    "reverse": "Reverse",
+    "calculating": "Calculating route…",
+    "time": "time",
+    "surfaces": "Surfaces",
+    "paved": "Paved",
+    "unpaved": "Unpaved",
+    "unknown": "Unknown",
+    "sports": {
+      "hike": "Hiking",
+      "run": "Running",
+      "touring": "Bike touring",
+      "gravel": "Gravel",
+      "mtb": "MTB",
+      "road": "Road bike",
+      "ebike": "E-bike"
+    },
+    "errors": {
+      "no_route": "No route found between these points.",
+      "router_unavailable": "Route service is temporarily unavailable.",
+      "generic": "Something went wrong. Try again."
+    }
   }
 }

@@ -2,5 +2,32 @@
   "app": {
     "title": "Outdoor Route Planner",
     "tagline": "Plan je volgende avontuur"
+  },
+  "planner": {
+    "title": "Outdoor Route Planner",
+    "tagline": "Plan je volgende avontuur",
+    "start": "Voer startpunt in",
+    "destination": "Voer bestemming in",
+    "reverse": "Omkeren",
+    "calculating": "Route berekenen…",
+    "time": "tijd",
+    "surfaces": "Ondergrond",
+    "paved": "Verhard",
+    "unpaved": "Onverhard",
+    "unknown": "Onbekend",
+    "sports": {
+      "hike": "Wandelen",
+      "run": "Hardlopen",
+      "touring": "Fietsen",
+      "gravel": "Gravel",
+      "mtb": "MTB",
+      "road": "Racefiets",
+      "ebike": "E-bike"
+    },
+    "errors": {
+      "no_route": "Geen route gevonden tussen deze punten.",
+      "router_unavailable": "Route-service is tijdelijk niet beschikbaar.",
+      "generic": "Er ging iets mis. Probeer opnieuw."
+    }
   }
 }
