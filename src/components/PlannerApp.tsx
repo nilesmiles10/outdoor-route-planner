@@ -954,7 +954,7 @@ export default function PlannerApp() {
           </div>
         )}
 
-        <AccountPanel tour={tourPayload} onLoadTour={handleLoadTour} />
+        <AccountPanel tour={tourPayload} onLoadTour={handleLoadTour} hideLoginForm />
       </div>
     </main>
   );

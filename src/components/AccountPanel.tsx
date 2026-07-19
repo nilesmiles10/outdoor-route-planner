@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Waypoint } from "./MapView";
@@ -29,10 +29,13 @@ type TourRow = {
 type Props = {
   tour: TourPayload | null;
   onLoadTour: (waypoints: Waypoint[], sport: string) => void;
+  // Planner passes true: login lives in the header / routes page there.
+  hideLoginForm?: boolean;
 };
 
-export default function AccountPanel({ tour, onLoadTour }: Props) {
+export default function AccountPanel({ tour, onLoadTour, hideLoginForm }: Props) {
   const t = useTranslations("account");
+  const locale = useLocale();
   const sb: SupabaseClient = useMemo(() => supabaseBrowser(), []);
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState("");
@@ -143,6 +146,16 @@ export default function AccountPanel({ tour, onLoadTour }: Props) {
   }
 
   if (!user) {
+    if (hideLoginForm) {
+      return (
+        <a
+          href={`/${locale}/routes`}
+          className="text-xs text-emerald-700 hover:underline"
+        >
+          {t("login")} →
+        </a>
+      );
+    }
     return (
       <div className="flex flex-col gap-2 rounded-lg bg-neutral-50 p-3">
         <div className="text-xs font-medium text-neutral-700">{t("login")}</div>

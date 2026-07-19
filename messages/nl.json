@@ -109,7 +109,8 @@
     "login": "Inloggen",
     "searchPlaceholder": "Zoek routes en plaatsen…",
     "routes": "Routes",
-    "places": "Plaatsen"
+    "places": "Plaatsen",
+    "logout": "Uitloggen"
   },
   "routesPage": {
     "title": "Mijn routes",

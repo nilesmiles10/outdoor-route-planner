@@ -20,6 +20,7 @@ export default function AppHeader() {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<Hit[]>([]);
   const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
@@ -131,12 +132,37 @@ export default function AppHeader() {
           {locale === "nl" ? "EN" : "NL"}
         </a>
         {email ? (
-          <span
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-700 text-xs font-bold text-white"
-            title={email}
-          >
-            {email[0]?.toUpperCase()}
-          </span>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              onBlur={() => setTimeout(() => setMenuOpen(false), 150)}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-700 text-xs font-bold text-white"
+              title={email}
+            >
+              {email[0]?.toUpperCase()}
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 z-40 mt-1 w-44 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
+                <div className="truncate px-3 py-1.5 text-[11px] text-neutral-400">
+                  {email}
+                </div>
+                <a
+                  href={`/${locale}/routes`}
+                  className="block px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+                >
+                  {t("myRoutes")}
+                </a>
+                <button
+                  type="button"
+                  onMouseDown={() => sb.auth.signOut()}
+                  className="block w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-neutral-50"
+                >
+                  {t("logout")}
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           <a
             href={`/${locale}/routes`}

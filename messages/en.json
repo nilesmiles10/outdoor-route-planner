@@ -109,7 +109,8 @@
     "login": "Log in",
     "searchPlaceholder": "Search routes and places…",
     "routes": "Routes",
-    "places": "Places"
+    "places": "Places",
+    "logout": "Log out"
   },
   "routesPage": {
     "title": "My routes",
