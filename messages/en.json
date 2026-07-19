@@ -110,7 +110,8 @@
     "searchPlaceholder": "Search routes and places…",
     "routes": "Routes",
     "places": "Places",
-    "logout": "Log out"
+    "logout": "Log out",
+    "discover": "Discover"
   },
   "routesPage": {
     "title": "My routes",
@@ -119,5 +120,18 @@
     "needLogin": "Log in to see your saved routes.",
     "openPlanner": "Open in planner",
     "view": "View page"
+  },
+  "discover": {
+    "title": "Discover routes",
+    "subtitle": "Hand-picked and community loops, ready to ride or walk.",
+    "all": "All sports",
+    "empty": "No routes match these filters.",
+    "away": "away",
+    "bands": {
+      "all": "Any distance",
+      "short": "< 20 km",
+      "mid": "20–50 km",
+      "long": "> 50 km"
+    }
   }
 }

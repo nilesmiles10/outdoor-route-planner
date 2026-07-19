@@ -122,6 +122,9 @@ export default function AppHeader() {
         <a href={`/${locale}`} className="text-neutral-700 hover:text-emerald-800">
           {t("planner")}
         </a>
+        <a href={`/${locale}/discover`} className="text-neutral-700 hover:text-emerald-800">
+          {t("discover")}
+        </a>
         <a href={`/${locale}/routes`} className="text-neutral-700 hover:text-emerald-800">
           {t("myRoutes")}
         </a>
