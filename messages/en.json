@@ -33,6 +33,40 @@
     "addWaypoint": "Add waypoint",
     "undo": "Undo",
     "redo": "Redo",
-    "mapHint": "Tip: click the map to add points, drag the route line to adjust it."
+    "mapHint": "Tip: click the map to add points, drag the route line to adjust it.",
+    "climbs": "climbs",
+    "climb": "Climb",
+    "atKm": "at km",
+    "details": "Route details",
+    "waytypes": "Way types",
+    "surfacesDetail": "Surfaces",
+    "difficultyLabels": {
+      "easy": "Easy",
+      "moderate": "Moderate",
+      "hard": "Hard"
+    },
+    "wt": {
+      "cycleway": "Cycleway",
+      "path": "Path",
+      "track": "Track",
+      "street": "Street",
+      "road": "Road",
+      "access": "Access road",
+      "steps": "Steps",
+      "other": "Other"
+    },
+    "sf": {
+      "asphalt": "Asphalt",
+      "concrete": "Concrete",
+      "paving": "Paving stones",
+      "cobbles": "Cobblestones",
+      "gravel": "Gravel",
+      "compacted": "Compacted gravel",
+      "ground": "Dirt",
+      "grass": "Grass",
+      "sand": "Sand",
+      "unknown": "Unknown",
+      "other": "Other"
+    }
   }
 }

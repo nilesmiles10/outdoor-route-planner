@@ -1,9 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { useTranslations } from "next-intl";
 import MapView, { type Waypoint } from "./MapView";
 import SearchField from "./SearchField";
+import ElevationChart from "./ElevationChart";
+import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
 
 const SPORTS = ["hike", "run", "touring", "gravel", "mtb", "road", "ebike"] as const;
 type Sport = (typeof SPORTS)[number];
@@ -11,7 +20,10 @@ type Sport = (typeof SPORTS)[number];
 type RouteResult = {
   geometry: GeoJSON.Feature;
   stats: { distanceM: number; timeS: number; ascendM: number; descendM: number };
-  surfaces: { buckets: { paved: number; unpaved: number; unknown: number } };
+  surfaces: {
+    buckets: { paved: number; unpaved: number; unknown: number };
+    detailM: Record<string, number>;
+  };
   waytypes: Record<string, number>;
   elevation: number[];
 };
@@ -88,6 +100,87 @@ function planReducer(state: PlanState, action: PlanAction): PlanState {
 function fmtKm(m: number) {
   return (m / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
+
+// Difficulty formula (documented, GEN-106):
+//   bike: effort = km + ascent/50   ("100 m climbing ≈ 2 extra km")
+//   foot: effort = km + ascent/100  (walking absorbs climbs relatively better
+//                                    per km, but thresholds are much lower)
+// Calibration reference (2026-07-19): Utrecht→Amersfoort touring
+// (21.6 km/32 m → easy, matches Komoot), La Roche→Houffalize touring
+// (27.9 km/442 m → moderate), Den Haag→Utrecht (66 km → moderate).
+function difficulty(
+  sport: Sport,
+  distanceM: number,
+  ascendM: number,
+): "easy" | "moderate" | "hard" {
+  const onFoot = sport === "hike" || sport === "run";
+  const effort = distanceM / 1000 + ascendM / (onFoot ? 100 : 50);
+  const [easyMax, moderateMax] = onFoot ? [10, 20] : [30, 70];
+  if (effort <= easyMax) return "easy";
+  if (effort <= moderateMax) return "moderate";
+  return "hard";
+}
+
+// Group raw OSM highway values into Komoot-style waytype buckets.
+const WAYTYPE_GROUPS: Record<string, string> = {
+  cycleway: "cycleway",
+  path: "path",
+  footway: "path",
+  bridleway: "path",
+  steps: "steps",
+  track: "track",
+  residential: "street",
+  living_street: "street",
+  pedestrian: "street",
+  service: "access",
+  unclassified: "road",
+  tertiary: "road",
+  tertiary_link: "road",
+  secondary: "road",
+  secondary_link: "road",
+  primary: "road",
+  primary_link: "road",
+  trunk: "road",
+  trunk_link: "road",
+};
+function groupWaytypes(waytypes: Record<string, number>) {
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(waytypes)) {
+    const g = WAYTYPE_GROUPS[k] ?? "other";
+    out[g] = (out[g] ?? 0) + v;
+  }
+  return Object.entries(out).sort((a, b) => b[1] - a[1]);
+}
+
+// Group raw OSM surface values for the detail list.
+const SURFACE_GROUPS: Record<string, string> = {
+  asphalt: "asphalt",
+  paved: "asphalt",
+  concrete: "concrete",
+  "concrete:plates": "concrete",
+  "concrete:lanes": "concrete",
+  paving_stones: "paving",
+  sett: "cobbles",
+  cobblestone: "cobbles",
+  gravel: "gravel",
+  fine_gravel: "gravel",
+  pebblestone: "gravel",
+  compacted: "compacted",
+  ground: "ground",
+  dirt: "ground",
+  earth: "ground",
+  grass: "grass",
+  sand: "sand",
+  unknown: "unknown",
+};
+function groupSurfaces(detail: Record<string, number>) {
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(detail)) {
+    const g = SURFACE_GROUPS[k] ?? "other";
+    out[g] = (out[g] ?? 0) + v;
+  }
+  return Object.entries(out).sort((a, b) => b[1] - a[1]);
+}
 function fmtTime(s: number) {
   const h = Math.floor(s / 3600);
   const m = Math.round((s % 3600) / 60);
@@ -105,37 +198,6 @@ async function reverseName(lon: number, lat: number): Promise<string> {
   return `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
 }
 
-function ElevationSparkline({ elevation }: { elevation: number[] }) {
-  if (elevation.length < 2) return null;
-  const w = 300;
-  const h = 60;
-  const min = Math.min(...elevation);
-  const max = Math.max(...elevation);
-  const range = Math.max(max - min, 10);
-  const pts = elevation
-    .map((e, i) => {
-      const x = (i / (elevation.length - 1)) * w;
-      const y = h - ((e - min) / range) * (h - 8) - 4;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img">
-      <polyline
-        points={`0,${h} ${pts} ${w},${h}`}
-        fill="rgb(37 99 235 / 0.15)"
-        stroke="none"
-      />
-      <polyline points={pts} fill="none" stroke="#2563eb" strokeWidth="1.5" />
-      <text x="2" y="10" className="fill-neutral-500" fontSize="9">
-        {Math.round(max)} m
-      </text>
-      <text x="2" y={h - 2} className="fill-neutral-500" fontSize="9">
-        {Math.round(min)} m
-      </text>
-    </svg>
-  );
-}
 
 // Merge per-leg results into one route. Legs share their joint point, so we
 // drop the first coordinate/elevation sample of every leg after the first.
@@ -144,6 +206,7 @@ function mergeLegs(legs: RouteResult[]): RouteResult {
   const elevation: number[] = [];
   const stats = { distanceM: 0, timeS: 0, ascendM: 0, descendM: 0 };
   const buckets = { paved: 0, unpaved: 0, unknown: 0 };
+  const detailM: Record<string, number> = {};
   const waytypes: Record<string, number> = {};
   legs.forEach((leg, i) => {
     const legCoords = (leg.geometry.geometry as GeoJSON.LineString).coordinates;
@@ -156,6 +219,9 @@ function mergeLegs(legs: RouteResult[]): RouteResult {
     buckets.paved += leg.surfaces.buckets.paved;
     buckets.unpaved += leg.surfaces.buckets.unpaved;
     buckets.unknown += leg.surfaces.buckets.unknown;
+    for (const [k, v] of Object.entries(leg.surfaces.detailM)) {
+      detailM[k] = (detailM[k] ?? 0) + v;
+    }
     for (const [k, v] of Object.entries(leg.waytypes)) {
       waytypes[k] = (waytypes[k] ?? 0) + v;
     }
@@ -167,7 +233,7 @@ function mergeLegs(legs: RouteResult[]): RouteResult {
       geometry: { type: "LineString", coordinates: coords },
     },
     stats,
-    surfaces: { buckets },
+    surfaces: { buckets, detailM },
     waytypes,
     elevation,
   };
@@ -184,6 +250,22 @@ export default function PlannerApp() {
   const [route, setRoute] = useState<RouteResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
+  const routeCoords = route
+    ? (route.geometry.geometry as GeoJSON.LineString).coordinates
+    : null;
+  const distances = useMemo(
+    () => (routeCoords ? cumulativeDistances(routeCoords) : null),
+    [routeCoords],
+  );
+  const climbs = useMemo(
+    () =>
+      route && distances ? detectClimbs(route.elevation, distances) : [],
+    [route, distances],
+  );
+  const hoverPoint =
+    hoverIdx !== null && routeCoords ? routeCoords[hoverIdx] ?? null : null;
 
   const filled = plan.slots.filter((s): s is Waypoint => s !== null);
 
@@ -345,6 +427,7 @@ export default function PlannerApp() {
       <MapView
         route={route?.geometry ?? null}
         waypoints={plan.slots}
+        hoverPoint={hoverPoint}
         onMapClick={handleMapClick}
         onMarkerDragEnd={handleMarkerDragEnd}
         onRouteDrop={handleRouteDrop}
@@ -455,6 +538,31 @@ export default function PlannerApp() {
 
         {route && !loading && (
           <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <span
+                className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                  difficulty(sport, route.stats.distanceM, route.stats.ascendM) ===
+                  "easy"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : difficulty(
+                          sport,
+                          route.stats.distanceM,
+                          route.stats.ascendM,
+                        ) === "moderate"
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-red-100 text-red-800"
+                }`}
+              >
+                {t(
+                  `difficultyLabels.${difficulty(sport, route.stats.distanceM, route.stats.ascendM)}`,
+                )}
+              </span>
+              {climbs.length > 0 && (
+                <span className="text-[11px] text-neutral-500">
+                  {climbs.length} {t("climbs")}
+                </span>
+              )}
+            </div>
             <div className="grid grid-cols-4 gap-2 text-center">
               <div>
                 <div className="text-base font-semibold">
@@ -484,7 +592,37 @@ export default function PlannerApp() {
               </div>
             </div>
 
-            <ElevationSparkline elevation={route.elevation} />
+            {distances && (
+              <ElevationChart
+                elevation={route.elevation}
+                distances={distances}
+                climbs={climbs}
+                onHover={setHoverIdx}
+              />
+            )}
+
+            {climbs.length > 0 && distances && (
+              <div className="flex flex-col gap-1">
+                {climbs.map((c, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onMouseEnter={() => setHoverIdx(c.startIdx)}
+                    onMouseLeave={() => setHoverIdx(null)}
+                    className="flex items-center justify-between rounded-lg bg-orange-50 px-2 py-1 text-left text-[11px] text-orange-900 hover:bg-orange-100"
+                  >
+                    <span>
+                      ⛰ {t("climb")} {i + 1} · {t("atKm")}{" "}
+                      {(c.startM / 1000).toFixed(1)}
+                    </span>
+                    <span className="font-medium">
+                      {(c.lengthM / 1000).toFixed(1)} km · ↗{Math.round(c.gainM)} m
+                      · {c.avgPct.toFixed(1)}%
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
 
             {buckets && totalSurface > 0 && (
               <div>
@@ -520,6 +658,36 @@ export default function PlannerApp() {
                 </div>
               </div>
             )}
+
+            <details className="text-xs">
+              <summary className="cursor-pointer font-medium text-neutral-700">
+                {t("details")}
+              </summary>
+              <div className="mt-2 grid grid-cols-2 gap-3">
+                <div>
+                  <div className="mb-1 font-medium text-neutral-600">
+                    {t("waytypes")}
+                  </div>
+                  {groupWaytypes(route.waytypes).map(([k, v]) => (
+                    <div key={k} className="flex justify-between text-neutral-600">
+                      <span>{t(`wt.${k}` as never)}</span>
+                      <span>{fmtKm(v)} km</span>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div className="mb-1 font-medium text-neutral-600">
+                    {t("surfacesDetail")}
+                  </div>
+                  {groupSurfaces(route.surfaces.detailM).map(([k, v]) => (
+                    <div key={k} className="flex justify-between text-neutral-600">
+                      <span>{t(`sf.${k}` as never)}</span>
+                      <span>{fmtKm(v)} km</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </details>
           </div>
         )}
       </div>

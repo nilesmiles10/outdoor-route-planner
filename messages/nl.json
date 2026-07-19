@@ -33,6 +33,40 @@
     "addWaypoint": "Waypoint toevoegen",
     "undo": "Ongedaan maken",
     "redo": "Opnieuw",
-    "mapHint": "Tip: klik op de kaart om punten toe te voegen, sleep de routelijn om aan te passen."
+    "mapHint": "Tip: klik op de kaart om punten toe te voegen, sleep de routelijn om aan te passen.",
+    "climbs": "klimmen",
+    "climb": "Klim",
+    "atKm": "bij km",
+    "details": "Route-details",
+    "waytypes": "Wegtypes",
+    "surfacesDetail": "Ondergrond",
+    "difficultyLabels": {
+      "easy": "Makkelijk",
+      "moderate": "Gemiddeld",
+      "hard": "Zwaar"
+    },
+    "wt": {
+      "cycleway": "Fietspad",
+      "path": "Pad",
+      "track": "Veldweg",
+      "street": "Straat",
+      "road": "Weg",
+      "access": "Toegangsweg",
+      "steps": "Trap",
+      "other": "Overig"
+    },
+    "sf": {
+      "asphalt": "Asfalt",
+      "concrete": "Beton",
+      "paving": "Klinkers",
+      "cobbles": "Kasseien",
+      "gravel": "Grind",
+      "compacted": "Halfverhard",
+      "ground": "Onverhard",
+      "grass": "Gras",
+      "sand": "Zand",
+      "unknown": "Onbekend",
+      "other": "Overig"
+    }
   }
 }

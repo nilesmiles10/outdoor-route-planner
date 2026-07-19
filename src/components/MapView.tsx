@@ -19,6 +19,7 @@ export function waypointColor(i: number, count: number) {
 type Props = {
   route: GeoJSON.Feature | null;
   waypoints: (Waypoint | null)[];
+  hoverPoint: GeoJSON.Position | null;
   onMapClick: (lon: number, lat: number) => void;
   onMarkerDragEnd: (slotIndex: number, lon: number, lat: number) => void;
   onRouteDrop: (lon: number, lat: number) => void;
@@ -27,6 +28,7 @@ type Props = {
 export default function MapView({
   route,
   waypoints,
+  hoverPoint,
   onMapClick,
   onMarkerDragEnd,
   onRouteDrop,
@@ -89,6 +91,22 @@ export default function MapView({
         source: "route",
         layout: { "line-cap": "round", "line-join": "round" },
         paint: { "line-color": "#000000", "line-width": 24, "line-opacity": 0.01 },
+      });
+      // Elevation-chart hover position on the route line
+      map.addSource("hover-point", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+      map.addLayer({
+        id: "hover-point",
+        type: "circle",
+        source: "hover-point",
+        paint: {
+          "circle-radius": 6,
+          "circle-color": "#2563eb",
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 2,
+        },
       });
 
       // Click on empty map = add waypoint. Suppressed right after a line-drag.
@@ -179,6 +197,25 @@ export default function MapView({
       hasFitRef.current = false;
     }
   }, [route, ready]);
+
+  // Sync elevation-hover point
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const src = map.getSource("hover-point") as
+      | maplibregl.GeoJSONSource
+      | undefined;
+    if (!src) return;
+    src.setData(
+      hoverPoint
+        ? {
+            type: "Feature",
+            properties: {},
+            geometry: { type: "Point", coordinates: hoverPoint },
+          }
+        : { type: "FeatureCollection", features: [] },
+    );
+  }, [hoverPoint, ready]);
 
   // Sync waypoint markers (draggable)
   useEffect(() => {
