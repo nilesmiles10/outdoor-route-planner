@@ -100,10 +100,12 @@
       }
     },
     "roundTrip": "Rondje",
+    "roundTripToggle": "Heen en terug",
     "importGpx": "GPX importeren",
     "generate": "Genereer",
     "generating": "Genereren…",
     "roundTripHint": "Kies eerst een startpunt",
+    "roundTripOnlyStart": "Werkt alleen met enkel een startpunt — gebruik anders 'Heen en terug'",
     "share": "Delen",
     "copied": "Gekopieerd!"
   },

@@ -401,6 +401,29 @@ export default function PlannerApp() {
 
   const filled = plan.slots.filter((s): s is Waypoint => s !== null);
 
+  // Round trip à la Komoot's "Heen en terug" toggle: the route ends where it
+  // starts (last waypoint = copy of the start). Derived from the slots, so
+  // manually dragging the end point away flips it off automatically.
+  const isLoop =
+    filled.length >= 3 &&
+    filled[0].lon === filled[filled.length - 1].lon &&
+    filled[0].lat === filled[filled.length - 1].lat;
+
+  const toggleRoundTrip = useCallback(() => {
+    if (isLoop) {
+      // Remove the trailing start-copy → last via becomes the destination.
+      let last = -1;
+      plan.slots.forEach((s, i) => {
+        if (s !== null) last = i;
+      });
+      if (last >= 0) dispatch({ type: "remove", index: last });
+    } else {
+      const start = plan.slots.find((s) => s !== null);
+      if (!start) return;
+      dispatch({ type: "insert", index: plan.slots.length, wp: { ...start } });
+    }
+  }, [isLoop, plan.slots]);
+
   // Per-leg cache: editing one waypoint only refetches the adjacent legs,
   // everything else is served from cache (Komoot-style incremental routing).
   const legCache = useRef(new Map<string, RouteResult>());
@@ -1114,9 +1137,19 @@ export default function PlannerApp() {
                     ? t("destination")
                     : t("via")
               }
-              badge={String.fromCharCode(65 + i)}
+              // Round trip: the trailing start-copy shows as a green "A",
+              // exactly like Komoot labels a loop's end point.
+              badge={
+                isLoop && i === plan.slots.length - 1
+                  ? "A"
+                  : String.fromCharCode(65 + i)
+              }
               badgeColor={
-                i === 0 ? "#16a34a" : i === plan.slots.length - 1 ? "#dc2626" : "#2563eb"
+                i === 0 || (isLoop && i === plan.slots.length - 1)
+                  ? "#16a34a"
+                  : i === plan.slots.length - 1
+                    ? "#dc2626"
+                    : "#2563eb"
               }
               value={slot}
               onSelect={(wp) => dispatch({ type: "set", index: i, wp })}
@@ -1145,6 +1178,27 @@ export default function PlannerApp() {
               ⇅ {t("reverse")}
             </button>
           </div>
+          {/* Komoot's "Heen en terug": route your planned trip back to the start */}
+          {filled.length >= 2 && (
+            <button
+              type="button"
+              onClick={toggleRoundTrip}
+              className="flex items-center gap-2 self-start text-xs text-neutral-700"
+            >
+              <span
+                className={`relative h-4 w-7 rounded-full transition ${
+                  isLoop ? "bg-emerald-600" : "bg-neutral-300"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${
+                    isLoop ? "left-3.5" : "left-0.5"
+                  }`}
+                />
+              </span>
+              {t("roundTripToggle")}
+            </button>
+          )}
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -1186,7 +1240,7 @@ export default function PlannerApp() {
               <button
                 type="button"
                 onClick={handleGenerateLoop}
-                disabled={rtBusy || !filled[0]}
+                disabled={rtBusy || filled.length !== 1}
                 className="rounded-lg bg-emerald-700 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-800 disabled:opacity-40"
               >
                 {rtBusy ? t("generating") : t("generate")}
@@ -1194,6 +1248,11 @@ export default function PlannerApp() {
               {!filled[0] && (
                 <span className="text-[10px] text-neutral-400">
                   {t("roundTripHint")}
+                </span>
+              )}
+              {filled.length > 1 && (
+                <span className="text-[10px] text-neutral-400">
+                  {t("roundTripOnlyStart")}
                 </span>
               )}
             </div>

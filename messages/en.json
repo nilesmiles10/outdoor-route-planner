@@ -100,10 +100,12 @@
       }
     },
     "roundTrip": "Round trip",
+    "roundTripToggle": "Back to start",
     "importGpx": "Import GPX",
     "generate": "Generate",
     "generating": "Generating…",
     "roundTripHint": "Set a starting point first",
+    "roundTripOnlyStart": "Works from just a starting point — use 'Back to start' instead",
     "share": "Share",
     "copied": "Copied!"
   },

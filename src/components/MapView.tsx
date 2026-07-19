@@ -345,11 +345,19 @@ export default function MapView({
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
     const filled = waypoints.filter(Boolean).length;
+    const first = waypoints.find(Boolean) ?? null;
     waypoints.forEach((wp, slotIndex) => {
       if (!wp) return;
       const orderIndex = waypoints.slice(0, slotIndex + 1).filter(Boolean).length - 1;
+      // Round trip: the end point sits on the start — show it green like A.
+      const isLoopEnd =
+        orderIndex === filled - 1 &&
+        orderIndex > 0 &&
+        first !== null &&
+        wp.lon === first.lon &&
+        wp.lat === first.lat;
       const marker = new maplibregl.Marker({
-        color: waypointColor(orderIndex, filled),
+        color: isLoopEnd ? BADGE_COLORS[0] : waypointColor(orderIndex, filled),
         draggable: true,
       })
         .setLngLat([wp.lon, wp.lat])
