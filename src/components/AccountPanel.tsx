@@ -229,6 +229,16 @@ export default function AccountPanel({ tour, onLoadTour }: Props) {
                   {(row.stats.distanceM / 1000).toFixed(0)} km
                 </span>
               </button>
+              {row.visibility === "public" && (
+                <a
+                  href={`/tour/${row.id}`}
+                  target="_blank"
+                  className="shrink-0 text-emerald-700 hover:underline"
+                  title={t("viewPage")}
+                >
+                  ↗
+                </a>
+              )}
               <button
                 type="button"
                 onClick={() => toggleVisibility(row)}

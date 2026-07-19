@@ -92,6 +92,11 @@
     "empty": "Nog geen opgeslagen routes.",
     "delete": "Verwijderen",
     "public": "Publiek",
-    "private": "Privé"
+    "private": "Privé",
+    "viewPage": "Bekijk pagina"
+  },
+  "tourPage": {
+    "openInPlanner": "Open in planner",
+    "downloadGpx": "GPX downloaden"
   }
 }

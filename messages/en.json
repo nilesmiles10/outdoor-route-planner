@@ -92,6 +92,11 @@
     "empty": "No saved routes yet.",
     "delete": "Delete",
     "public": "Public",
-    "private": "Private"
+    "private": "Private",
+    "viewPage": "View page"
+  },
+  "tourPage": {
+    "openInPlanner": "Open in planner",
+    "downloadGpx": "Download GPX"
   }
 }
