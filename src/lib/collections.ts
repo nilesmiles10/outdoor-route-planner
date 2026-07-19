@@ -1,0 +1,89 @@
+// GEN-114 Collections — shared types + presentation helpers.
+// Collections group ordered tours with an intro + per-stage notes. We have no
+// photo-upload infra yet, so covers fall back to a sport-keyed gradient.
+
+export type Sport =
+  | "hike"
+  | "run"
+  | "touring"
+  | "gravel"
+  | "mtb"
+  | "road"
+  | "ebike";
+
+export const SPORT_EMOJI: Record<string, string> = {
+  hike: "🥾",
+  run: "🏃",
+  touring: "🚲",
+  gravel: "🚵",
+  mtb: "⛰️",
+  road: "🚴",
+  ebike: "⚡",
+};
+
+// Deterministic gradient per sport — used as a cover placeholder until cover_url exists.
+export const SPORT_GRADIENT: Record<string, string> = {
+  hike: "from-emerald-500 to-teal-700",
+  run: "from-orange-500 to-rose-600",
+  touring: "from-sky-500 to-indigo-700",
+  gravel: "from-amber-500 to-orange-700",
+  mtb: "from-lime-600 to-green-800",
+  road: "from-blue-500 to-cyan-700",
+  ebike: "from-violet-500 to-fuchsia-700",
+};
+
+export function gradientFor(sport?: string): string {
+  return (sport && SPORT_GRADIENT[sport]) || "from-emerald-600 to-teal-800";
+}
+
+/** Aggregate distance (m) + ascent (m) over a list of tour stats. */
+export function aggregateStats(
+  stats: { distanceM?: number; ascendM?: number }[],
+): { distanceM: number; ascendM: number } {
+  return stats.reduce<{ distanceM: number; ascendM: number }>(
+    (a, s) => ({
+      distanceM: a.distanceM + (s.distanceM ?? 0),
+      ascendM: a.ascendM + (s.ascendM ?? 0),
+    }),
+    { distanceM: 0, ascendM: 0 },
+  );
+}
+
+/**
+ * Build a normalized SVG path string from lon/lat coordinates, fit into a w×h box
+ * with a small padding. Latitude is flipped (SVG y grows downward). Returns "" if
+ * there are too few points.
+ */
+export function miniPath(
+  coords: [number, number][] | undefined,
+  w: number,
+  h: number,
+  pad = 4,
+): string {
+  if (!coords || coords.length < 2) return "";
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
+  for (const [lon, lat] of coords) {
+    if (lon < minX) minX = lon;
+    if (lon > maxX) maxX = lon;
+    if (lat < minY) minY = lat;
+    if (lat > maxY) maxY = lat;
+  }
+  const spanX = maxX - minX || 1e-6;
+  const spanY = maxY - minY || 1e-6;
+  const iw = w - pad * 2;
+  const ih = h - pad * 2;
+  // preserve aspect ratio: scale by the tighter axis, center the other
+  const scale = Math.min(iw / spanX, ih / spanY);
+  const offX = pad + (iw - spanX * scale) / 2;
+  const offY = pad + (ih - spanY * scale) / 2;
+  return coords
+    .map(([lon, lat], i) => {
+      const x = offX + (lon - minX) * scale;
+      const y = offY + (maxY - lat) * scale; // flip
+      return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+}
