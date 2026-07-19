@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import MapView, { type Waypoint } from "./MapView";
 import SearchField from "./SearchField";
@@ -137,6 +137,42 @@ function ElevationSparkline({ elevation }: { elevation: number[] }) {
   );
 }
 
+// Merge per-leg results into one route. Legs share their joint point, so we
+// drop the first coordinate/elevation sample of every leg after the first.
+function mergeLegs(legs: RouteResult[]): RouteResult {
+  const coords: GeoJSON.Position[] = [];
+  const elevation: number[] = [];
+  const stats = { distanceM: 0, timeS: 0, ascendM: 0, descendM: 0 };
+  const buckets = { paved: 0, unpaved: 0, unknown: 0 };
+  const waytypes: Record<string, number> = {};
+  legs.forEach((leg, i) => {
+    const legCoords = (leg.geometry.geometry as GeoJSON.LineString).coordinates;
+    coords.push(...(i === 0 ? legCoords : legCoords.slice(1)));
+    elevation.push(...(i === 0 ? leg.elevation : leg.elevation.slice(1)));
+    stats.distanceM += leg.stats.distanceM;
+    stats.timeS += leg.stats.timeS;
+    stats.ascendM += leg.stats.ascendM;
+    stats.descendM += leg.stats.descendM;
+    buckets.paved += leg.surfaces.buckets.paved;
+    buckets.unpaved += leg.surfaces.buckets.unpaved;
+    buckets.unknown += leg.surfaces.buckets.unknown;
+    for (const [k, v] of Object.entries(leg.waytypes)) {
+      waytypes[k] = (waytypes[k] ?? 0) + v;
+    }
+  });
+  return {
+    geometry: {
+      type: "Feature",
+      properties: {},
+      geometry: { type: "LineString", coordinates: coords },
+    },
+    stats,
+    surfaces: { buckets },
+    waytypes,
+    elevation,
+  };
+}
+
 export default function PlannerApp() {
   const t = useTranslations("planner");
   const [plan, dispatch] = useReducer(planReducer, {
@@ -151,29 +187,51 @@ export default function PlannerApp() {
 
   const filled = plan.slots.filter((s): s is Waypoint => s !== null);
 
-  // Route fetch — reacts to waypoints + sport
+  // Per-leg cache: editing one waypoint only refetches the adjacent legs,
+  // everything else is served from cache (Komoot-style incremental routing).
+  const legCache = useRef(new Map<string, RouteResult>());
+  const seqRef = useRef(0);
+
   const fetchRoute = useCallback(async () => {
     if (filled.length < 2) {
       setRoute(null);
       return;
     }
+    const seq = ++seqRef.current;
     setLoading(true);
     setError(null);
     try {
-      const points = filled.map((w) => `${w.lon},${w.lat}`).join("|");
-      const res = await fetch(
-        `/api/geo/route?points=${encodeURIComponent(points)}&sport=${sport}`,
+      const legs = await Promise.all(
+        filled.slice(0, -1).map(async (from, i) => {
+          const to = filled[i + 1];
+          const key = `${from.lon},${from.lat}|${to.lon},${to.lat}|${sport}`;
+          const cached = legCache.current.get(key);
+          if (cached) return cached;
+          const points = `${from.lon},${from.lat}|${to.lon},${to.lat}`;
+          const res = await fetch(
+            `/api/geo/route?points=${encodeURIComponent(points)}&sport=${sport}`,
+          );
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.error ?? "error");
+          }
+          const leg = (await res.json()) as RouteResult;
+          legCache.current.set(key, leg);
+          if (legCache.current.size > 200) {
+            const oldest = legCache.current.keys().next().value;
+            if (oldest) legCache.current.delete(oldest);
+          }
+          return leg;
+        }),
       );
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? "error");
-      }
-      setRoute(await res.json());
+      if (seq !== seqRef.current) return; // a newer edit superseded this one
+      setRoute(legs.length === 1 ? legs[0] : mergeLegs(legs));
     } catch (e) {
+      if (seq !== seqRef.current) return;
       setRoute(null);
       setError(e instanceof Error ? e.message : "error");
     } finally {
-      setLoading(false);
+      if (seq === seqRef.current) setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(filled), sport]);
