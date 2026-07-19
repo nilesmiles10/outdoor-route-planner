@@ -11,6 +11,7 @@ type Props = {
   badgeColor: string;
   value: Waypoint | null;
   onSelect: (wp: Waypoint | null) => void;
+  onRemove?: () => void;
 };
 
 export default function SearchField({
@@ -19,6 +20,7 @@ export default function SearchField({
   badgeColor,
   value,
   onSelect,
+  onRemove,
 }: Props) {
   const [text, setText] = useState(value?.name ?? "");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -69,6 +71,16 @@ export default function SearchField({
           onFocus={() => suggestions.length > 0 && setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
         />
+        {onRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="shrink-0 text-neutral-400 hover:text-red-600"
+            aria-label="remove"
+          >
+            ×
+          </button>
+        )}
       </div>
       {open && suggestions.length > 0 && (
         <ul className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">

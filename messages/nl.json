@@ -28,6 +28,11 @@
       "no_route": "Geen route gevonden tussen deze punten.",
       "router_unavailable": "Route-service is tijdelijk niet beschikbaar.",
       "generic": "Er ging iets mis. Probeer opnieuw."
-    }
+    },
+    "via": "Tussenpunt",
+    "addWaypoint": "Waypoint toevoegen",
+    "undo": "Ongedaan maken",
+    "redo": "Opnieuw",
+    "mapHint": "Tip: klik op de kaart om punten toe te voegen, sleep de routelijn om aan te passen."
   }
 }

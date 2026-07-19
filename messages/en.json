@@ -28,6 +28,11 @@
       "no_route": "No route found between these points.",
       "router_unavailable": "Route service is temporarily unavailable.",
       "generic": "Something went wrong. Try again."
-    }
+    },
+    "via": "Via point",
+    "addWaypoint": "Add waypoint",
+    "undo": "Undo",
+    "redo": "Redo",
+    "mapHint": "Tip: click the map to add points, drag the route line to adjust it."
   }
 }

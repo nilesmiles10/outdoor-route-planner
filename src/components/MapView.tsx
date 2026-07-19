@@ -9,19 +9,35 @@ const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 
 export type Waypoint = { name: string; lon: number; lat: number };
 
+const BADGE_COLORS = ["#16a34a", "#dc2626", "#2563eb", "#9333ea", "#ea580c"];
+export function waypointColor(i: number, count: number) {
+  if (i === 0) return BADGE_COLORS[0];
+  if (i === count - 1) return BADGE_COLORS[1];
+  return BADGE_COLORS[2 + ((i - 1) % 3)];
+}
+
 type Props = {
   route: GeoJSON.Feature | null;
-  a: Waypoint | null;
-  b: Waypoint | null;
+  waypoints: (Waypoint | null)[];
+  onMapClick: (lon: number, lat: number) => void;
+  onMarkerDragEnd: (slotIndex: number, lon: number, lat: number) => void;
+  onRouteDrop: (lon: number, lat: number) => void;
 };
 
-export default function MapView({ route, a, b }: Props) {
+export default function MapView({
+  route,
+  waypoints,
+  onMapClick,
+  onMarkerDragEnd,
+  onRouteDrop,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<{ a?: maplibregl.Marker; b?: maplibregl.Marker }>(
-    {},
-  );
+  const markersRef = useRef<maplibregl.Marker[]>([]);
   const [ready, setReady] = useState(false);
+  // Keep latest callbacks without re-binding map listeners.
+  const cbRef = useRef({ onMapClick, onMarkerDragEnd, onRouteDrop });
+  cbRef.current = { onMapClick, onMarkerDragEnd, onRouteDrop };
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -46,6 +62,7 @@ export default function MapView({ route, a, b }: Props) {
       new maplibregl.ScaleControl({ maxWidth: 120, unit: "metric" }),
       "bottom-left",
     );
+
     map.on("load", () => {
       map.addSource("route", {
         type: "geojson",
@@ -56,7 +73,7 @@ export default function MapView({ route, a, b }: Props) {
         type: "line",
         source: "route",
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#ffffff", "line-width": 7 },
+        paint: { "line-color": "#ffffff", "line-width": 8 },
       });
       map.addLayer({
         id: "route-line",
@@ -65,9 +82,67 @@ export default function MapView({ route, a, b }: Props) {
         layout: { "line-cap": "round", "line-join": "round" },
         paint: { "line-color": "#2563eb", "line-width": 4 },
       });
+      // Wide invisible hit-area so grabbing the line is forgiving (~24px).
+      map.addLayer({
+        id: "route-hit",
+        type: "line",
+        source: "route",
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": "#000000", "line-width": 24, "line-opacity": 0.01 },
+      });
+
+      // Click on empty map = add waypoint. Suppressed right after a line-drag.
+      let suppressClick = false;
+      map.on("click", (e) => {
+        if (suppressClick) {
+          suppressClick = false;
+          return;
+        }
+        const hits = map.queryRenderedFeatures(e.point, {
+          layers: ["route-hit"],
+        });
+        if (hits.length > 0) return; // clicks on the line are for dragging
+        cbRef.current.onMapClick(e.lngLat.lng, e.lngLat.lat);
+      });
+
+      // Drag the route line to insert a via point (Komoot-style).
+      map.on("mouseenter", "route-hit", () => {
+        map.getCanvas().style.cursor = "grab";
+      });
+      map.on("mouseleave", "route-hit", () => {
+        map.getCanvas().style.cursor = "";
+      });
+      map.on("mousedown", "route-hit", (e) => {
+        if (e.originalEvent.button !== 0) return;
+        e.preventDefault();
+        map.getCanvas().style.cursor = "grabbing";
+        const ghost = new maplibregl.Marker({ color: "#2563eb", scale: 0.8 })
+          .setLngLat(e.lngLat)
+          .addTo(map);
+        const onMove = (ev: maplibregl.MapMouseEvent) => ghost.setLngLat(ev.lngLat);
+        const onUp = (ev: maplibregl.MapMouseEvent) => {
+          map.off("mousemove", onMove);
+          ghost.remove();
+          map.getCanvas().style.cursor = "";
+          // Swallow only the click event fired by THIS mouseup, not later ones.
+          suppressClick = true;
+          setTimeout(() => {
+            suppressClick = false;
+          }, 300);
+          cbRef.current.onRouteDrop(ev.lngLat.lng, ev.lngLat.lat);
+        };
+        map.on("mousemove", onMove);
+        map.once("mouseup", onUp);
+      });
+
       setReady(true);
     });
+
     mapRef.current = map;
+    if (process.env.NODE_ENV === "development") {
+      // Debug handle for browser-console inspection only.
+      (window as unknown as { __map?: maplibregl.Map }).__map = map;
+    }
     return () => {
       map.remove();
       mapRef.current = null;
@@ -75,7 +150,7 @@ export default function MapView({ route, a, b }: Props) {
     };
   }, []);
 
-  // Sync route line + fit bounds
+  // Sync route line + fit bounds when geometry changes
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
@@ -91,29 +166,37 @@ export default function MapView({ route, a, b }: Props) {
           [coords[0][0], coords[0][1]],
         ),
       );
-      map.fitBounds(bounds, { padding: { top: 60, bottom: 60, left: 380, right: 60 } });
+      map.fitBounds(bounds, {
+        padding: { top: 60, bottom: 60, left: 400, right: 60 },
+      });
     } else {
       src.setData({ type: "FeatureCollection", features: [] });
     }
   }, [route, ready]);
 
-  // Sync A/B markers
+  // Sync waypoint markers (draggable)
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const sync = (key: "a" | "b", wp: Waypoint | null, color: string) => {
-      markersRef.current[key]?.remove();
-      markersRef.current[key] = undefined;
-      if (wp) {
-        markersRef.current[key] = new maplibregl.Marker({ color })
-          .setLngLat([wp.lon, wp.lat])
-          .addTo(map);
-      }
-    };
-    sync("a", a, "#16a34a");
-    sync("b", b, "#dc2626");
-    if (a && !b) mapRef.current?.flyTo({ center: [a.lon, a.lat], zoom: 11 });
-  }, [a, b]);
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+    const filled = waypoints.filter(Boolean).length;
+    waypoints.forEach((wp, slotIndex) => {
+      if (!wp) return;
+      const orderIndex = waypoints.slice(0, slotIndex + 1).filter(Boolean).length - 1;
+      const marker = new maplibregl.Marker({
+        color: waypointColor(orderIndex, filled),
+        draggable: true,
+      })
+        .setLngLat([wp.lon, wp.lat])
+        .addTo(map);
+      marker.on("dragend", () => {
+        const p = marker.getLngLat();
+        cbRef.current.onMarkerDragEnd(slotIndex, p.lng, p.lat);
+      });
+      markersRef.current.push(marker);
+    });
+  }, [waypoints]);
 
   return <div ref={containerRef} className="h-dvh w-full" />;
 }

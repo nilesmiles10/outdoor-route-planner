@@ -4,6 +4,11 @@ export const GEO_ROUTE_BASE =
   process.env.GEO_ROUTE_BASE ?? "http://127.0.0.1:17777/brouter";
 export const GEO_SEARCH_BASE =
   process.env.GEO_SEARCH_BASE ?? "http://127.0.0.1:2322/api";
+export const GEO_REVERSE_BASE =
+  process.env.GEO_REVERSE_BASE ??
+  (process.env.GEO_SEARCH_BASE
+    ? process.env.GEO_SEARCH_BASE.replace(/\/(api|search)$/, "/reverse")
+    : "http://127.0.0.1:2322/reverse");
 export const GEO_KEY = process.env.GEO_KEY ?? "";
 
 export function geoHeaders(): HeadersInit {

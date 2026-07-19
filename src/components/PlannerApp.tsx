@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import { useTranslations } from "next-intl";
 import MapView, { type Waypoint } from "./MapView";
 import SearchField from "./SearchField";
@@ -16,6 +16,64 @@ type RouteResult = {
   elevation: number[];
 };
 
+type Slots = (Waypoint | null)[];
+type PlanState = { slots: Slots; past: Slots[]; future: Slots[] };
+type PlanAction =
+  | { type: "set"; index: number; wp: Waypoint | null }
+  | { type: "insert"; index: number; wp: Waypoint }
+  | { type: "append" }
+  | { type: "remove"; index: number }
+  | { type: "reverse" }
+  | { type: "undo" }
+  | { type: "redo" };
+
+function planReducer(state: PlanState, action: PlanAction): PlanState {
+  const commit = (slots: Slots): PlanState => ({
+    slots,
+    past: [...state.past.slice(-49), state.slots],
+    future: [],
+  });
+  switch (action.type) {
+    case "set": {
+      const slots = [...state.slots];
+      slots[action.index] = action.wp;
+      return commit(slots);
+    }
+    case "insert": {
+      const slots = [...state.slots];
+      slots.splice(action.index, 0, action.wp);
+      return commit(slots);
+    }
+    case "append":
+      return commit([...state.slots, null]);
+    case "remove": {
+      let slots = state.slots.filter((_, i) => i !== action.index);
+      while (slots.length < 2) slots = [...slots, null];
+      return commit(slots);
+    }
+    case "reverse":
+      return commit([...state.slots].reverse());
+    case "undo": {
+      const prev = state.past[state.past.length - 1];
+      if (!prev) return state;
+      return {
+        slots: prev,
+        past: state.past.slice(0, -1),
+        future: [state.slots, ...state.future].slice(0, 50),
+      };
+    }
+    case "redo": {
+      const next = state.future[0];
+      if (!next) return state;
+      return {
+        slots: next,
+        past: [...state.past.slice(-49), state.slots],
+        future: state.future.slice(1),
+      };
+    }
+  }
+}
+
 function fmtKm(m: number) {
   return (m / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
@@ -23,6 +81,17 @@ function fmtTime(s: number) {
   const h = Math.floor(s / 3600);
   const m = Math.round((s % 3600) / 60);
   return `${h}:${String(m).padStart(2, "0")}`;
+}
+
+async function reverseName(lon: number, lat: number): Promise<string> {
+  try {
+    const res = await fetch(`/api/geo/reverse?lon=${lon}&lat=${lat}`);
+    const data = await res.json();
+    if (data.name) return data.name;
+  } catch {
+    // fall through
+  }
+  return `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
 }
 
 function ElevationSparkline({ elevation }: { elevation: number[] }) {
@@ -59,22 +128,28 @@ function ElevationSparkline({ elevation }: { elevation: number[] }) {
 
 export default function PlannerApp() {
   const t = useTranslations("planner");
-  const [a, setA] = useState<Waypoint | null>(null);
-  const [b, setB] = useState<Waypoint | null>(null);
+  const [plan, dispatch] = useReducer(planReducer, {
+    slots: [null, null],
+    past: [],
+    future: [],
+  });
   const [sport, setSport] = useState<Sport>("touring");
   const [route, setRoute] = useState<RouteResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const filled = plan.slots.filter((s): s is Waypoint => s !== null);
+
+  // Route fetch — reacts to waypoints + sport
   const fetchRoute = useCallback(async () => {
-    if (!a || !b) {
+    if (filled.length < 2) {
       setRoute(null);
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const points = `${a.lon},${a.lat}|${b.lon},${b.lat}`;
+      const points = filled.map((w) => `${w.lon},${w.lat}`).join("|");
       const res = await fetch(
         `/api/geo/route?points=${encodeURIComponent(points)}&sport=${sport}`,
       );
@@ -89,11 +164,91 @@ export default function PlannerApp() {
     } finally {
       setLoading(false);
     }
-  }, [a, b, sport]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(filled), sport]);
 
   useEffect(() => {
     fetchRoute();
   }, [fetchRoute]);
+
+  // Keyboard undo/redo
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        dispatch({ type: e.shiftKey ? "redo" : "undo" });
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Map click → fill first empty slot, else append at the end
+  const handleMapClick = useCallback(
+    async (lon: number, lat: number) => {
+      const name = await reverseName(lon, lat);
+      const wp = { name, lon, lat };
+      const firstEmpty = plan.slots.findIndex((s) => s === null);
+      if (firstEmpty >= 0) dispatch({ type: "set", index: firstEmpty, wp });
+      else dispatch({ type: "insert", index: plan.slots.length, wp });
+    },
+    [plan.slots],
+  );
+
+  // Marker drag → move that waypoint
+  const handleMarkerDragEnd = useCallback(
+    async (slotIndex: number, lon: number, lat: number) => {
+      const name = await reverseName(lon, lat);
+      dispatch({ type: "set", index: slotIndex, wp: { name, lon, lat } });
+    },
+    [],
+  );
+
+  // Route-line drop → insert a via between the bracketing waypoints
+  const handleRouteDrop = useCallback(
+    async (lon: number, lat: number) => {
+      if (!route || filled.length < 2) return;
+      const coords = (route.geometry.geometry as GeoJSON.LineString).coordinates;
+      const nearestIdx = (pLon: number, pLat: number) => {
+        let best = 0;
+        let bestD = Infinity;
+        for (let i = 0; i < coords.length; i++) {
+          const dx = coords[i][0] - pLon;
+          const dy = coords[i][1] - pLat;
+          const d = dx * dx + dy * dy;
+          if (d < bestD) {
+            bestD = d;
+            best = i;
+          }
+        }
+        return best;
+      };
+      const dropIdx = nearestIdx(lon, lat);
+      // Find the first waypoint (in route order) that lies beyond the drop.
+      let insertBeforeOrder = filled.length - 1;
+      for (let o = 1; o < filled.length; o++) {
+        if (nearestIdx(filled[o].lon, filled[o].lat) >= dropIdx) {
+          insertBeforeOrder = o;
+          break;
+        }
+      }
+      // Map order-index back to slot-index
+      let seen = -1;
+      let slotIndex = plan.slots.length;
+      for (let i = 0; i < plan.slots.length; i++) {
+        if (plan.slots[i] !== null) {
+          seen++;
+          if (seen === insertBeforeOrder) {
+            slotIndex = i;
+            break;
+          }
+        }
+      }
+      const name = await reverseName(lon, lat);
+      dispatch({ type: "insert", index: slotIndex, wp: { name, lon, lat } });
+    },
+    [route, filled, plan.slots],
+  );
 
   const buckets = route?.surfaces.buckets;
   const totalSurface = buckets
@@ -102,12 +257,42 @@ export default function PlannerApp() {
 
   return (
     <main className="relative h-dvh w-full">
-      <MapView route={route?.geometry ?? null} a={a} b={b} />
+      <MapView
+        route={route?.geometry ?? null}
+        waypoints={plan.slots}
+        onMapClick={handleMapClick}
+        onMarkerDragEnd={handleMarkerDragEnd}
+        onRouteDrop={handleRouteDrop}
+      />
 
       <div className="absolute left-4 top-4 flex w-[340px] max-h-[calc(100dvh-2rem)] flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur">
-        <div>
-          <h1 className="text-lg font-semibold text-neutral-900">{t("title")}</h1>
-          <p className="text-xs text-neutral-500">{t("tagline")}</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-neutral-900">
+              {t("title")}
+            </h1>
+            <p className="text-xs text-neutral-500">{t("tagline")}</p>
+          </div>
+          <div className="flex gap-1">
+            <button
+              type="button"
+              title={t("undo")}
+              onClick={() => dispatch({ type: "undo" })}
+              disabled={plan.past.length === 0}
+              className="rounded-lg bg-neutral-100 px-2 py-1 text-sm hover:bg-neutral-200 disabled:opacity-30"
+            >
+              ↶
+            </button>
+            <button
+              type="button"
+              title={t("redo")}
+              onClick={() => dispatch({ type: "redo" })}
+              disabled={plan.future.length === 0}
+              className="rounded-lg bg-neutral-100 px-2 py-1 text-sm hover:bg-neutral-200 disabled:opacity-30"
+            >
+              ↷
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-1">
@@ -128,31 +313,48 @@ export default function PlannerApp() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <SearchField
-            placeholder={t("start")}
-            badge="A"
-            badgeColor="#16a34a"
-            value={a}
-            onSelect={setA}
-          />
-          <SearchField
-            placeholder={t("destination")}
-            badge="B"
-            badgeColor="#dc2626"
-            value={b}
-            onSelect={setB}
-          />
-          <button
-            type="button"
-            onClick={() => {
-              setA(b);
-              setB(a);
-            }}
-            disabled={!a && !b}
-            className="self-start text-xs text-emerald-700 hover:underline disabled:text-neutral-300"
-          >
-            ⇅ {t("reverse")}
-          </button>
+          {plan.slots.map((slot, i) => (
+            <SearchField
+              key={i}
+              placeholder={
+                i === 0
+                  ? t("start")
+                  : i === plan.slots.length - 1
+                    ? t("destination")
+                    : t("via")
+              }
+              badge={String.fromCharCode(65 + i)}
+              badgeColor={
+                i === 0 ? "#16a34a" : i === plan.slots.length - 1 ? "#dc2626" : "#2563eb"
+              }
+              value={slot}
+              onSelect={(wp) => dispatch({ type: "set", index: i, wp })}
+              onRemove={
+                plan.slots.length > 2
+                  ? () => dispatch({ type: "remove", index: i })
+                  : undefined
+              }
+            />
+          ))}
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "append" })}
+              disabled={plan.slots.length >= 10}
+              className="text-xs text-emerald-700 hover:underline disabled:text-neutral-300"
+            >
+              + {t("addWaypoint")}
+            </button>
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "reverse" })}
+              disabled={filled.length < 2}
+              className="text-xs text-emerald-700 hover:underline disabled:text-neutral-300"
+            >
+              ⇅ {t("reverse")}
+            </button>
+          </div>
+          <p className="text-[11px] text-neutral-400">{t("mapHint")}</p>
         </div>
 
         {loading && (
@@ -223,10 +425,12 @@ export default function PlannerApp() {
                     ■ {t("paved")} {Math.round((buckets.paved / totalSurface) * 100)}%
                   </span>
                   <span>
-                    ■ {t("unpaved")} {Math.round((buckets.unpaved / totalSurface) * 100)}%
+                    ■ {t("unpaved")}{" "}
+                    {Math.round((buckets.unpaved / totalSurface) * 100)}%
                   </span>
                   <span>
-                    ■ {t("unknown")} {Math.round((buckets.unknown / totalSurface) * 100)}%
+                    ■ {t("unknown")}{" "}
+                    {Math.round((buckets.unknown / totalSurface) * 100)}%
                   </span>
                 </div>
               </div>
