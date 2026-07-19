@@ -224,10 +224,20 @@ export default function MapView({
         if (e.originalEvent.button !== 0) return;
         e.preventDefault();
         map.getCanvas().style.cursor = "grabbing";
+        const startPt = e.point;
+        let moved = false;
         const ghost = new maplibregl.Marker({ color: "#2563eb", scale: 0.8 })
           .setLngLat(e.lngLat)
           .addTo(map);
-        const onMove = (ev: maplibregl.MapMouseEvent) => ghost.setLngLat(ev.lngLat);
+        const onMove = (ev: maplibregl.MapMouseEvent) => {
+          if (
+            Math.abs(ev.point.x - startPt.x) > 4 ||
+            Math.abs(ev.point.y - startPt.y) > 4
+          ) {
+            moved = true;
+          }
+          ghost.setLngLat(ev.lngLat);
+        };
         const onUp = (ev: maplibregl.MapMouseEvent) => {
           map.off("mousemove", onMove);
           ghost.remove();
@@ -237,7 +247,10 @@ export default function MapView({
           setTimeout(() => {
             suppressClick = false;
           }, 300);
-          cbRef.current.onRouteDrop(ev.lngLat.lng, ev.lngLat.lat);
+          // A plain click (no real movement) must NOT insert a via point —
+          // only an actual drag does. Repeated clicks on the line were
+          // spawning waypoints (reported 2026-07-19).
+          if (moved) cbRef.current.onRouteDrop(ev.lngLat.lng, ev.lngLat.lat);
         };
         map.on("mousemove", onMove);
         map.once("mouseup", onUp);
