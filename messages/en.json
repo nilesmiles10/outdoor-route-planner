@@ -71,9 +71,11 @@
       "other": "Other"
     },
     "balloon": {
-      "setStart": "Set start here",
-      "setDest": "Set destination here",
-      "addVia": "Add as via point",
+      "setStart": "Set as start",
+      "newStart": "Set as new start",
+      "setDest": "Set as destination",
+      "newDest": "Set as new destination",
+      "addVia": "Add to route",
       "remove": "Remove from route"
     },
     "highlights": {

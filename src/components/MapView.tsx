@@ -206,10 +206,8 @@ export default function MapView({
           });
           return;
         }
-        const hits = map.queryRenderedFeatures(e.point, {
-          layers: ["route-hit"],
-        });
-        if (hits.length > 0) return; // clicks on the line are for dragging
+        // Clicks on the route line open the same balloon as anywhere else
+        // (Komoot behaviour) — only an actual drag is handled separately.
         cbRef.current.onMapClick(e.lngLat.lng, e.lngLat.lat);
       });
 
@@ -226,31 +224,38 @@ export default function MapView({
         map.getCanvas().style.cursor = "grabbing";
         const startPt = e.point;
         let moved = false;
-        const ghost = new maplibregl.Marker({ color: "#2563eb", scale: 0.8 })
-          .setLngLat(e.lngLat)
-          .addTo(map);
+        // Ghost is created lazily on first real movement: an eagerly-added
+        // marker sits under the cursor and swallows the click event, which
+        // kept the balloon from opening on plain line-clicks.
+        let ghost: maplibregl.Marker | null = null;
         const onMove = (ev: maplibregl.MapMouseEvent) => {
           if (
-            Math.abs(ev.point.x - startPt.x) > 4 ||
-            Math.abs(ev.point.y - startPt.y) > 4
+            !moved &&
+            (Math.abs(ev.point.x - startPt.x) > 4 ||
+              Math.abs(ev.point.y - startPt.y) > 4)
           ) {
             moved = true;
+            ghost = new maplibregl.Marker({ color: "#2563eb", scale: 0.8 })
+              .setLngLat(ev.lngLat)
+              .addTo(map);
           }
-          ghost.setLngLat(ev.lngLat);
+          ghost?.setLngLat(ev.lngLat);
         };
         const onUp = (ev: maplibregl.MapMouseEvent) => {
           map.off("mousemove", onMove);
-          ghost.remove();
+          ghost?.remove();
           map.getCanvas().style.cursor = "";
-          // Swallow only the click event fired by THIS mouseup, not later ones.
-          suppressClick = true;
-          setTimeout(() => {
-            suppressClick = false;
-          }, 300);
-          // A plain click (no real movement) must NOT insert a via point —
-          // only an actual drag does. Repeated clicks on the line were
-          // spawning waypoints (reported 2026-07-19).
-          if (moved) cbRef.current.onRouteDrop(ev.lngLat.lng, ev.lngLat.lat);
+          // Only an actual drag inserts a via (plain clicks on the line were
+          // spawning waypoints — reported 2026-07-19). A non-drag click falls
+          // through to the normal click handler and opens the balloon.
+          if (moved) {
+            // Swallow the click event fired by THIS mouseup, not later ones.
+            suppressClick = true;
+            setTimeout(() => {
+              suppressClick = false;
+            }, 300);
+            cbRef.current.onRouteDrop(ev.lngLat.lng, ev.lngLat.lat);
+          }
         };
         map.on("mousemove", onMove);
         map.once("mouseup", onUp);

@@ -806,52 +806,60 @@ export default function PlannerApp() {
                 </button>
               </div>
               {balloon.slotIndex === null ? (
+                // Komoot-copied state machine (empirically torn down 2026-07-19):
+                //   nothing set    → "set as start" + "set as destination"
+                //   start only     → "set as NEW start" + "set as destination"
+                //   full route     → "add to route" + "set as NEW destination"
+                //                    (no start option — drag marker A instead)
                 <div className="mt-2 flex flex-col gap-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      placePoint(
-                        { name: balloon.name, lon: balloon.lon, lat: balloon.lat },
-                        "start",
-                      )
-                    }
-                    className="flex items-center gap-2 rounded-lg bg-neutral-50 px-2 py-1.5 text-left text-xs hover:bg-emerald-50"
-                  >
-                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#16a34a] text-[9px] font-bold text-white">
-                      A
-                    </span>
-                    {t("balloon.setStart")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      placePoint(
-                        { name: balloon.name, lon: balloon.lon, lat: balloon.lat },
-                        "dest",
-                      )
-                    }
-                    className="flex items-center gap-2 rounded-lg bg-neutral-50 px-2 py-1.5 text-left text-xs hover:bg-emerald-50"
-                  >
-                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#dc2626] text-[9px] font-bold text-white">
-                      B
-                    </span>
-                    {t("balloon.setDest")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      placePoint(
-                        { name: balloon.name, lon: balloon.lon, lat: balloon.lat },
-                        "via",
-                      )
-                    }
-                    className="flex items-center gap-2 rounded-lg bg-neutral-50 px-2 py-1.5 text-left text-xs hover:bg-emerald-50"
-                  >
-                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#2563eb] text-[9px] font-bold text-white">
-                      +
-                    </span>
-                    {t("balloon.addVia")}
-                  </button>
+                  {(() => {
+                    const wp = { name: balloon.name, lon: balloon.lon, lat: balloon.lat };
+                    const hasStart = plan.slots[0] !== null;
+                    const hasDest = plan.slots[plan.slots.length - 1] !== null;
+                    const full = hasStart && hasDest;
+                    const btn =
+                      "flex items-center gap-2 rounded-lg bg-neutral-50 px-2 py-1.5 text-left text-xs hover:bg-emerald-50";
+                    const dot = (color: string, label: string) => (
+                      <span
+                        className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                        style={{ backgroundColor: color }}
+                      >
+                        {label}
+                      </span>
+                    );
+                    return (
+                      <>
+                        {full && (
+                          <button
+                            type="button"
+                            onClick={() => placePoint(wp, "via")}
+                            className={btn}
+                          >
+                            {dot("#2563eb", "+")}
+                            {t("balloon.addVia")}
+                          </button>
+                        )}
+                        {!full && (
+                          <button
+                            type="button"
+                            onClick={() => placePoint(wp, "start")}
+                            className={btn}
+                          >
+                            {dot("#16a34a", "A")}
+                            {t(hasStart ? "balloon.newStart" : "balloon.setStart")}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => placePoint(wp, "dest")}
+                          className={btn}
+                        >
+                          {dot("#dc2626", "B")}
+                          {t(hasDest ? "balloon.newDest" : "balloon.setDest")}
+                        </button>
+                      </>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div className="mt-2 flex flex-col gap-1">

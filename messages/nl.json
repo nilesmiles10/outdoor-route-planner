@@ -71,9 +71,11 @@
       "other": "Overig"
     },
     "balloon": {
-      "setStart": "Startpunt hier",
-      "setDest": "Bestemming hier",
-      "addVia": "Tussenpunt toevoegen",
+      "setStart": "Instellen als start",
+      "newStart": "Instellen als nieuwe start",
+      "setDest": "Instellen als bestemming",
+      "newDest": "Instellen als nieuwe bestemming",
+      "addVia": "Aan route toevoegen",
       "remove": "Verwijder uit route"
     },
     "highlights": {
