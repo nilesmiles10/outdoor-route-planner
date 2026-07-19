@@ -77,5 +77,21 @@
     "roundTripHint": "Kies eerst een startpunt",
     "share": "Delen",
     "copied": "Gekopieerd!"
+  },
+  "account": {
+    "login": "Log in om routes op te slaan",
+    "email": "E-mailadres",
+    "sendCode": "Stuur code",
+    "codePlaceholder": "6-cijferige code",
+    "verify": "Verifieer",
+    "codeSent": "Check je inbox voor een 6-cijferige code.",
+    "logout": "Uitloggen",
+    "save": "Route opslaan",
+    "saved": "Opgeslagen!",
+    "myRoutes": "Mijn routes",
+    "empty": "Nog geen opgeslagen routes.",
+    "delete": "Verwijderen",
+    "public": "Publiek",
+    "private": "Privé"
   }
 }

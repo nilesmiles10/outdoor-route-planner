@@ -12,6 +12,7 @@ import { useTranslations } from "next-intl";
 import MapView, { type Waypoint } from "./MapView";
 import SearchField from "./SearchField";
 import ElevationChart from "./ElevationChart";
+import AccountPanel, { type TourPayload } from "./AccountPanel";
 import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
 import { buildGpx, parseGpx, sampleAnchors } from "@/lib/gpx";
 import { loopVias } from "@/lib/roundtrip";
@@ -579,6 +580,28 @@ export default function PlannerApp() {
     ? buckets.paved + buckets.unpaved + buckets.unknown
     : 0;
 
+  const tourPayload: TourPayload | null =
+    route && filled.length >= 2
+      ? {
+          name: `${filled[0].name} - ${filled[filled.length - 1].name}`,
+          sport,
+          waypoints: filled,
+          geometry: route.geometry.geometry,
+          elevation: route.elevation,
+          stats: route.stats,
+          surfaces: route.surfaces,
+          waytypes: route.waytypes,
+        }
+      : null;
+
+  const handleLoadTour = useCallback(
+    (waypoints: Waypoint[], tourSport: string) => {
+      if (isSportClient(tourSport)) setSport(tourSport);
+      dispatch({ type: "load", slots: waypoints });
+    },
+    [],
+  );
+
   return (
     <main className="relative h-dvh w-full">
       <MapView
@@ -921,6 +944,8 @@ export default function PlannerApp() {
             </details>
           </div>
         )}
+
+        <AccountPanel tour={tourPayload} onLoadTour={handleLoadTour} />
       </div>
     </main>
   );

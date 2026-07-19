@@ -77,5 +77,21 @@
     "roundTripHint": "Set a starting point first",
     "share": "Share",
     "copied": "Copied!"
+  },
+  "account": {
+    "login": "Log in to save routes",
+    "email": "Email address",
+    "sendCode": "Send code",
+    "codePlaceholder": "6-digit code",
+    "verify": "Verify",
+    "codeSent": "Check your inbox for a 6-digit code.",
+    "logout": "Log out",
+    "save": "Save route",
+    "saved": "Saved!",
+    "myRoutes": "My routes",
+    "empty": "No saved routes yet.",
+    "delete": "Delete",
+    "public": "Public",
+    "private": "Private"
   }
 }
