@@ -37,6 +37,8 @@ export default function AccountPanel({ tour, onLoadTour }: Props) {
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [usePassword, setUsePassword] = useState(false);
   const [phase, setPhase] = useState<"idle" | "code" | "busy">("idle");
   const [authError, setAuthError] = useState<string | null>(null);
   const [tours, setTours] = useState<TourRow[]>([]);
@@ -77,6 +79,15 @@ export default function AccountPanel({ tour, onLoadTour }: Props) {
     } else {
       setPhase("code");
     }
+  }
+
+  async function loginWithPassword() {
+    setPhase("busy");
+    setAuthError(null);
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) setAuthError(error.message);
+    setPhase("idle");
+    if (!error) setPassword("");
   }
 
   async function verifyCode() {
@@ -136,21 +147,51 @@ export default function AccountPanel({ tour, onLoadTour }: Props) {
       <div className="flex flex-col gap-2 rounded-lg bg-neutral-50 p-3">
         <div className="text-xs font-medium text-neutral-700">{t("login")}</div>
         {phase !== "code" ? (
-          <div className="flex gap-2">
-            <input
-              type="email"
-              value={email}
-              placeholder={t("email")}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded border border-neutral-200 px-2 py-1 text-xs"
-            />
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={email}
+                placeholder={t("email")}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded border border-neutral-200 px-2 py-1 text-xs"
+              />
+              {!usePassword && (
+                <button
+                  type="button"
+                  onClick={sendCode}
+                  disabled={phase === "busy" || !email.includes("@")}
+                  className="shrink-0 rounded-lg bg-emerald-700 px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
+                >
+                  {t("sendCode")}
+                </button>
+              )}
+            </div>
+            {usePassword && (
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  value={password}
+                  placeholder={t("password")}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded border border-neutral-200 px-2 py-1 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={loginWithPassword}
+                  disabled={phase === "busy" || !email.includes("@") || !password}
+                  className="shrink-0 rounded-lg bg-emerald-700 px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
+                >
+                  {t("loginBtn")}
+                </button>
+              </div>
+            )}
             <button
               type="button"
-              onClick={sendCode}
-              disabled={phase === "busy" || !email.includes("@")}
-              className="shrink-0 rounded-lg bg-emerald-700 px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
+              onClick={() => setUsePassword((v) => !v)}
+              className="self-start text-[10px] text-emerald-700 hover:underline"
             >
-              {t("sendCode")}
+              {usePassword ? t("useCode") : t("usePassword")}
             </button>
           </div>
         ) : (

@@ -93,7 +93,11 @@
     "delete": "Verwijderen",
     "public": "Publiek",
     "private": "Privé",
-    "viewPage": "Bekijk pagina"
+    "viewPage": "Bekijk pagina",
+    "password": "Wachtwoord",
+    "loginBtn": "Inloggen",
+    "usePassword": "Liever met wachtwoord inloggen",
+    "useCode": "Liever met e-mailcode inloggen"
   },
   "tourPage": {
     "openInPlanner": "Open in planner",

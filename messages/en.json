@@ -93,7 +93,11 @@
     "delete": "Delete",
     "public": "Public",
     "private": "Private",
-    "viewPage": "View page"
+    "viewPage": "View page",
+    "password": "Password",
+    "loginBtn": "Log in",
+    "usePassword": "Log in with password instead",
+    "useCode": "Log in with email code instead"
   },
   "tourPage": {
     "openInPlanner": "Open in planner",
