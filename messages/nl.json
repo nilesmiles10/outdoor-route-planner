@@ -76,7 +76,14 @@
       "setDest": "Instellen als bestemming",
       "newDest": "Instellen als nieuwe bestemming",
       "addVia": "Aan route toevoegen",
-      "remove": "Verwijder uit route"
+      "remove": "Verwijder uit route",
+      "offGrid": "Off-grid segment (rechte lijn)"
+    },
+    "rowActions": {
+      "remove": "Waypoint verwijderen",
+      "up": "Omhoog",
+      "down": "Omlaag",
+      "rename": "Hernoemen"
     },
     "highlights": {
       "toggle": "Highlights",

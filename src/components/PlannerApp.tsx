@@ -46,6 +46,7 @@ type PlanAction =
   | { type: "insert"; index: number; wp: Waypoint }
   | { type: "append" }
   | { type: "remove"; index: number }
+  | { type: "swap"; a: number; b: number }
   | { type: "reverse" }
   | { type: "undo" }
   | { type: "redo" }
@@ -77,6 +78,13 @@ function planReducer(state: PlanState, action: PlanAction): PlanState {
     case "remove": {
       let slots = state.slots.filter((_, i) => i !== action.index);
       while (slots.length < 2) slots = [...slots, null];
+      return commit(slots);
+    }
+    case "swap": {
+      const slots = [...state.slots];
+      const tmp = slots[action.a] ?? null;
+      slots[action.a] = slots[action.b] ?? null;
+      slots[action.b] = tmp;
       return commit(slots);
     }
     case "reverse":
@@ -211,6 +219,58 @@ function fmtTime(s: number) {
   const h = Math.floor(s / 3600);
   const m = Math.round((s % 3600) / 60);
   return `${h}:${String(m).padStart(2, "0")}`;
+}
+
+// Rough sport speeds (km/h) for off-grid (straight-line) leg time estimates.
+const OFFGRID_SPEED: Record<Sport, number> = {
+  hike: 4.5,
+  run: 9,
+  touring: 17,
+  gravel: 19,
+  mtb: 14,
+  road: 24,
+  ebike: 21,
+};
+
+function haversineM(a: Waypoint, b: Waypoint): number {
+  const R = 6371000;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLon = ((b.lon - a.lon) * Math.PI) / 180;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((a.lat * Math.PI) / 180) *
+      Math.cos((b.lat * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+// Off-grid leg (GEN-141 A4): straight line, no routing. Distance = great
+// circle, time = distance/sport-speed, surfaces bucket "unknown", flat
+// elevation (patched to neighbour values after all legs resolve).
+function straightLeg(from: Waypoint, to: Waypoint, sport: Sport): RouteResult {
+  const distanceM = haversineM(from, to);
+  return {
+    geometry: {
+      type: "Feature",
+      properties: {},
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [from.lon, from.lat],
+          [to.lon, to.lat],
+        ],
+      },
+    },
+    stats: {
+      distanceM,
+      timeS: Math.round((distanceM / 1000 / OFFGRID_SPEED[sport]) * 3600),
+      ascendM: 0,
+      descendM: 0,
+    },
+    surfaces: { buckets: { paved: 0, unpaved: 0, unknown: distanceM }, detailM: {} },
+    waytypes: {},
+    elevation: [0, 0],
+  };
 }
 
 async function reverseName(lon: number, lat: number): Promise<string> {
@@ -424,6 +484,65 @@ export default function PlannerApp() {
     }
   }, [isLoop, plan.slots]);
 
+  // Panel-row hover ↔ map-marker emphasis (GEN-141 A6)
+  const [emphasisSlot, setEmphasisSlot] = useState<number | null>(null);
+
+  // Segment midpoint handles à la Komoot (GEN-141 A1): one visible grab-circle
+  // per leg, placed on the routed geometry halfway between the two waypoints.
+  const viaHandles = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    if (!route || !routeCoords || filled.length < 2) return null;
+    const nearestIdx = (pLon: number, pLat: number) => {
+      let best = 0;
+      let bestD = Infinity;
+      for (let i = 0; i < routeCoords.length; i++) {
+        const dx = routeCoords[i][0] - pLon;
+        const dy = routeCoords[i][1] - pLat;
+        const d = dx * dx + dy * dy;
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
+      }
+      return best;
+    };
+    const features: GeoJSON.Feature[] = [];
+    for (let i = 0; i < filled.length - 1; i++) {
+      const a = nearestIdx(filled[i].lon, filled[i].lat);
+      const b = nearestIdx(filled[i + 1].lon, filled[i + 1].lat);
+      const mid = routeCoords[Math.round((a + b) / 2)];
+      if (mid) {
+        features.push({
+          type: "Feature",
+          properties: { leg: i },
+          geometry: { type: "Point", coordinates: mid },
+        });
+      }
+    }
+    return { type: "FeatureCollection", features };
+  }, [route, routeCoords, filled]);
+
+  // Off-grid legs (GEN-141 A4): straight dashed lines for legs whose target
+  // waypoint carries offGrid=true.
+  const offGridLines = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    const features: GeoJSON.Feature[] = [];
+    for (let i = 1; i < filled.length; i++) {
+      if (filled[i].offGrid) {
+        features.push({
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "LineString",
+            coordinates: [
+              [filled[i - 1].lon, filled[i - 1].lat],
+              [filled[i].lon, filled[i].lat],
+            ],
+          },
+        });
+      }
+    }
+    return features.length ? { type: "FeatureCollection", features } : null;
+  }, [filled]);
+
   // Per-leg cache: editing one waypoint only refetches the adjacent legs,
   // everything else is served from cache (Komoot-style incremental routing).
   const legCache = useRef(new Map<string, RouteResult>());
@@ -441,6 +560,7 @@ export default function PlannerApp() {
       const legs = await Promise.all(
         filled.slice(0, -1).map(async (from, i) => {
           const to = filled[i + 1];
+          if (to.offGrid) return straightLeg(from, to, sport);
           const key = `${from.lon},${from.lat}|${to.lon},${to.lat}|${sport}`;
           const cached = legCache.current.get(key);
           if (cached) return cached;
@@ -462,7 +582,17 @@ export default function PlannerApp() {
         }),
       );
       if (seq !== seqRef.current) return; // a newer edit superseded this one
-      setRoute(legs.length === 1 ? legs[0] : mergeLegs(legs));
+      // Patch off-grid legs' flat elevation to their neighbours' edge values
+      // so the profile chart doesn't dip to 0 across straight segments.
+      const patched = legs.map((leg, i) => {
+        if (!filled[i + 1]?.offGrid) return leg;
+        const prev = legs[i - 1];
+        const next = legs[i + 1];
+        const e0 = prev?.elevation[prev.elevation.length - 1] ?? next?.elevation[0] ?? 0;
+        const e1 = next?.elevation[0] ?? e0;
+        return { ...leg, elevation: [e0, e1] };
+      });
+      setRoute(patched.length === 1 ? patched[0] : mergeLegs(patched));
     } catch (e) {
       if (seq !== seqRef.current) return;
       setRoute(null);
@@ -512,18 +642,30 @@ export default function PlannerApp() {
     }
     const w = params.get("w");
     if (!w) return;
+    // Point format: "lon,lat" with optional ",o" suffix = off-grid leg.
     const pts = w
       .split(";")
-      .map((p) => p.split(",").map(Number))
-      .filter((p) => p.length === 2 && p.every(Number.isFinite));
+      .map((p) => {
+        const parts = p.split(",");
+        const lon = Number(parts[0]);
+        const lat = Number(parts[1]);
+        if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
+        return { lon, lat, offGrid: parts[2] === "o" };
+      })
+      .filter((p): p is { lon: number; lat: number; offGrid: boolean } => p !== null);
     if (pts.length < 2) return;
     const s = params.get("sport");
     if (s && isSportClient(s)) setSport(s);
     dispatch({
       type: "load",
-      slots: pts.map(([lon, lat]) => ({ name: coordName(lon, lat), lon, lat })),
+      slots: pts.map(({ lon, lat, offGrid }) => ({
+        name: coordName(lon, lat),
+        lon,
+        lat,
+        ...(offGrid ? { offGrid: true } : {}),
+      })),
     });
-    pts.forEach(([lon, lat]) => patchName(lon, lat));
+    pts.forEach(({ lon, lat }) => patchName(lon, lat));
   }, [patchName]);
 
   useEffect(() => {
@@ -531,7 +673,12 @@ export default function PlannerApp() {
     if (filled.length >= 2) {
       url.searchParams.set(
         "w",
-        filled.map((p) => `${p.lon.toFixed(5)},${p.lat.toFixed(5)}`).join(";"),
+        filled
+          .map(
+            (p) =>
+              `${p.lon.toFixed(5)},${p.lat.toFixed(5)}${p.offGrid ? ",o" : ""}`,
+          )
+          .join(";"),
       );
       url.searchParams.set("sport", sport);
     } else {
@@ -650,6 +797,9 @@ export default function PlannerApp() {
     name: string;
     slotIndex: number | null;
   } | null>(null);
+  // Komoot's "off-grid segment" toggle: the placed point connects with a
+  // straight line instead of a routed leg (GEN-141 A4).
+  const [offGridChecked, setOffGridChecked] = useState(false);
 
   const handleMapClick = useCallback(
     (lon: number, lat: number) => {
@@ -659,6 +809,7 @@ export default function PlannerApp() {
         return;
       }
       setSelectedHl(null);
+      setOffGridChecked(false);
       setBalloon({ lon, lat, name: coordName(lon, lat), slotIndex: null });
       // Patch in the reverse-geocoded name if the balloon is still here.
       reverseName(lon, lat).then((name) =>
@@ -723,7 +874,10 @@ export default function PlannerApp() {
 
   // Place a (possibly named) point as start / destination / via.
   const placePoint = useCallback(
-    (wp: Waypoint, mode: "start" | "dest" | "via") => {
+    (wpIn: Waypoint, mode: "start" | "dest" | "via") => {
+      // Off-grid applies to the incoming leg — meaningless for a start point.
+      const wp =
+        mode !== "start" && offGridChecked ? { ...wpIn, offGrid: true } : wpIn;
       if (mode === "start") {
         dispatch({ type: "set", index: 0, wp });
       } else if (mode === "dest") {
@@ -740,8 +894,9 @@ export default function PlannerApp() {
       }
       setBalloon(null);
       setSelectedHl(null);
+      setOffGridChecked(false);
     },
-    [plan.slots, viaSlotIndexFor],
+    [plan.slots, viaSlotIndexFor, offGridChecked],
   );
 
   // Marker drag → move that waypoint
@@ -811,6 +966,9 @@ export default function PlannerApp() {
         highlights={hlFeatures}
         onHighlightClick={handleHighlightClick}
         onMarkerClick={handleMarkerClick}
+        viaHandles={viaHandles}
+        offGridLines={offGridLines}
+        emphasisSlot={emphasisSlot}
         balloonAt={balloon}
         balloonContent={
           balloon && (
@@ -883,6 +1041,25 @@ export default function PlannerApp() {
                       </>
                     );
                   })()}
+                  {/* Komoot's off-grid toggle: straight line instead of routing */}
+                  <button
+                    type="button"
+                    onClick={() => setOffGridChecked((v) => !v)}
+                    className="mt-1 flex items-center gap-2 px-1 text-[11px] text-neutral-500"
+                  >
+                    <span
+                      className={`relative h-3.5 w-6 rounded-full transition ${
+                        offGridChecked ? "bg-emerald-600" : "bg-neutral-300"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-2.5 w-2.5 rounded-full bg-white transition-all ${
+                          offGridChecked ? "left-3" : "left-0.5"
+                        }`}
+                      />
+                    </span>
+                    {t("balloon.offGrid")}
+                  </button>
                 </div>
               ) : (
                 <div className="mt-2 flex flex-col gap-1">
@@ -1127,39 +1304,60 @@ export default function PlannerApp() {
         </div>
 
         <div className="flex flex-col gap-2">
-          {plan.slots.map((slot, i) => (
-            <SearchField
-              key={i}
-              placeholder={
-                i === 0
-                  ? t("start")
-                  : i === plan.slots.length - 1
-                    ? t("destination")
-                    : t("via")
-              }
-              // Round trip: the trailing start-copy shows as a green "A",
-              // exactly like Komoot labels a loop's end point.
-              badge={
-                isLoop && i === plan.slots.length - 1
-                  ? "A"
-                  : String.fromCharCode(65 + i)
-              }
-              badgeColor={
-                i === 0 || (isLoop && i === plan.slots.length - 1)
-                  ? "#16a34a"
-                  : i === plan.slots.length - 1
-                    ? "#dc2626"
-                    : "#2563eb"
-              }
-              value={slot}
-              onSelect={(wp) => dispatch({ type: "set", index: i, wp })}
-              onRemove={
-                plan.slots.length > 2
-                  ? () => dispatch({ type: "remove", index: i })
-                  : undefined
-              }
-            />
-          ))}
+          {plan.slots.map((slot, i) => {
+            const last = plan.slots.length - 1;
+            // Komoot badge scheme: A (start) / 1,2,… (vias) / B (destination);
+            // a loop's trailing start-copy shows as a green A again.
+            const badge =
+              i === 0 || (isLoop && i === last)
+                ? "A"
+                : i === last
+                  ? "B"
+                  : String(i);
+            const badgeColor =
+              i === 0 || (isLoop && i === last)
+                ? "#16a34a"
+                : i === last
+                  ? "#dc2626"
+                  : "#2563eb";
+            return (
+              <div
+                key={i}
+                onMouseEnter={() => setEmphasisSlot(i)}
+                onMouseLeave={() => setEmphasisSlot(null)}
+              >
+                <SearchField
+                  placeholder={
+                    i === 0 ? t("start") : i === last ? t("destination") : t("via")
+                  }
+                  badge={badge}
+                  badgeColor={badgeColor}
+                  value={slot}
+                  onSelect={(wp) => dispatch({ type: "set", index: i, wp })}
+                  onRemove={
+                    plan.slots.length > 2 || slot !== null
+                      ? () => dispatch({ type: "remove", index: i })
+                      : undefined
+                  }
+                  onMoveUp={
+                    i > 0 ? () => dispatch({ type: "swap", a: i, b: i - 1 }) : undefined
+                  }
+                  onMoveDown={
+                    i < last ? () => dispatch({ type: "swap", a: i, b: i + 1 }) : undefined
+                  }
+                  onRename={(name) =>
+                    slot && dispatch({ type: "set", index: i, wp: { ...slot, name } })
+                  }
+                  actionLabels={{
+                    remove: t("rowActions.remove"),
+                    up: t("rowActions.up"),
+                    down: t("rowActions.down"),
+                    rename: t("rowActions.rename"),
+                  }}
+                />
+              </div>
+            );
+          })}
           <div className="flex items-center justify-between">
             <button
               type="button"

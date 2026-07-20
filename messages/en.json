@@ -76,7 +76,14 @@
       "setDest": "Set as destination",
       "newDest": "Set as new destination",
       "addVia": "Add to route",
-      "remove": "Remove from route"
+      "remove": "Remove from route",
+      "offGrid": "Off-grid segment (straight line)"
+    },
+    "rowActions": {
+      "remove": "Remove waypoint",
+      "up": "Move up",
+      "down": "Move down",
+      "rename": "Rename"
     },
     "highlights": {
       "toggle": "Highlights",

@@ -8,7 +8,8 @@ import { CATEGORY_COLOR } from "@/lib/highlights";
 // OpenFreeMap "liberty": free OSM vector tiles, no API key (see LEGAL.md).
 const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 
-export type Waypoint = { name: string; lon: number; lat: number };
+// offGrid: the leg ARRIVING at this waypoint is a straight (unrouted) line.
+export type Waypoint = { name: string; lon: number; lat: number; offGrid?: boolean };
 
 export type HighlightClick = {
   id: string;
@@ -42,6 +43,11 @@ type Props = {
   balloonContent?: React.ReactNode;
   // Click on an existing waypoint marker (to open its remove/edit balloon).
   onMarkerClick?: (slotIndex: number) => void;
+  // GEN-141: visible midpoint grab-handles per leg (A1), dashed off-grid
+  // legs (A4), and panel-hover marker emphasis (A6).
+  viaHandles?: GeoJSON.FeatureCollection | null;
+  offGridLines?: GeoJSON.FeatureCollection | null;
+  emphasisSlot?: number | null;
 };
 
 export default function MapView({
@@ -56,10 +62,13 @@ export default function MapView({
   balloonAt,
   balloonContent,
   onMarkerClick,
+  viaHandles,
+  offGridLines,
+  emphasisSlot,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<maplibregl.Marker[]>([]);
+  const markersRef = useRef<Map<number, maplibregl.Marker>>(new Map());
   const [ready, setReady] = useState(false);
   const [balloonXY, setBalloonXY] = useState<{ x: number; y: number } | null>(null);
   // Keep latest callbacks without re-binding map listeners.
@@ -128,6 +137,45 @@ export default function MapView({
         source: "route",
         layout: { "line-cap": "round", "line-join": "round" },
         paint: { "line-color": "#000000", "line-width": 24, "line-opacity": 0.01 },
+      });
+      // Off-grid legs: dashed overlay on top of the route line (GEN-141 A4).
+      map.addSource("offgrid", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+      map.addLayer({
+        id: "offgrid-line",
+        type: "line",
+        source: "offgrid",
+        layout: { "line-cap": "round" },
+        paint: {
+          "line-color": "#475569",
+          "line-width": 3,
+          "line-dasharray": [1, 2],
+        },
+      });
+      // Komoot-style midpoint grab-handles per leg (GEN-141 A1). Purely a
+      // visible affordance — dragging/clicking is handled by route-hit below.
+      map.addSource("via-handles", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+      map.addLayer({
+        id: "via-handles",
+        type: "circle",
+        source: "via-handles",
+        paint: {
+          "circle-radius": 5,
+          "circle-color": "#ffffff",
+          "circle-stroke-color": "#2563eb",
+          "circle-stroke-width": 2,
+        },
+      });
+      map.on("mouseenter", "via-handles", () => {
+        map.getCanvas().style.cursor = "grab";
+      });
+      map.on("mouseleave", "via-handles", () => {
+        map.getCanvas().style.cursor = "";
       });
       // Elevation-chart hover position on the route line
       map.addSource("hover-point", {
@@ -306,6 +354,22 @@ export default function MapView({
     }
   }, [route, ready]);
 
+  // Sync via-handles + off-grid overlays (GEN-141)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    (map.getSource("via-handles") as maplibregl.GeoJSONSource | undefined)?.setData(
+      viaHandles ?? { type: "FeatureCollection", features: [] },
+    );
+  }, [viaHandles, ready]);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    (map.getSource("offgrid") as maplibregl.GeoJSONSource | undefined)?.setData(
+      offGridLines ?? { type: "FeatureCollection", features: [] },
+    );
+  }, [offGridLines, ready]);
+
   // Sync highlights layer (GEN-115)
   useEffect(() => {
     const map = mapRef.current;
@@ -338,30 +402,47 @@ export default function MapView({
     );
   }, [hoverPoint, ready]);
 
-  // Sync waypoint markers (draggable, clickable → balloon)
+  // Sync waypoint markers (draggable, clickable → balloon).
+  // Komoot-style hierarchy (GEN-141 A3): start/end are full pins, vias are
+  // small numbered dots.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
-    const filled = waypoints.filter(Boolean).length;
+    markersRef.current = new Map();
+    const filledCount = waypoints.filter(Boolean).length;
     const first = waypoints.find(Boolean) ?? null;
     waypoints.forEach((wp, slotIndex) => {
       if (!wp) return;
       const orderIndex = waypoints.slice(0, slotIndex + 1).filter(Boolean).length - 1;
+      const isFirst = orderIndex === 0;
+      const isLast = orderIndex === filledCount - 1;
       // Round trip: the end point sits on the start — show it green like A.
       const isLoopEnd =
-        orderIndex === filled - 1 &&
-        orderIndex > 0 &&
-        first !== null &&
-        wp.lon === first.lon &&
-        wp.lat === first.lat;
-      const marker = new maplibregl.Marker({
-        color: isLoopEnd ? BADGE_COLORS[0] : waypointColor(orderIndex, filled),
-        draggable: true,
-      })
-        .setLngLat([wp.lon, wp.lat])
-        .addTo(map);
+        isLast && !isFirst && first !== null &&
+        wp.lon === first.lon && wp.lat === first.lat;
+
+      let marker: maplibregl.Marker;
+      if (isFirst || isLast) {
+        marker = new maplibregl.Marker({
+          color: isLoopEnd || isFirst ? BADGE_COLORS[0] : BADGE_COLORS[1],
+          draggable: true,
+        });
+      } else {
+        // Small numbered via-dot (number matches the panel badge = slot index)
+        const el = document.createElement("div");
+        const inner = document.createElement("div");
+        inner.textContent = String(slotIndex);
+        inner.style.cssText =
+          "width:18px;height:18px;border-radius:50%;background:#2563eb;" +
+          "border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);" +
+          "color:#fff;font-size:10px;font-weight:700;display:flex;" +
+          "align-items:center;justify-content:center;transition:transform .1s";
+        el.appendChild(inner);
+        marker = new maplibregl.Marker({ element: el, draggable: true });
+      }
+      marker.setLngLat([wp.lon, wp.lat]).addTo(map);
+
       // A drag fires a click on the element afterwards — swallow that one.
       let justDragged = false;
       marker.on("dragend", () => {
@@ -378,9 +459,21 @@ export default function MapView({
         cbRef.current.onMarkerClick?.(slotIndex);
       });
       marker.getElement().style.cursor = "pointer";
-      markersRef.current.push(marker);
+      markersRef.current.set(slotIndex, marker);
     });
   }, [waypoints]);
+
+  // Panel-row hover → emphasize the matching map marker (GEN-141 A6). The
+  // marker wrapper's transform is owned by MapLibre, so scale the first child.
+  useEffect(() => {
+    markersRef.current.forEach((marker, slotIndex) => {
+      const child = marker.getElement().firstElementChild as HTMLElement | null;
+      if (!child) return;
+      child.style.transition = "transform .1s";
+      child.style.transformOrigin = "center bottom";
+      child.style.transform = slotIndex === emphasisSlot ? "scale(1.25)" : "";
+    });
+  }, [emphasisSlot, waypoints]);
 
   // Project the balloon anchor to screen coords; track the camera while open.
   useEffect(() => {
