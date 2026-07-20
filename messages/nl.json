@@ -145,7 +145,19 @@
   },
   "tourPage": {
     "openInPlanner": "Open in planner",
-    "downloadGpx": "GPX downloaden"
+    "downloadGpx": "GPX downloaden",
+    "weather": "Weer op de startlocatie",
+    "relatedTours": "Ook interessant",
+    "relatedHighlights": "Highlights in de buurt",
+    "away": "hiervandaan",
+    "autoDesc": {
+      "easy": "Makkelijke route. Geschikt voor elk fitnessniveau.",
+      "moderate": "Gemiddelde route. Goede basisconditie vereist.",
+      "hard": "Zware route. Zeer goede conditie vereist.",
+      "paved": "Grotendeels verharde wegen.",
+      "unpaved": "Grotendeels onverhard.",
+      "mixed": "Afwisselend verhard en onverhard."
+    }
   },
   "highlightPage": {
     "breadcrumbDiscover": "Ontdekken",

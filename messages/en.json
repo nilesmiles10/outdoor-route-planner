@@ -145,7 +145,19 @@
   },
   "tourPage": {
     "openInPlanner": "Open in planner",
-    "downloadGpx": "Download GPX"
+    "downloadGpx": "Download GPX",
+    "weather": "Weather at the start",
+    "relatedTours": "You might also like",
+    "relatedHighlights": "Highlights nearby",
+    "away": "away",
+    "autoDesc": {
+      "easy": "Easy route. Great for any fitness level.",
+      "moderate": "Intermediate route. Good basic fitness required.",
+      "hard": "Hard route. Very good fitness required.",
+      "paved": "Mostly paved surfaces.",
+      "unpaved": "Mostly unpaved.",
+      "mixed": "A mix of paved and unpaved surfaces."
+    }
   },
   "highlightPage": {
     "breadcrumbDiscover": "Discover",

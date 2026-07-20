@@ -21,11 +21,32 @@ type Props = {
     planLabel: string;
     gpxLabel: string;
   };
+  // Tour page v2 (GEN-132): all strings pre-translated server-side.
+  autoDesc?: string;
+  weather?: {
+    title: string;
+    days: { date: string; label: string; tMax: number; tMin: number; rain: number }[];
+    packTip: string | null;
+  } | null;
+  related?: {
+    toursTitle: string;
+    tours: { href: string; name: string; meta: string }[];
+    highlightsTitle: string;
+    highlights: { href: string; name: string; meta: string }[];
+  };
 };
 
 const noop = () => {};
 
-export default function TourView({ geometry, elevation, waypoints, header }: Props) {
+export default function TourView({
+  geometry,
+  elevation,
+  waypoints,
+  header,
+  autoDesc,
+  weather,
+  related,
+}: Props) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const feature: GeoJSON.Feature = useMemo(
     () => ({ type: "Feature", properties: {}, geometry }),
@@ -124,6 +145,76 @@ export default function TourView({ geometry, elevation, waypoints, header }: Pro
             {header.planLabel}
           </a>
         </div>
+
+        {/* v2 (GEN-132): auto description, weather, related content */}
+        {autoDesc && (
+          <p className="text-xs leading-relaxed text-neutral-600">{autoDesc}</p>
+        )}
+
+        {weather && (
+          <div className="rounded-lg bg-neutral-50 p-2">
+            <div className="text-xs font-medium text-neutral-700">
+              {weather.title}
+            </div>
+            <div className="mt-1 flex gap-2 overflow-x-auto text-center">
+              {weather.days.map((d) => (
+                <div key={d.date} className="min-w-10 shrink-0">
+                  <div className="text-[9px] text-neutral-400">{d.label}</div>
+                  <div className="text-xs font-medium">{d.tMax}°</div>
+                  <div className="text-[10px] text-neutral-400">{d.tMin}°</div>
+                  <div className="text-[9px] text-sky-600">{d.rain}%</div>
+                </div>
+              ))}
+            </div>
+            {weather.packTip && (
+              <p className="mt-1 text-[10px] text-neutral-500">{weather.packTip}</p>
+            )}
+          </div>
+        )}
+
+        {related && related.tours.length > 0 && (
+          <div>
+            <div className="text-xs font-medium text-neutral-700">
+              {related.toursTitle}
+            </div>
+            <div className="mt-1 flex flex-col gap-1">
+              {related.tours.map((tr) => (
+                <a
+                  key={tr.href}
+                  href={tr.href}
+                  className="rounded-lg bg-neutral-50 px-2 py-1.5 hover:bg-neutral-100"
+                >
+                  <div className="truncate text-xs font-medium text-neutral-800">
+                    {tr.name}
+                  </div>
+                  <div className="text-[10px] text-neutral-500">{tr.meta}</div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {related && related.highlights.length > 0 && (
+          <div>
+            <div className="text-xs font-medium text-neutral-700">
+              {related.highlightsTitle}
+            </div>
+            <div className="mt-1 flex flex-col gap-0.5">
+              {related.highlights.map((hl) => (
+                <a
+                  key={hl.href}
+                  href={hl.href}
+                  className="flex items-baseline justify-between gap-2 rounded px-1 py-0.5 text-xs text-neutral-700 hover:text-emerald-800"
+                >
+                  <span className="min-w-0 truncate">{hl.name}</span>
+                  <span className="shrink-0 text-[10px] text-neutral-400">
+                    {hl.meta}
+                  </span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
