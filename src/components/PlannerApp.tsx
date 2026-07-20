@@ -1356,7 +1356,8 @@ export default function PlannerApp() {
         </div>
       )}
 
-      <div className="absolute left-4 top-16 flex w-[340px] max-h-[calc(100dvh-5rem)] flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur">
+      {/* Desktop: floating left panel. Mobile: bottom sheet so the map stays visible. */}
+      <div className="absolute flex flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur max-md:inset-x-2 max-md:bottom-2 max-md:max-h-[45dvh] md:left-4 md:top-16 md:max-h-[calc(100dvh-5rem)] md:w-[340px]">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-lg font-semibold text-neutral-900">

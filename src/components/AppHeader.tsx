@@ -81,7 +81,8 @@ export default function AppHeader() {
         <span className="hidden sm:inline">Outdoor Route Planner</span>
       </a>
 
-      <div className="relative max-w-md flex-1">
+      {/* Search collapses away on mobile — the planner panel has its own fields */}
+      <div className="relative hidden max-w-md flex-1 md:block">
         <input
           value={q}
           onChange={(e) => onChange(e.target.value)}
@@ -118,7 +119,7 @@ export default function AppHeader() {
         )}
       </div>
 
-      <nav className="flex items-center gap-3 text-sm">
+      <nav className="ml-auto flex items-center gap-2 whitespace-nowrap text-sm max-md:gap-2 max-md:overflow-x-auto max-md:text-xs md:gap-3">
         <a href={`/${locale}`} className="text-neutral-700 hover:text-emerald-800">
           {t("planner")}
         </a>

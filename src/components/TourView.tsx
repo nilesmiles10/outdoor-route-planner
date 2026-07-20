@@ -85,7 +85,7 @@ export default function TourView({
         onMarkerDragEnd={noop}
         onRouteDrop={noop}
       />
-      <div className="absolute left-4 top-16 flex w-[340px] max-h-[calc(100dvh-5rem)] flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur">
+      <div className="absolute flex flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur max-md:inset-x-2 max-md:bottom-2 max-md:max-h-[45dvh] md:left-4 md:top-16 md:max-h-[calc(100dvh-5rem)] md:w-[340px]">
         <div>
           <h1 className="text-lg font-semibold text-neutral-900">{header.name}</h1>
           <p className="text-xs capitalize text-neutral-500">{header.sport}</p>
