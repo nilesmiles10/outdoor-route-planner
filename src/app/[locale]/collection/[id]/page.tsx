@@ -5,6 +5,8 @@ import { supabaseServer } from "@/lib/supabase/server";
 import BookmarkButton from "@/components/BookmarkButton";
 import MiniMap from "@/components/MiniMap";
 import { aggregateStats, gradientFor, SPORT_EMOJI } from "@/lib/collections";
+import SiteFooter from "@/components/SiteFooter";
+import { getSiteSettings } from "@/lib/siteSettings";
 
 type TourLite = {
   id: string;
@@ -49,7 +51,7 @@ export async function generateMetadata({
     title: `${c.title} | ${tours.length} routes · ${(agg.distanceM / 1000).toFixed(0)} km`,
     description:
       c.intro?.slice(0, 160) ||
-      `A collection of ${tours.length} outdoor routes — planned with Outdoor Route Planner.`,
+      `A collection of ${tours.length} outdoor routes — planned with ${(await getSiteSettings()).site_name}.`,
   };
 }
 
@@ -178,12 +180,7 @@ export default async function CollectionPage({
         )}
       </ol>
 
-      <footer className="mt-16 border-t border-neutral-100 pt-4 text-xs text-neutral-400">
-        © {new Date().getFullYear()} Outdoor Route Planner ·{" "}
-        <a href="https://www.openstreetmap.org/copyright" className="hover:underline">
-          © OpenStreetMap contributors
-        </a>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

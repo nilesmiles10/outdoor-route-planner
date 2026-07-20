@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getAdmin } from "@/lib/adminAuth";
+import { getSiteSettings } from "@/lib/siteSettings";
 import "../globals.css";
 
 // Second root layout (multiple-root pattern, like /embed): no next-intl,
@@ -8,10 +9,13 @@ import "../globals.css";
 // advertised. NOTE: this guard protects RENDERING only; every server
 // action re-checks via requireAdmin().
 
-export const metadata: Metadata = {
-  title: "Admin | Outdoor Route Planner",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const s = await getSiteSettings();
+  return {
+    title: `Admin | ${s.site_name}`,
+    robots: { index: false, follow: false },
+  };
+}
 
 const NAV: [string, string][] = [
   ["/admin", "Dashboard"],
@@ -20,6 +24,7 @@ const NAV: [string, string][] = [
   ["/admin/tours", "Tours"],
   ["/admin/highlights", "Highlights"],
   ["/admin/collections", "Collections"],
+  ["/admin/settings", "Settings"],
   ["/admin/audit", "Audit log"],
 ];
 

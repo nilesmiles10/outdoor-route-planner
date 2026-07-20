@@ -11,6 +11,7 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import { fmtDuration } from "@/lib/activity";
 import Avatar from "@/components/Avatar";
 import AccountPanel from "@/components/AccountPanel";
+import SiteFooter from "@/components/SiteFooter";
 
 type Item = {
   id: string;
@@ -187,12 +188,7 @@ export default function FeedPage() {
           );
         })}
       </div>
-      <footer className="mt-16 border-t border-neutral-100 pt-4 text-xs text-neutral-400">
-        © {new Date().getFullYear()} Outdoor Route Planner ·{" "}
-        <a href="https://www.openstreetmap.org/copyright" className="hover:underline">
-          © OpenStreetMap contributors
-        </a>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

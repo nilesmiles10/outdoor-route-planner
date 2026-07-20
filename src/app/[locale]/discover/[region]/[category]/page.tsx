@@ -4,6 +4,8 @@ import { getTranslations } from "next-intl/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { CATEGORY_EMOJI, HIGHLIGHT_CATEGORIES } from "@/lib/highlights";
 import { slugify } from "@/lib/slug";
+import SiteFooter from "@/components/SiteFooter";
+import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 
 // GEN-116 — programmatic SEO pages: "<Category-plural> in <Region>".
 // Driven by the highlights corpus (680 POIs with a backfilled region).
@@ -55,7 +57,7 @@ export async function generateMetadata({
   const t = await getTranslations("regionPage");
   const cat = t(`catPlural.${params.category}` as never);
   return {
-    title: `${cat} in ${resolved.region} | Outdoor Route Planner`,
+    title: pageTitle(await getSiteSettings(), `${cat} in ${resolved.region}`),
     description: t("metaDescription", {
       count: resolved.items.length,
       category: cat.toLowerCase(),
@@ -132,12 +134,7 @@ export default async function RegionCategoryPage({
         ))}
       </ul>
 
-      <footer className="mt-16 border-t border-neutral-100 pt-4 text-xs text-neutral-400">
-        © {new Date().getFullYear()} Outdoor Route Planner ·{" "}
-        <a href="https://www.openstreetmap.org/copyright" className="hover:underline">
-          © OpenStreetMap contributors
-        </a>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

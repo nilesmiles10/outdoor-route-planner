@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import MfaSection from "./MfaSection";
 import type { Waypoint } from "./MapView";
 
 export type TourPayload = {
@@ -42,19 +43,30 @@ export default function AccountPanel({ tour, onLoadTour, hideLoginForm }: Props)
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [usePassword, setUsePassword] = useState(false);
-  const [phase, setPhase] = useState<"idle" | "code" | "busy">("idle");
+  const [phase, setPhase] = useState<"idle" | "code" | "mfa" | "busy">("idle");
   const [authError, setAuthError] = useState<string | null>(null);
   const [tours, setTours] = useState<TourRow[]>([]);
   const [open, setOpen] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
 
+  // 2FA step-up: users with a verified TOTP factor sit at aal1 after the
+  // first factor and must verify a code to reach aal2.
+  const needsMfa = useCallback(async (): Promise<boolean> => {
+    const { data } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+    return data?.nextLevel === "aal2" && data.currentLevel !== "aal2";
+  }, [sb]);
+
   useEffect(() => {
-    sb.auth.getUser().then(({ data }) => setUser(data.user));
+    sb.auth.getUser().then(async ({ data }) => {
+      setUser(data.user);
+      // Reload mid step-up: re-show the code prompt.
+      if (data.user && (await needsMfa())) setPhase("mfa");
+    });
     const { data: sub } = sb.auth.onAuthStateChange((_e, session) =>
       setUser(session?.user ?? null),
     );
     return () => sub.subscription.unsubscribe();
-  }, [sb]);
+  }, [sb, needsMfa]);
 
   const refreshTours = useCallback(async () => {
     const { data } = await sb
@@ -89,8 +101,12 @@ export default function AccountPanel({ tour, onLoadTour, hideLoginForm }: Props)
     setAuthError(null);
     const { error } = await sb.auth.signInWithPassword({ email, password });
     if (error) setAuthError(error.message);
-    setPhase("idle");
-    if (!error) setPassword("");
+    if (!error) {
+      setPassword("");
+      setPhase((await needsMfa()) ? "mfa" : "idle");
+    } else {
+      setPhase("idle");
+    }
   }
 
   async function verifyCode() {
@@ -105,8 +121,28 @@ export default function AccountPanel({ tour, onLoadTour, hideLoginForm }: Props)
       setAuthError(error.message);
       setPhase("code");
     } else {
-      setPhase("idle");
       setCode("");
+      setPhase((await needsMfa()) ? "mfa" : "idle");
+    }
+  }
+
+  async function verifyMfa() {
+    setAuthError(null);
+    const { data: factors } = await sb.auth.mfa.listFactors();
+    const factorId = factors?.totp?.[0]?.id;
+    if (!factorId) {
+      setPhase("idle");
+      return;
+    }
+    const { error } = await sb.auth.mfa.challengeAndVerify({
+      factorId,
+      code: code.trim(),
+    });
+    if (error) {
+      setAuthError(t("mfa.wrongCode"));
+    } else {
+      setCode("");
+      setPhase("idle");
     }
   }
 
@@ -241,6 +277,50 @@ export default function AccountPanel({ tour, onLoadTour, hideLoginForm }: Props)
     );
   }
 
+  // Priority branch: onAuthStateChange sets `user` at aal1 already, so the
+  // step-up prompt must win over the logged-in view.
+  if (phase === "mfa") {
+    return (
+      <div className="flex flex-col gap-2 rounded-lg bg-neutral-50 p-3">
+        <p className="text-xs font-medium text-neutral-700">🔐 {t("mfa.stepUpTitle")}</p>
+        <div className="flex gap-2">
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="123456"
+            inputMode="numeric"
+            maxLength={6}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && code.trim().length === 6) verifyMfa();
+            }}
+            className="w-24 rounded-lg border border-neutral-200 px-2 py-1 text-xs"
+          />
+          <button
+            type="button"
+            onClick={verifyMfa}
+            disabled={code.trim().length !== 6}
+            className="rounded-lg bg-emerald-700 px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
+          >
+            {t("verify")}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              sb.auth.signOut();
+              setPhase("idle");
+              setCode("");
+            }}
+            className="text-[10px] text-neutral-400 hover:text-neutral-600"
+          >
+            {t("logout")}
+          </button>
+        </div>
+        {authError && <p className="text-[10px] text-red-600">{authError}</p>}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2 rounded-lg bg-neutral-50 p-3">
       <div className="flex items-center justify-between">
@@ -271,6 +351,7 @@ export default function AccountPanel({ tour, onLoadTour, hideLoginForm }: Props)
           {t("deleteAccount")}
         </button>
       </div>
+      <MfaSection />
       <div className="flex items-center gap-2">
         <button
           type="button"

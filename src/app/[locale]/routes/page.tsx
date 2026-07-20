@@ -8,6 +8,7 @@ import { buildGpx } from "@/lib/gpx";
 import { difficulty } from "@/lib/difficulty";
 import AccountPanel from "@/components/AccountPanel";
 import UploadActivity from "@/components/UploadActivity";
+import SiteFooter from "@/components/SiteFooter";
 
 type Row = {
   id: string;
@@ -346,12 +347,7 @@ export default function RoutesPage() {
           </div>
         </>
       )}
-      <footer className="mt-16 border-t border-neutral-100 pt-4 text-xs text-neutral-400">
-        © {new Date().getFullYear()} Outdoor Route Planner ·{" "}
-        <a href="https://www.openstreetmap.org/copyright" className="hover:underline">
-          © OpenStreetMap contributors
-        </a>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

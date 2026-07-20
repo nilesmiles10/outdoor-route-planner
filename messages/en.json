@@ -156,7 +156,19 @@
     "forgotPassword": "Forgot password?",
     "deleteAccount": "Delete my account",
     "deleteAccountConfirm": "This permanently deletes your account, routes, activities, photos and comments. Type your e-mail address to confirm:",
-    "deleteAccountFailed": "Deletion failed — please try again later."
+    "deleteAccountFailed": "Deletion failed — please try again later.",
+    "mfa": {
+      "title": "Two-factor authentication",
+      "active": "Authenticator app active",
+      "enable": "Enable 2FA",
+      "scanHint": "Scan the QR code with your authenticator app (1Password, Google Authenticator, …), then enter the 6-digit code.",
+      "secretHint": "Or enter this key manually",
+      "verify": "Verify",
+      "wrongCode": "Wrong code — try again.",
+      "remove": "remove",
+      "removeConfirm": "Disable two-factor authentication?",
+      "stepUpTitle": "Enter your authenticator code"
+    }
   },
   "activities": {
     "upload": "Upload activity",

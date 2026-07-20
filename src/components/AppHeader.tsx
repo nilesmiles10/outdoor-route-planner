@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { useSiteSettings } from "./SiteSettingsProvider";
 
 type Hit = {
   type: "route" | "place" | "person";
@@ -13,6 +14,7 @@ type Hit = {
 };
 
 export default function AppHeader() {
+  const site = useSiteSettings();
   const t = useTranslations("nav");
   const locale = useLocale();
   const sb: SupabaseClient = useMemo(() => supabaseBrowser(), []);
@@ -95,9 +97,14 @@ export default function AppHeader() {
 
   return (
     <header className="fixed inset-x-0 top-0 z-30 flex h-12 items-center gap-4 bg-white/95 px-4 shadow-sm backdrop-blur">
-      <a href={`/${locale}`} aria-label="Outdoor Route Planner" className="flex items-center gap-2 font-semibold text-emerald-800">
-        <span aria-hidden>⛰</span>
-        <span className="hidden sm:inline">Outdoor Route Planner</span>
+      <a href={`/${locale}`} aria-label={site.site_name} className="flex items-center gap-2 font-semibold text-emerald-800">
+        {site.logo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={site.logo_url} alt="" className="h-7 w-7 rounded object-contain" />
+        ) : (
+          <span aria-hidden>⛰</span>
+        )}
+        <span className="hidden sm:inline">{site.site_name}</span>
       </a>
 
       {/* Search collapses away on mobile — the planner panel has its own fields */}

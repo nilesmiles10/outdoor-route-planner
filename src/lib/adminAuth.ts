@@ -22,6 +22,14 @@ export async function requireAdmin(): Promise<{
   if (!allowed || !user) {
     throw new Error("admin_required");
   }
+  // Self-arming 2FA rule: once the admin has a verified TOTP factor
+  // (nextLevel aal2), the session MUST be at aal2. Before enrollment this
+  // passes untouched — no deploy-ordering/lockout risk. The RLS layer gets
+  // the matching aal2 check in a separate migration after enrollment.
+  const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aal && aal.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
+    throw new Error("admin_mfa_required");
+  }
   return { user, sb };
 }
 

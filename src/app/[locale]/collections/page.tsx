@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { aggregateStats, gradientFor, SPORT_EMOJI } from "@/lib/collections";
+import SiteFooter from "@/components/SiteFooter";
 
 type ItemTour = { tours: { sport: string; stats: { distanceM?: number; ascendM?: number } } | null };
 type Coll = {
@@ -190,12 +191,7 @@ export default function CollectionsPage() {
         )}
       </section>
 
-      <footer className="mt-16 border-t border-neutral-100 pt-4 text-xs text-neutral-400">
-        © {new Date().getFullYear()} Outdoor Route Planner ·{" "}
-        <a href="https://www.openstreetmap.org/copyright" className="hover:underline">
-          © OpenStreetMap contributors
-        </a>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

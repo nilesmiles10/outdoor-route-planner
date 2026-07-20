@@ -5,6 +5,8 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { difficulty } from "@/lib/difficulty";
 import Avatar from "@/components/Avatar";
 import ProfileActions from "@/components/ProfileActions";
+import SiteFooter from "@/components/SiteFooter";
+import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 
 // GEN-118 — public profile page, the anchor of the social graph
 // (Komoot-style): identity, follower counts, public routes/activities
@@ -39,7 +41,7 @@ export async function generateMetadata({
   if (!p) return { title: "Profile not found" };
   const t = await getTranslations("profile");
   return {
-    title: `${p.display_name ?? t("anonymous")} | Outdoor Route Planner`,
+    title: pageTitle(await getSiteSettings(), p.display_name ?? t("anonymous")),
     description: p.bio ?? undefined,
   };
 }
@@ -196,12 +198,7 @@ export default async function UserPage({
         </section>
       )}
 
-      <footer className="mt-16 border-t border-neutral-100 pt-4 text-xs text-neutral-400">
-        © {new Date().getFullYear()} Outdoor Route Planner ·{" "}
-        <a href="https://www.openstreetmap.org/copyright" className="hover:underline">
-          © OpenStreetMap contributors
-        </a>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

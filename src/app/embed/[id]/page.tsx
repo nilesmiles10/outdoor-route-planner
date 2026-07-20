@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import EmbedView from "@/components/EmbedView";
 import { SITE_URL } from "@/app/sitemap";
+import { getSiteSettings } from "@/lib/siteSettings";
 
 // GEN-135 — embeddable route widget. Plain anon client (no cookies): an
 // iframe on a third-party site never has our session, so only public
@@ -18,6 +19,7 @@ type TourRow = {
 };
 
 export default async function EmbedPage({ params }: { params: { id: string } }) {
+  const site = await getSiteSettings();
   const sb = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -56,7 +58,7 @@ export default async function EmbedPage({ params }: { params: { id: string } }) 
           </div>
         </div>
         <span className="shrink-0 rounded-full bg-emerald-700 px-3 py-1 text-xs font-medium text-white">
-          ⛰ Outdoor Route Planner ↗
+          ⛰ {site.site_name} ↗
         </span>
       </a>
     </div>

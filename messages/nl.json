@@ -156,7 +156,19 @@
     "forgotPassword": "Wachtwoord vergeten?",
     "deleteAccount": "Account verwijderen",
     "deleteAccountConfirm": "Dit verwijdert je account, routes, activiteiten, foto's en reacties permanent. Typ je e-mailadres ter bevestiging:",
-    "deleteAccountFailed": "Verwijderen mislukt — probeer het later opnieuw."
+    "deleteAccountFailed": "Verwijderen mislukt — probeer het later opnieuw.",
+    "mfa": {
+      "title": "Tweestapsverificatie",
+      "active": "Authenticator-app actief",
+      "enable": "2FA inschakelen",
+      "scanHint": "Scan de QR-code met je authenticator-app (1Password, Google Authenticator, …) en vul de 6-cijferige code in.",
+      "secretHint": "Of voer deze sleutel handmatig in",
+      "verify": "Verifieer",
+      "wrongCode": "Onjuiste code — probeer opnieuw.",
+      "remove": "verwijderen",
+      "removeConfirm": "Tweestapsverificatie uitschakelen?",
+      "stepUpTitle": "Vul je authenticator-code in"
+    }
   },
   "activities": {
     "upload": "Activiteit uploaden",

@@ -6,7 +6,7 @@
 // RLS is_admin() policies are the backstop. The service-role client is
 // used only for auth-admin operations (ban/unban/delete/list emails).
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -202,4 +202,35 @@ export async function deleteHighlightPhoto(formData: FormData) {
   }
   await audit(sb, user, "highlight_photo_delete", "highlight_photo", id, { path });
   revalidatePath("/admin/highlights");
+}
+
+// ---- Site settings ----
+
+export async function updateSiteSettings(formData: FormData) {
+  const { user, sb } = await requireAdmin();
+  const patch: Record<string, string | null> = {
+    site_name: String(formData.get("site_name") ?? "").trim() || "Outdoor Route Planner",
+    tagline_nl: String(formData.get("tagline_nl") ?? "").trim(),
+    tagline_en: String(formData.get("tagline_en") ?? "").trim(),
+  };
+  const logo = formData.get("logo") as File | null;
+  if (logo && logo.size > 0) {
+    const ext = logo.name.split(".").pop()?.toLowerCase() || "png";
+    // Unique name = automatic cache-bust for the public URL.
+    const path = `logo-${Date.now()}.${ext}`;
+    const { error } = await sb.storage.from("branding").upload(path, logo, {
+      cacheControl: "31536000",
+    });
+    if (!error) {
+      patch.logo_url = sb.storage.from("branding").getPublicUrl(path).data.publicUrl;
+    }
+  }
+  if (String(formData.get("remove_logo")) === "1") patch.logo_url = null;
+  await sb
+    .from("site_settings")
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("id", 1);
+  await audit(sb, user, "site_settings_update", "site_settings", "1", patch);
+  revalidateTag("site-settings");
+  revalidatePath("/admin/settings");
 }

@@ -8,6 +8,8 @@ import { CATEGORY_EMOJI } from "@/lib/highlights";
 import { gradientFor } from "@/lib/collections";
 import HighlightMap from "@/components/HighlightMap";
 import HighlightActions from "@/components/HighlightActions";
+import SiteFooter from "@/components/SiteFooter";
+import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 
 // GEN-138 — highlight detail page. Anatomy copied from Komoot's highlight
 // pages (torn down live 2026-07-20): photo grid, per-sport ratings, tips,
@@ -84,7 +86,7 @@ export async function generateMetadata({
   if (!hl) return { title: "Highlight not found" };
   // Komoot's SEO title pattern: "<Name> – Wandel- & Fietsroutes"
   return {
-    title: `${hl.name} – Wandel- & Fietsroutes | Outdoor Route Planner`,
+    title: pageTitle(await getSiteSettings(), `${hl.name} – Wandel- & Fietsroutes`),
     description:
       hl.description?.slice(0, 160) ??
       `Ontdek ${hl.name}: community-highlight met tips, foto's en routes in de buurt.`,
@@ -391,12 +393,7 @@ export default async function HighlightPage({
         </aside>
       </div>
 
-      <footer className="mt-16 border-t border-neutral-100 pt-4 text-xs text-neutral-400">
-        © {new Date().getFullYear()} Outdoor Route Planner ·{" "}
-        <a href="https://www.openstreetmap.org/copyright" className="hover:underline">
-          © OpenStreetMap contributors
-        </a>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }
