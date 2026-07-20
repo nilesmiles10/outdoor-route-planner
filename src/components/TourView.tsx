@@ -23,7 +23,11 @@ type Props = {
     buckets: { paved: number; unpaved: number; unknown: number };
     planLabel: string;
     gpxLabel: string;
+    embedLabel?: string;
+    embedCopied?: string;
   };
+  // GEN-135: present on public tours — id for the iframe snippet.
+  embedId?: string | null;
   // Tour page v2 (GEN-132): all strings pre-translated server-side.
   autoDesc?: string;
   weather?: {
@@ -69,7 +73,9 @@ export default function TourView({
   related,
   social,
   activity,
+  embedId,
 }: Props) {
+  const [embedCopied, setEmbedCopied] = useState(false);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const feature: GeoJSON.Feature = useMemo(
     () => ({ type: "Feature", properties: {}, geometry }),
@@ -216,6 +222,22 @@ export default function TourView({
           >
             {header.planLabel}
           </a>
+          {embedId && header.embedLabel && (
+            <button
+              type="button"
+              onClick={() => {
+                const src = `${window.location.origin}/embed/${embedId}`;
+                navigator.clipboard.writeText(
+                  `<iframe src="${src}" width="100%" height="420" style="border:0;border-radius:12px" loading="lazy"></iframe>`,
+                );
+                setEmbedCopied(true);
+                setTimeout(() => setEmbedCopied(false), 1500);
+              }}
+              className="rounded-lg bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-200"
+            >
+              {embedCopied ? header.embedCopied : `</> ${header.embedLabel}`}
+            </button>
+          )}
         </div>
 
         {/* v2 (GEN-132): auto description, weather, related content */}

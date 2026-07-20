@@ -11,6 +11,7 @@ type TourRow = {
   id: string;
   owner: string;
   name: string;
+  visibility: "private" | "public";
   sport: string;
   waypoints: { name: string; lon: number; lat: number }[];
   geometry: GeoJSON.LineString;
@@ -46,7 +47,7 @@ async function getTour(id: string): Promise<TourRow | null> {
   const { data } = await sb
     .from("tours")
     .select(
-      "id,owner,name,sport,waypoints,geometry,elevation,stats,surfaces,updated_at,kind,recorded_at,duration_s,moving_s,max_speed_kmh,time_offsets",
+      "id,owner,name,visibility,sport,waypoints,geometry,elevation,stats,surfaces,updated_at,kind,recorded_at,duration_s,moving_s,max_speed_kmh,time_offsets",
     )
     .eq("id", id)
     .maybeSingle();
@@ -221,7 +222,10 @@ export default async function TourPage({
           buckets: tour.surfaces.buckets,
           planLabel: t("openInPlanner"),
           gpxLabel: t("downloadGpx"),
+          embedLabel: t("embed"),
+          embedCopied: t("embedCopied"),
         }}
+        embedId={tour.visibility === "public" ? tour.id : null}
         autoDesc={autoDesc}
         social={{ tourId: tour.id, tourOwner: tour.owner }}
         activity={

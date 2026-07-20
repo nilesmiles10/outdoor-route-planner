@@ -179,7 +179,9 @@
       "paved": "Grotendeels verharde wegen.",
       "unpaved": "Grotendeels onverhard.",
       "mixed": "Afwisselend verhard en onverhard."
-    }
+    },
+    "embed": "Insluiten",
+    "embedCopied": "Gekopieerd!"
   },
   "highlightPage": {
     "breadcrumbDiscover": "Ontdekken",
