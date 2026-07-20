@@ -122,19 +122,43 @@ export default function MapView({
       "bottom-left",
     );
 
-    map.on("load", () => {
-      map.addSource("route", {
+    // Layer bootstrap is NOT gated on the "load" event: on a slow tile CDN
+    // "load" waits for every tile/glyph/sprite and can take tens of seconds
+    // (or hang), leaving the planner without a route line while the basemap
+    // is already visible. Same empirical lesson as EmbedView (GEN-135):
+    // addSource/addLayer work as soon as the style JSON is in, long before
+    // isStyleLoaded() turns true. ensure* helpers make retries idempotent
+    // when a styledata event fires mid-bootstrap.
+    let layersReady = false;
+    const ensureSource = (id: string, spec: maplibregl.SourceSpecification) => {
+      if (!map.getSource(id)) map.addSource(id, spec);
+    };
+    const ensureLayer = (spec: maplibregl.LayerSpecification) => {
+      if (!map.getLayer(spec.id)) map.addLayer(spec);
+    };
+    const initLayers = () => {
+      if (layersReady) return;
+      try {
+        addAllLayers();
+      } catch {
+        return; // style not ready yet — the next styledata event retries
+      }
+      layersReady = true;
+      setReady(true);
+    };
+    const addAllLayers = () => {
+      ensureSource("route", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       });
-      map.addLayer({
+      ensureLayer({
         id: "route-casing",
         type: "line",
         source: "route",
         layout: { "line-cap": "round", "line-join": "round" },
         paint: { "line-color": "#ffffff", "line-width": 8 },
       });
-      map.addLayer({
+      ensureLayer({
         id: "route-line",
         type: "line",
         source: "route",
@@ -142,7 +166,7 @@ export default function MapView({
         paint: { "line-color": "#2563eb", "line-width": 4 },
       });
       // Wide invisible hit-area so grabbing the line is forgiving (~24px).
-      map.addLayer({
+      ensureLayer({
         id: "route-hit",
         type: "line",
         source: "route",
@@ -150,11 +174,11 @@ export default function MapView({
         paint: { "line-color": "#000000", "line-width": 24, "line-opacity": 0.01 },
       });
       // Off-grid legs: dashed overlay on top of the route line (GEN-141 A4).
-      map.addSource("offgrid", {
+      ensureSource("offgrid", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       });
-      map.addLayer({
+      ensureLayer({
         id: "offgrid-line",
         type: "line",
         source: "offgrid",
@@ -166,11 +190,11 @@ export default function MapView({
         },
       });
       // GEN-129: restricted-access stretches painted red on top of the route.
-      map.addSource("alerts", {
+      ensureSource("alerts", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       });
-      map.addLayer({
+      ensureLayer({
         id: "alert-line",
         type: "line",
         source: "alerts",
@@ -179,11 +203,11 @@ export default function MapView({
       });
       // Komoot-style midpoint grab-handles per leg (GEN-141 A1). Purely a
       // visible affordance — dragging/clicking is handled by route-hit below.
-      map.addSource("via-handles", {
+      ensureSource("via-handles", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       });
-      map.addLayer({
+      ensureLayer({
         id: "via-handles",
         type: "circle",
         source: "via-handles",
@@ -194,18 +218,12 @@ export default function MapView({
           "circle-stroke-width": 2,
         },
       });
-      map.on("mouseenter", "via-handles", () => {
-        map.getCanvas().style.cursor = "grab";
-      });
-      map.on("mouseleave", "via-handles", () => {
-        map.getCanvas().style.cursor = "";
-      });
       // Distance markers along the route (GEN-137).
-      map.addSource("km-markers", {
+      ensureSource("km-markers", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       });
-      map.addLayer({
+      ensureLayer({
         id: "km-markers-circle",
         type: "circle",
         source: "km-markers",
@@ -216,7 +234,7 @@ export default function MapView({
           "circle-stroke-width": 1.5,
         },
       });
-      map.addLayer({
+      ensureLayer({
         id: "km-markers-label",
         type: "symbol",
         source: "km-markers",
@@ -229,11 +247,11 @@ export default function MapView({
         paint: { "text-color": "#ffffff" },
       });
       // Elevation-chart hover position on the route line
-      map.addSource("hover-point", {
+      ensureSource("hover-point", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       });
-      map.addLayer({
+      ensureLayer({
         id: "hover-point",
         type: "circle",
         source: "hover-point",
@@ -247,11 +265,11 @@ export default function MapView({
 
       // GEN-115: community-highlight dots, colored per category. The source
       // stays empty until the planner enables the layer.
-      map.addSource("highlights", {
+      ensureSource("highlights", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       });
-      map.addLayer({
+      ensureLayer({
         id: "highlights-dots",
         type: "circle",
         source: "highlights",
@@ -273,19 +291,13 @@ export default function MapView({
           "circle-stroke-width": 1.5,
         },
       });
-      map.on("mouseenter", "highlights-dots", () => {
-        map.getCanvas().style.cursor = "pointer";
-      });
-      map.on("mouseleave", "highlights-dots", () => {
-        map.getCanvas().style.cursor = "";
-      });
 
       // Saved places (GEN-137): amber stars, owner-only layer.
-      map.addSource("saved-places", {
+      ensureSource("saved-places", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       });
-      map.addLayer({
+      ensureLayer({
         id: "saved-places-stars",
         type: "symbol",
         source: "saved-places",
@@ -301,24 +313,48 @@ export default function MapView({
           "text-halo-width": 1.5,
         },
       });
-      map.on("mouseenter", "saved-places-stars", () => {
-        map.getCanvas().style.cursor = "pointer";
-      });
-      map.on("mouseleave", "saved-places-stars", () => {
-        map.getCanvas().style.cursor = "";
-      });
+    };
+    map.on("styledata", initLayers);
+    map.on("load", initLayers);
+    initLayers();
 
-      // Click on empty map = add waypoint. Suppressed right after a line-drag.
-      let suppressClick = false;
-      map.on("click", (e) => {
-        if (suppressClick) {
-          suppressClick = false;
-          return;
-        }
-        // Saved-place stars take top priority, then highlight dots.
-        const spHits = map.queryRenderedFeatures(e.point, {
-          layers: ["saved-places-stars"],
-        });
+    // --- Event bindings: registered exactly once, independent of style
+    // readiness. Layer-scoped listeners on not-yet-existing layers are
+    // safe (MapLibre resolves them per event).
+    map.on("mouseenter", "via-handles", () => {
+      map.getCanvas().style.cursor = "grab";
+    });
+    map.on("mouseleave", "via-handles", () => {
+      map.getCanvas().style.cursor = "";
+    });
+    map.on("mouseenter", "highlights-dots", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+    map.on("mouseleave", "highlights-dots", () => {
+      map.getCanvas().style.cursor = "";
+    });
+    map.on("mouseenter", "saved-places-stars", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+    map.on("mouseleave", "saved-places-stars", () => {
+      map.getCanvas().style.cursor = "";
+    });
+
+    // queryRenderedFeatures throws on a layer id that does not exist (yet).
+    const hitsAt = (pt: maplibregl.Point, layerId: string) =>
+      map.getLayer(layerId)
+        ? map.queryRenderedFeatures(pt, { layers: [layerId] })
+        : [];
+
+    // Click on empty map = add waypoint. Suppressed right after a line-drag.
+    let suppressClick = false;
+    map.on("click", (e) => {
+      if (suppressClick) {
+        suppressClick = false;
+        return;
+      }
+      // Saved-place stars take top priority, then highlight dots.
+      const spHits = hitsAt(e.point, "saved-places-stars");
         const sp = spHits[0];
         if (sp && cbRef.current.onSavedPlaceClick) {
           const [lon, lat] = (sp.geometry as GeoJSON.Point).coordinates;
@@ -331,10 +367,8 @@ export default function MapView({
           });
           return;
         }
-        // Highlight dots take priority over adding a waypoint.
-        const hlHits = map.queryRenderedFeatures(e.point, {
-          layers: ["highlights-dots"],
-        });
+      // Highlight dots take priority over adding a waypoint.
+      const hlHits = hitsAt(e.point, "highlights-dots");
         const hl = hlHits[0];
         if (hl && cbRef.current.onHighlightClick) {
           const [lon, lat] = (hl.geometry as GeoJSON.Point).coordinates;
@@ -400,11 +434,8 @@ export default function MapView({
             cbRef.current.onRouteDrop(ev.lngLat.lng, ev.lngLat.lat);
           }
         };
-        map.on("mousemove", onMove);
-        map.once("mouseup", onUp);
-      });
-
-      setReady(true);
+      map.on("mousemove", onMove);
+      map.once("mouseup", onUp);
     });
 
     mapRef.current = map;
