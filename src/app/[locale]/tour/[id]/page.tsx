@@ -17,6 +17,13 @@ type TourRow = {
   stats: { distanceM: number; timeS: number; ascendM: number; descendM: number };
   surfaces: { buckets: { paved: number; unpaved: number; unknown: number } };
   updated_at: string;
+  // GEN-117 activity columns (null on planned tours)
+  kind: "planned" | "completed";
+  recorded_at: string | null;
+  duration_s: number | null;
+  moving_s: number | null;
+  max_speed_kmh: number | null;
+  time_offsets: number[] | null;
 };
 
 function haversineKm(aLon: number, aLat: number, bLon: number, bLat: number) {
@@ -32,12 +39,13 @@ function haversineKm(aLon: number, aLat: number, bLon: number, bLat: number) {
 }
 
 async function getTour(id: string): Promise<TourRow | null> {
-  // Anonymous server client: RLS only exposes visibility='public' rows.
+  // Session-aware server client: anonymous visitors only see public rows;
+  // a logged-in owner also sees their own private rows (RLS).
   const sb = supabaseServer();
   const { data } = await sb
     .from("tours")
     .select(
-      "id,name,sport,waypoints,geometry,elevation,stats,surfaces,updated_at",
+      "id,name,sport,waypoints,geometry,elevation,stats,surfaces,updated_at,kind,recorded_at,duration_s,moving_s,max_speed_kmh,time_offsets",
     )
     .eq("id", id)
     .maybeSingle();
@@ -103,6 +111,7 @@ export default async function TourPage({
       .from("tours")
       .select("id,name,sport,stats,waypoints")
       .eq("visibility", "public")
+      .eq("kind", "planned")
       .neq("id", tour.id)
       .limit(100),
     sb
@@ -143,7 +152,41 @@ export default async function TourPage({
         .slice(0, 6))
     : [];
 
+  // GEN-117: highlights actually passed along the track (<= 250 m off-route),
+  // annotated with their km position. Track is stride-sampled — at ~250 m
+  // tolerance a 5-point stride loses nothing.
+  const coords = tour.geometry.coordinates;
+  const cumKm: number[] = [0];
+  for (let i = 1; i < coords.length; i++) {
+    cumKm.push(
+      cumKm[i - 1] +
+        haversineKm(coords[i - 1][0], coords[i - 1][1], coords[i][0], coords[i][1]),
+    );
+  }
+  const passed = (((hlQ.data as Hl[]) ?? [])
+    .map((hl) => {
+      let best = Infinity;
+      let bestKm = 0;
+      for (let i = 0; i < coords.length; i += 5) {
+        const d = haversineKm(hl.lon, hl.lat, coords[i][0], coords[i][1]);
+        if (d < best) {
+          best = d;
+          bestKm = cumKm[i];
+        }
+      }
+      return { ...hl, offKm: best, atKm: bestKm };
+    })
+    .filter((hl) => hl.offKm <= 0.25)
+    .sort((a, b) => a.atKm - b.atKm)
+    .slice(0, 8));
+
   const autoDesc = buildAutoDesc(t, tour);
+
+  const isActivity = tour.kind === "completed" && !!tour.time_offsets;
+  const avgKmh =
+    isActivity && tour.moving_s
+      ? (tour.stats.distanceM / 1000 / (tour.moving_s / 3600)).toFixed(1)
+      : null;
 
   return (
     <main className="relative h-dvh w-full">
@@ -179,6 +222,26 @@ export default async function TourPage({
           gpxLabel: t("downloadGpx"),
         }}
         autoDesc={autoDesc}
+        activity={
+          isActivity
+            ? {
+                timeOffsets: tour.time_offsets!,
+                recordedLabel: new Date(tour.recorded_at!).toLocaleDateString(
+                  locale,
+                  { weekday: "long", day: "numeric", month: "long", year: "numeric" },
+                ),
+                movingLabel: t("activity.moving"),
+                elapsedLabel: t("activity.elapsed"),
+                avgLabel: t("activity.avgSpeed"),
+                maxLabel: t("activity.maxSpeed"),
+                segmentLabel: t("activity.segment"),
+                movingS: tour.moving_s ?? 0,
+                durationS: tour.duration_s ?? 0,
+                avgKmh: avgKmh ?? "0",
+                maxKmh: tour.max_speed_kmh ?? 0,
+              }
+            : null
+        }
         weather={
           weather
             ? {
@@ -201,6 +264,12 @@ export default async function TourPage({
             href: `/${locale}/tour/${tr.id}`,
             name: tr.name,
             meta: `${(tr.stats.distanceM / 1000).toFixed(1)} km · ↗ ${tr.stats.ascendM} m · ${ts(tr.sport as never)} · ${Math.round(tr.distKm)} km ${t("away")}`,
+          })),
+          passedTitle: t("activity.onRoute"),
+          passed: passed.map((hl) => ({
+            href: `/${locale}/highlight/${hl.id}`,
+            name: `${CATEGORY_EMOJI[hl.category] ?? "📍"} ${hl.name}`,
+            meta: `km ${hl.atKm.toFixed(1)}`,
           })),
           highlightsTitle: t("relatedHighlights"),
           highlights: relatedHls.map((hl) => ({

@@ -7,12 +7,16 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import { buildGpx } from "@/lib/gpx";
 import { difficulty } from "@/lib/difficulty";
 import AccountPanel from "@/components/AccountPanel";
+import UploadActivity from "@/components/UploadActivity";
 
 type Row = {
   id: string;
   name: string;
   sport: string;
   visibility: "private" | "public";
+  kind: "planned" | "completed";
+  recorded_at: string | null;
+  moving_s: number | null;
   stats: { distanceM: number; timeS: number; ascendM: number };
   waypoints: { name: string; lon: number; lat: number }[];
   custom_speed_kmh: number | null;
@@ -57,6 +61,7 @@ export default function RoutesPage() {
   const [filter, setFilter] = useState("");
   const [sport, setSport] = useState("all");
   const [band, setBand] = useState("all");
+  const [kind, setKind] = useState<"all" | "planned" | "completed">("all");
   const [paceEdit, setPaceEdit] = useState<string | null>(null); // row id
 
   useEffect(() => {
@@ -71,7 +76,7 @@ export default function RoutesPage() {
     const { data } = await sb
       .from("tours")
       .select(
-        "id,name,sport,visibility,stats,waypoints,custom_speed_kmh,updated_at",
+        "id,name,sport,visibility,kind,recorded_at,moving_s,stats,waypoints,custom_speed_kmh,updated_at",
       )
       .order("updated_at", { ascending: false })
       .limit(100);
@@ -115,6 +120,7 @@ export default function RoutesPage() {
   const filtered = rows
     .filter((r) => r.name.toLowerCase().includes(filter.toLowerCase()))
     .filter((r) => sport === "all" || r.sport === sport)
+    .filter((r) => kind === "all" || (r.kind ?? "planned") === kind)
     .filter((r) => r.stats.distanceM >= lo && r.stats.distanceM < hi);
 
   return (
@@ -137,13 +143,33 @@ export default function RoutesPage() {
         </div>
       ) : (
         <>
-          <input
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            className="mt-4 w-full max-w-sm rounded-lg border border-neutral-200 px-3 py-2 text-sm"
-          />
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder={t("searchPlaceholder")}
+              className="w-full max-w-sm rounded-lg border border-neutral-200 px-3 py-2 text-sm"
+            />
+            {/* GEN-117: recorded GPX/FIT upload → completed activity */}
+            <UploadActivity sb={sb} user={user} />
+          </div>
           <div className="mt-3 flex flex-wrap gap-1">
+            {(["all", "planned", "completed"] as const).map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setKind(k)}
+                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  kind === k
+                    ? "bg-sky-700 text-white"
+                    : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+                }`}
+              >
+                {t(`kinds.${k}` as never)}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1">
             {SPORTS.map((s) => (
               <button
                 key={s}
@@ -194,6 +220,7 @@ export default function RoutesPage() {
                 row.stats.timeS > 0
                   ? row.stats.distanceM / 1000 / (row.stats.timeS / 3600)
                   : 0;
+              const completed = row.kind === "completed";
               return (
                 <div
                   key={row.id}
@@ -202,9 +229,15 @@ export default function RoutesPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span
-                        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${DIFF_COLORS[diff]}`}
+                        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                          completed
+                            ? "bg-sky-100 text-sky-800"
+                            : DIFF_COLORS[diff]
+                        }`}
                       >
-                        {tp(`difficultyLabels.${diff}` as never)}
+                        {completed
+                          ? `🏁 ${t("kinds.completed")}`
+                          : tp(`difficultyLabels.${diff}` as never)}
                       </span>
                       <span className="truncate font-medium text-neutral-900">
                         {row.name}
@@ -212,14 +245,22 @@ export default function RoutesPage() {
                     </div>
                     <div className="mt-0.5 text-xs text-neutral-500">
                       {(row.stats.distanceM / 1000).toFixed(1)} km ·{" "}
-                      {fmtTime(timeS)} · ↗ {row.stats.ascendM} m ·{" "}
+                      {fmtTime(completed ? (row.moving_s ?? timeS) : timeS)} · ↗{" "}
+                      {row.stats.ascendM} m ·{" "}
                       <span className="capitalize">
                         {tp(`sports.${row.sport}` as never)}
                       </span>{" "}
-                      · {new Date(row.updated_at).toLocaleDateString(locale)}
+                      ·{" "}
+                      {new Date(
+                        completed && row.recorded_at
+                          ? row.recorded_at
+                          : row.updated_at,
+                      ).toLocaleDateString(locale)}
                     </div>
                     {/* Custom pace (GEN-130): overrides the estimated duration */}
-                    <div className="mt-1 text-[11px] text-neutral-400">
+                    <div
+                      className={`mt-1 text-[11px] text-neutral-400 ${completed ? "hidden" : ""}`}
+                    >
                       {paceEdit === row.id ? (
                         <span className="flex items-center gap-1">
                           {t("pace")}:
@@ -257,14 +298,14 @@ export default function RoutesPage() {
                     <a href={plannerHref} className="text-emerald-700 hover:underline">
                       {t("openPlanner")}
                     </a>
-                    {row.visibility === "public" && (
-                      <a
-                        href={`/${locale}/tour/${row.id}`}
-                        className="text-emerald-700 hover:underline"
-                      >
-                        {t("view")}
-                      </a>
-                    )}
+                    {/* The tour page is session-aware, so owners can open
+                        their private rows too (needed for activity detail). */}
+                    <a
+                      href={`/${locale}/tour/${row.id}`}
+                      className="text-emerald-700 hover:underline"
+                    >
+                      {t("view")}
+                    </a>
                     <button
                       type="button"
                       onClick={() => download(row)}

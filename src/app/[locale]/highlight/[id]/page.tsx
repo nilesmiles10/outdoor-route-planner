@@ -122,6 +122,7 @@ export default async function HighlightPage({
         .from("tours")
         .select("id,name,sport,stats,waypoints")
         .eq("visibility", "public")
+        .eq("kind", "planned")
         .limit(100),
       sb
         .from("highlights")

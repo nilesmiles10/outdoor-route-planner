@@ -54,6 +54,7 @@ export default function DiscoverPage() {
     sb.from("tours")
       .select("id,name,sport,stats,waypoints")
       .eq("visibility", "public")
+      .eq("kind", "planned")
       .limit(100)
       .then(({ data }) => setRows((data as Row[]) ?? []));
     sb.from("highlights")

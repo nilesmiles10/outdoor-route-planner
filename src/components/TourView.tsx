@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 import MapView, { type Waypoint } from "./MapView";
 import ElevationChart from "./ElevationChart";
+import SpeedChart from "./SpeedChart";
 import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
+import { speedSeries, fmtDuration } from "@/lib/activity";
 import { buildGpx } from "@/lib/gpx";
 
 type Props = {
@@ -31,9 +33,25 @@ type Props = {
   related?: {
     toursTitle: string;
     tours: { href: string; name: string; meta: string }[];
+    passedTitle?: string;
+    passed?: { href: string; name: string; meta: string }[];
     highlightsTitle: string;
     highlights: { href: string; name: string; meta: string }[];
   };
+  // GEN-117: present on completed activities — speed profile + recording stats.
+  activity?: {
+    timeOffsets: number[];
+    recordedLabel: string;
+    movingLabel: string;
+    elapsedLabel: string;
+    avgLabel: string;
+    maxLabel: string;
+    segmentLabel: string;
+    movingS: number;
+    durationS: number;
+    avgKmh: string;
+    maxKmh: number;
+  } | null;
 };
 
 const noop = () => {};
@@ -46,6 +64,7 @@ export default function TourView({
   autoDesc,
   weather,
   related,
+  activity,
 }: Props) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const feature: GeoJSON.Feature = useMemo(
@@ -59,6 +78,11 @@ export default function TourView({
   const climbs = useMemo(
     () => detectClimbs(elevation, distances),
     [elevation, distances],
+  );
+  const speeds = useMemo(
+    () =>
+      activity ? speedSeries(geometry.coordinates, activity.timeOffsets) : null,
+    [activity, geometry],
   );
   const total = header.buckets.paved + header.buckets.unpaved + header.buckets.unknown;
   const plannerHref = `/?w=${waypoints
@@ -88,7 +112,12 @@ export default function TourView({
       <div className="absolute flex flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur max-md:inset-x-2 max-md:bottom-2 max-md:max-h-[45dvh] md:left-4 md:top-16 md:max-h-[calc(100dvh-5rem)] md:w-[340px]">
         <div>
           <h1 className="text-lg font-semibold text-neutral-900">{header.name}</h1>
-          <p className="text-xs capitalize text-neutral-500">{header.sport}</p>
+          <p className="text-xs capitalize text-neutral-500">
+            {header.sport}
+            {activity && (
+              <span className="normal-case"> · 🏁 {activity.recordedLabel}</span>
+            )}
+          </p>
         </div>
         <div className="grid grid-cols-4 gap-2 text-center">
           <div>
@@ -108,6 +137,45 @@ export default function TourView({
             <div className="text-[10px] uppercase text-neutral-500">m</div>
           </div>
         </div>
+        {/* GEN-117: recording stats + speed profile */}
+        {activity && (
+          <div className="grid grid-cols-4 gap-2 rounded-lg bg-sky-50 px-2 py-1.5 text-center">
+            <div>
+              <div className="text-sm font-semibold">{fmtDuration(activity.movingS)}</div>
+              <div className="text-[9px] uppercase text-neutral-500">
+                {activity.movingLabel}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm font-semibold">{fmtDuration(activity.durationS)}</div>
+              <div className="text-[9px] uppercase text-neutral-500">
+                {activity.elapsedLabel}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm font-semibold">{activity.avgKmh}</div>
+              <div className="text-[9px] uppercase text-neutral-500">
+                {activity.avgLabel}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm font-semibold">{activity.maxKmh}</div>
+              <div className="text-[9px] uppercase text-neutral-500">
+                {activity.maxLabel}
+              </div>
+            </div>
+          </div>
+        )}
+        {activity && speeds && (
+          <SpeedChart
+            speeds={speeds}
+            distances={distances}
+            timeOffsets={activity.timeOffsets}
+            elevation={elevation}
+            onHover={setHoverIdx}
+            segmentLabel={activity.segmentLabel}
+          />
+        )}
         <ElevationChart
           elevation={elevation}
           distances={distances}
@@ -188,6 +256,29 @@ export default function TourView({
                     {tr.name}
                   </div>
                   <div className="text-[10px] text-neutral-500">{tr.meta}</div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* GEN-117: highlights the track actually passes, with km markers */}
+        {related && related.passed && related.passed.length > 0 && (
+          <div>
+            <div className="text-xs font-medium text-neutral-700">
+              {related.passedTitle}
+            </div>
+            <div className="mt-1 flex flex-col gap-0.5">
+              {related.passed.map((hl) => (
+                <a
+                  key={hl.href}
+                  href={hl.href}
+                  className="flex items-baseline justify-between gap-2 rounded px-1 py-0.5 text-xs text-neutral-700 hover:text-emerald-800"
+                >
+                  <span className="min-w-0 truncate">{hl.name}</span>
+                  <span className="shrink-0 text-[10px] text-neutral-400">
+                    {hl.meta}
+                  </span>
                 </a>
               ))}
             </div>

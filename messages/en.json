@@ -143,7 +143,24 @@
     "usePassword": "Log in with password instead",
     "useCode": "Log in with email code instead"
   },
+  "activities": {
+    "upload": "Upload activity",
+    "parsing": "Reading file…",
+    "save": "Save activity",
+    "noTimestamps": "No timestamps in this file — it's a planned route. Use Import GPX in the planner instead.",
+    "autoName": "Activity {date}",
+    "start": "Start",
+    "finish": "Finish"
+  },
   "tourPage": {
+    "activity": {
+      "moving": "Moving",
+      "elapsed": "Elapsed",
+      "avgSpeed": "Ø km/h",
+      "maxSpeed": "Max km/h",
+      "segment": "Selection",
+      "onRoute": "Along the route"
+    },
     "openInPlanner": "Open in planner",
     "downloadGpx": "Download GPX",
     "weather": "Weather at the start",
@@ -256,6 +273,11 @@
     "importCta": "Import GPX via the planner",
     "pace": "Pace",
     "paceHint": "Set your own pace — recalculates the duration",
+    "kinds": {
+      "all": "All",
+      "planned": "Planned",
+      "completed": "Completed"
+    },
     "bands": {
       "all": "Any distance",
       "short": "< 20 km",

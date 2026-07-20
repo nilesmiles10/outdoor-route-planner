@@ -15,7 +15,7 @@ const LOCALES = ["nl", "en"];
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const sb = supabaseServer();
   const [tours, highlights, collections] = await Promise.all([
-    sb.from("tours").select("id,updated_at").eq("visibility", "public").limit(1000),
+    sb.from("tours").select("id,updated_at").eq("visibility", "public").eq("kind", "planned").limit(1000),
     sb
       .from("highlights")
       .select("id,region,category")
