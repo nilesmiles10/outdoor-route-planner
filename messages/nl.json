@@ -251,7 +251,17 @@
     "empty": "Geen routes gevonden.",
     "needLogin": "Log in om je opgeslagen routes te zien.",
     "openPlanner": "Open in planner",
-    "view": "Bekijk pagina"
+    "view": "Bekijk pagina",
+    "allSports": "Alle sporten",
+    "importCta": "GPX importeren via de planner",
+    "pace": "Tempo",
+    "paceHint": "Eigen tempo instellen — herberekent de duur",
+    "bands": {
+      "all": "Elke afstand",
+      "short": "< 20 km",
+      "mid": "20–50 km",
+      "long": "> 50 km"
+    }
   },
   "discover": {
     "title": "Ontdek routes",

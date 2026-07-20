@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { buildGpx } from "@/lib/gpx";
+import { difficulty } from "@/lib/difficulty";
 import AccountPanel from "@/components/AccountPanel";
 
 type Row = {
@@ -12,18 +13,51 @@ type Row = {
   name: string;
   sport: string;
   visibility: "private" | "public";
-  stats: { distanceM: number; ascendM: number };
+  stats: { distanceM: number; timeS: number; ascendM: number };
   waypoints: { name: string; lon: number; lat: number }[];
+  custom_speed_kmh: number | null;
   updated_at: string;
+};
+
+const SPORTS = ["all", "hike", "run", "touring", "gravel", "mtb", "road", "ebike"];
+const BANDS: [string, number, number][] = [
+  ["all", 0, Infinity],
+  ["short", 0, 20000],
+  ["mid", 20000, 50000],
+  ["long", 50000, Infinity],
+];
+
+function fmtTime(s: number) {
+  const h = Math.floor(s / 3600);
+  const m = Math.round((s % 3600) / 60);
+  return `${h}:${String(m).padStart(2, "0")}`;
+}
+
+// Effective duration: custom pace overrides the router's estimate (GEN-130).
+function effectiveTimeS(row: Row): number {
+  if (row.custom_speed_kmh && row.custom_speed_kmh > 0) {
+    return (row.stats.distanceM / 1000 / row.custom_speed_kmh) * 3600;
+  }
+  return row.stats.timeS;
+}
+
+const DIFF_COLORS: Record<string, string> = {
+  easy: "bg-emerald-100 text-emerald-800",
+  moderate: "bg-amber-100 text-amber-800",
+  hard: "bg-red-100 text-red-800",
 };
 
 export default function RoutesPage() {
   const t = useTranslations("routesPage");
+  const tp = useTranslations("planner");
   const locale = useLocale();
   const sb: SupabaseClient = useMemo(() => supabaseBrowser(), []);
   const [user, setUser] = useState<User | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
   const [filter, setFilter] = useState("");
+  const [sport, setSport] = useState("all");
+  const [band, setBand] = useState("all");
+  const [paceEdit, setPaceEdit] = useState<string | null>(null); // row id
 
   useEffect(() => {
     sb.auth.getUser().then(({ data }) => setUser(data.user));
@@ -36,7 +70,9 @@ export default function RoutesPage() {
   const refresh = useCallback(async () => {
     const { data } = await sb
       .from("tours")
-      .select("id,name,sport,visibility,stats,waypoints,updated_at")
+      .select(
+        "id,name,sport,visibility,stats,waypoints,custom_speed_kmh,updated_at",
+      )
       .order("updated_at", { ascending: false })
       .limit(100);
     setRows((data as Row[]) ?? []);
@@ -67,13 +103,33 @@ export default function RoutesPage() {
     URL.revokeObjectURL(a.href);
   }
 
-  const filtered = rows.filter((r) =>
-    r.name.toLowerCase().includes(filter.toLowerCase()),
-  );
+  async function savePace(row: Row, value: string) {
+    const v = Number(value.replace(",", "."));
+    const speed = Number.isFinite(v) && v > 0 && v < 100 ? v : null;
+    await sb.from("tours").update({ custom_speed_kmh: speed }).eq("id", row.id);
+    setPaceEdit(null);
+    refresh();
+  }
+
+  const [, lo, hi] = BANDS.find(([k]) => k === band)!;
+  const filtered = rows
+    .filter((r) => r.name.toLowerCase().includes(filter.toLowerCase()))
+    .filter((r) => sport === "all" || r.sport === sport)
+    .filter((r) => r.stats.distanceM >= lo && r.stats.distanceM < hi);
 
   return (
     <main className="mx-auto min-h-dvh max-w-3xl px-4 pb-16 pt-20">
-      <h1 className="text-xl font-semibold text-neutral-900">{t("title")}</h1>
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="text-xl font-semibold text-neutral-900">{t("title")}</h1>
+        {user && (
+          <a
+            href={`/${locale}`}
+            className="shrink-0 text-xs text-emerald-700 hover:underline"
+          >
+            ⤒ {t("importCta")}
+          </a>
+        )}
+      </div>
       {!user ? (
         <div className="mt-6 max-w-sm">
           <p className="mb-3 text-sm text-neutral-600">{t("needLogin")}</p>
@@ -87,6 +143,39 @@ export default function RoutesPage() {
             placeholder={t("searchPlaceholder")}
             className="mt-4 w-full max-w-sm rounded-lg border border-neutral-200 px-3 py-2 text-sm"
           />
+          <div className="mt-3 flex flex-wrap gap-1">
+            {SPORTS.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setSport(s)}
+                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  sport === s
+                    ? "bg-emerald-700 text-white"
+                    : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+                }`}
+              >
+                {s === "all" ? t("allSports") : tp(`sports.${s}` as never)}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1">
+            {BANDS.map(([k]) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setBand(k)}
+                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  band === k
+                    ? "bg-neutral-800 text-white"
+                    : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+                }`}
+              >
+                {t(`bands.${k}` as never)}
+              </button>
+            ))}
+          </div>
+
           <div className="mt-4 flex flex-col gap-2">
             {filtered.length === 0 && (
               <p className="text-sm text-neutral-400">{t("empty")}</p>
@@ -95,20 +184,73 @@ export default function RoutesPage() {
               const plannerHref = `/${locale}?w=${row.waypoints
                 .map((p) => `${p.lon.toFixed(5)},${p.lat.toFixed(5)}`)
                 .join(";")}&sport=${row.sport}`;
+              const diff = difficulty(
+                row.sport,
+                row.stats.distanceM,
+                row.stats.ascendM,
+              );
+              const timeS = effectiveTimeS(row);
+              const defaultSpeed =
+                row.stats.timeS > 0
+                  ? row.stats.distanceM / 1000 / (row.stats.timeS / 3600)
+                  : 0;
               return (
                 <div
                   key={row.id}
                   className="flex flex-wrap items-center gap-3 rounded-xl border border-neutral-100 bg-white px-4 py-3 shadow-sm"
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium text-neutral-900">
-                      {row.name}
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${DIFF_COLORS[diff]}`}
+                      >
+                        {tp(`difficultyLabels.${diff}` as never)}
+                      </span>
+                      <span className="truncate font-medium text-neutral-900">
+                        {row.name}
+                      </span>
                     </div>
-                    <div className="text-xs text-neutral-500">
-                      {(row.stats.distanceM / 1000).toFixed(1)} km · ↗{" "}
-                      {row.stats.ascendM} m ·{" "}
-                      <span className="capitalize">{row.sport}</span> ·{" "}
-                      {new Date(row.updated_at).toLocaleDateString(locale)}
+                    <div className="mt-0.5 text-xs text-neutral-500">
+                      {(row.stats.distanceM / 1000).toFixed(1)} km ·{" "}
+                      {fmtTime(timeS)} · ↗ {row.stats.ascendM} m ·{" "}
+                      <span className="capitalize">
+                        {tp(`sports.${row.sport}` as never)}
+                      </span>{" "}
+                      · {new Date(row.updated_at).toLocaleDateString(locale)}
+                    </div>
+                    {/* Custom pace (GEN-130): overrides the estimated duration */}
+                    <div className="mt-1 text-[11px] text-neutral-400">
+                      {paceEdit === row.id ? (
+                        <span className="flex items-center gap-1">
+                          {t("pace")}:
+                          <input
+                            autoFocus
+                            defaultValue={
+                              row.custom_speed_kmh ?? defaultSpeed.toFixed(1)
+                            }
+                            onBlur={(e) => savePace(row, e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter")
+                                savePace(row, (e.target as HTMLInputElement).value);
+                              if (e.key === "Escape") setPaceEdit(null);
+                            }}
+                            className="w-14 rounded border border-neutral-200 px-1 py-0.5 text-[11px]"
+                          />
+                          km/h
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setPaceEdit(row.id)}
+                          className="hover:text-emerald-700"
+                          title={t("paceHint")}
+                        >
+                          {t("pace")}:{" "}
+                          {row.custom_speed_kmh
+                            ? `${row.custom_speed_kmh} km/h ✎`
+                            : `${defaultSpeed.toFixed(1)} km/h ✎`}
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
