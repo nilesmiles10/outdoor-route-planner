@@ -49,6 +49,7 @@ type Props = {
   // legs (A4), and panel-hover marker emphasis (A6).
   viaHandles?: GeoJSON.FeatureCollection | null;
   offGridLines?: GeoJSON.FeatureCollection | null;
+  alertLines?: GeoJSON.FeatureCollection | null;
   // GEN-137: distance markers along the route (every 5/10 km).
   kmMarkers?: GeoJSON.FeatureCollection | null;
   emphasisSlot?: number | null;
@@ -70,6 +71,7 @@ export default function MapView({
   onMarkerClick,
   viaHandles,
   offGridLines,
+  alertLines,
   kmMarkers,
   emphasisSlot,
 }: Props) {
@@ -162,6 +164,18 @@ export default function MapView({
           "line-width": 3,
           "line-dasharray": [1, 2],
         },
+      });
+      // GEN-129: restricted-access stretches painted red on top of the route.
+      map.addSource("alerts", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+      map.addLayer({
+        id: "alert-line",
+        type: "line",
+        source: "alerts",
+        layout: { "line-cap": "round" },
+        paint: { "line-color": "#dc2626", "line-width": 5 },
       });
       // Komoot-style midpoint grab-handles per leg (GEN-141 A1). Purely a
       // visible affordance — dragging/clicking is handled by route-hit below.
@@ -450,6 +464,13 @@ export default function MapView({
       offGridLines ?? { type: "FeatureCollection", features: [] },
     );
   }, [offGridLines, ready]);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    (map.getSource("alerts") as maplibregl.GeoJSONSource | undefined)?.setData(
+      alertLines ?? { type: "FeatureCollection", features: [] },
+    );
+  }, [alertLines, ready]);
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;

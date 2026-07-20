@@ -29,6 +29,13 @@ import {
 const SPORTS = ["hike", "run", "touring", "gravel", "mtb", "road", "ebike"] as const;
 type Sport = (typeof SPORTS)[number];
 
+type RouteAlert = {
+  kind: string; // access_no | access_private | bicycle_no | foot_no
+  fromIdx: number;
+  toIdx: number;
+  distanceM: number;
+};
+
 type RouteResult = {
   geometry: GeoJSON.Feature;
   stats: { distanceM: number; timeS: number; ascendM: number; descendM: number };
@@ -38,6 +45,7 @@ type RouteResult = {
   };
   waytypes: Record<string, number>;
   elevation: number[];
+  alerts?: RouteAlert[];
 };
 
 type Slots = (Waypoint | null)[];
@@ -253,6 +261,7 @@ function straightLeg(from: Waypoint, to: Waypoint, sport: Sport): RouteResult {
     surfaces: { buckets: { paved: 0, unpaved: 0, unknown: distanceM }, detailM: {} },
     waytypes: {},
     elevation: [0, 0],
+    alerts: [],
   };
 }
 
@@ -277,8 +286,20 @@ function mergeLegs(legs: RouteResult[]): RouteResult {
   const buckets = { paved: 0, unpaved: 0, unknown: 0 };
   const detailM: Record<string, number> = {};
   const waytypes: Record<string, number> = {};
+  const alerts: RouteAlert[] = [];
   legs.forEach((leg, i) => {
     const legCoords = (leg.geometry.geometry as GeoJSON.LineString).coordinates;
+    // Leg-local index k maps to the merged array: legs after the first drop
+    // their shared joint coordinate, so k lands at base + k - 1.
+    const base = coords.length;
+    const globalIdx = (k: number) => (i === 0 ? k : base + k - 1);
+    for (const a of leg.alerts ?? []) {
+      alerts.push({
+        ...a,
+        fromIdx: globalIdx(a.fromIdx),
+        toIdx: globalIdx(a.toIdx),
+      });
+    }
     coords.push(...(i === 0 ? legCoords : legCoords.slice(1)));
     elevation.push(...(i === 0 ? leg.elevation : leg.elevation.slice(1)));
     stats.distanceM += leg.stats.distanceM;
@@ -305,6 +326,7 @@ function mergeLegs(legs: RouteResult[]): RouteResult {
     surfaces: { buckets, detailM },
     waytypes,
     elevation,
+    alerts,
   };
 }
 
@@ -329,6 +351,21 @@ export default function PlannerApp() {
     () => (routeCoords ? cumulativeDistances(routeCoords) : null),
     [routeCoords],
   );
+  // GEN-129: restricted stretches as slices of the route line.
+  const alertLines = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    if (!route?.alerts?.length || !routeCoords) return null;
+    return {
+      type: "FeatureCollection",
+      features: route.alerts.map((a) => ({
+        type: "Feature",
+        properties: { kind: a.kind },
+        geometry: {
+          type: "LineString",
+          coordinates: routeCoords.slice(a.fromIdx, a.toIdx + 1),
+        },
+      })),
+    };
+  }, [route, routeCoords]);
   const climbs = useMemo(
     () =>
       route && distances ? detectClimbs(route.elevation, distances) : [],
@@ -1089,6 +1126,7 @@ export default function PlannerApp() {
         onMarkerClick={handleMarkerClick}
         viaHandles={viaHandles}
         offGridLines={offGridLines}
+        alertLines={alertLines}
         kmMarkers={kmMarkers}
         emphasisSlot={emphasisSlot}
         balloonAt={balloon}
@@ -1785,6 +1823,31 @@ export default function PlannerApp() {
                 <div className="text-[10px] uppercase text-neutral-500">m</div>
               </div>
             </div>
+
+            {/* GEN-129: access warnings — static restrictions only */}
+            {route.alerts && route.alerts.length > 0 && distances && (
+              <div className="flex flex-col gap-1">
+                {route.alerts.map((a, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onMouseEnter={() => setHoverIdx(a.fromIdx)}
+                    onMouseLeave={() => setHoverIdx(null)}
+                    className="flex items-center justify-between rounded-lg bg-red-50 px-2 py-1 text-left text-[11px] text-red-900 hover:bg-red-100"
+                  >
+                    <span>
+                      ⚠ {t(`alerts.${a.kind}` as never)} ·{" "}
+                      {a.distanceM >= 1000
+                        ? `${(a.distanceM / 1000).toFixed(1)} km`
+                        : `${a.distanceM} m`}
+                    </span>
+                    <span className="text-red-400">
+                      {t("atKm")} {((distances[a.fromIdx] ?? 0) / 1000).toFixed(1)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
 
             {distances && (
               <ElevationChart

@@ -125,6 +125,12 @@
       "toggle": "Saved places",
       "save": "Save this place",
       "remove": "Remove from saved"
+    },
+    "alerts": {
+      "access_no": "No access on this stretch",
+      "access_private": "Private ground on this stretch",
+      "bicycle_no": "Cycling prohibited on this stretch",
+      "foot_no": "Walking prohibited on this stretch"
     }
   },
   "account": {

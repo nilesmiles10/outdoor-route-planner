@@ -48,11 +48,50 @@ export async function GET(req: NextRequest) {
     }
     const props = feature.properties;
 
-    // messages: [header, ...rows] — per-segment WayTags (GEN-106 data source)
+    // Per-point elevation from the 3rd coordinate (GEN-101/105 data source)
+    const coords: [number, number, number?][] = feature.geometry.coordinates;
+    const elevation = coords.map((c) => c[2] ?? 0);
+
+    // GEN-129: which restriction tags warrant a warning for this sport.
+    // Scope (spike 2026-07-20): STATIC access tags only — lookups.dat 1.7.10
+    // carries no *:conditional data, so seasonal closures can't be detected.
+    const footSport = sport === "hike" || sport === "run";
+    const alertFor = (tags: Record<string, string>): string | null => {
+      if (tags.access === "no" || tags.access === "private") {
+        return `access_${tags.access}`;
+      }
+      if (!footSport && tags.bicycle === "no") return "bicycle_no";
+      if (footSport && tags.foot === "no") return "foot_no";
+      return null;
+    };
+    // Nearest geometry index for a message coordinate (microdegrees).
+    const idxNear = (lonU: number, latU: number): number => {
+      const lon = lonU / 1e6;
+      const lat = latU / 1e6;
+      let best = 0;
+      let bestD = Infinity;
+      for (let i = 0; i < coords.length; i++) {
+        const dx = coords[i][0] - lon;
+        const dy = coords[i][1] - lat;
+        const d = dx * dx + dy * dy;
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
+      }
+      return best;
+    };
+
+    // messages: [header, ...rows] — per-way-stretch WayTags. Each row's
+    // Longitude/Latitude is the END of its stretch; the stretch starts at
+    // the previous row's end (route start for the first row).
     const messages: string[][] = props.messages ?? [];
     const surfacesKm: Record<string, number> = {};
     const waytypesKm: Record<string, number> = {};
     const buckets = { paved: 0, unpaved: 0, unknown: 0 };
+    type Alert = { kind: string; fromIdx: number; toIdx: number; distanceM: number };
+    const alerts: Alert[] = [];
+    let prevIdx = 0;
     for (const row of messages.slice(1)) {
       const distance = parseInt(row[3] ?? "0", 10);
       const tags: Record<string, string> = {};
@@ -66,11 +105,21 @@ export async function GET(req: NextRequest) {
         (surfacesKm[surface ?? "unknown"] ?? 0) + distance;
       waytypesKm[highway] = (waytypesKm[highway] ?? 0) + distance;
       buckets[surfaceBucket(surface)] += distance;
-    }
 
-    // Per-point elevation from the 3rd coordinate (GEN-101/105 data source)
-    const coords: [number, number, number?][] = feature.geometry.coordinates;
-    const elevation = coords.map((c) => c[2] ?? 0);
+      const endIdx = idxNear(parseInt(row[0] ?? "0", 10), parseInt(row[1] ?? "0", 10));
+      const kind = alertFor(tags);
+      if (kind && endIdx > prevIdx) {
+        const last = alerts[alerts.length - 1];
+        if (last && last.kind === kind && last.toIdx === prevIdx) {
+          // consecutive stretches of the same restriction — merge
+          last.toIdx = endIdx;
+          last.distanceM += distance;
+        } else {
+          alerts.push({ kind, fromIdx: prevIdx, toIdx: endIdx, distanceM: distance });
+        }
+      }
+      prevIdx = Math.max(prevIdx, endIdx);
+    }
 
     return NextResponse.json({
       geometry: {
@@ -87,6 +136,7 @@ export async function GET(req: NextRequest) {
       surfaces: { buckets, detailM: surfacesKm },
       waytypes: waytypesKm,
       elevation,
+      alerts,
     });
   } catch {
     return NextResponse.json(

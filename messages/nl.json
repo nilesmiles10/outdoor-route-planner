@@ -125,6 +125,12 @@
       "toggle": "Opgeslagen plekken",
       "save": "Plek opslaan",
       "remove": "Verwijderen uit opgeslagen"
+    },
+    "alerts": {
+      "access_no": "Verboden toegang op dit deel",
+      "access_private": "Privéterrein op dit deel",
+      "bicycle_no": "Fietsen verboden op dit deel",
+      "foot_no": "Wandelen verboden op dit deel"
     }
   },
   "account": {
