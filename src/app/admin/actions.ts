@@ -213,6 +213,8 @@ export async function updateSiteSettings(formData: FormData) {
     tagline_nl: String(formData.get("tagline_nl") ?? "").trim(),
     tagline_en: String(formData.get("tagline_en") ?? "").trim(),
   };
+  patch.google_site_verification =
+    String(formData.get("google_site_verification") ?? "").trim() || null;
   const logo = formData.get("logo") as File | null;
   if (logo && logo.size > 0) {
     const ext = logo.name.split(".").pop()?.toLowerCase() || "png";
@@ -226,6 +228,18 @@ export async function updateSiteSettings(formData: FormData) {
     }
   }
   if (String(formData.get("remove_logo")) === "1") patch.logo_url = null;
+  const og = formData.get("og_image") as File | null;
+  if (og && og.size > 0) {
+    const ext = og.name.split(".").pop()?.toLowerCase() || "png";
+    const path = `og-${Date.now()}.${ext}`;
+    const { error } = await sb.storage.from("branding").upload(path, og, {
+      cacheControl: "31536000",
+    });
+    if (!error) {
+      patch.og_image_url = sb.storage.from("branding").getPublicUrl(path).data.publicUrl;
+    }
+  }
+  if (String(formData.get("remove_og")) === "1") patch.og_image_url = null;
   await sb
     .from("site_settings")
     .update({ ...patch, updated_at: new Date().toISOString() })
@@ -233,4 +247,58 @@ export async function updateSiteSettings(formData: FormData) {
   await audit(sb, user, "site_settings_update", "site_settings", "1", patch);
   revalidateTag("site-settings");
   revalidatePath("/admin/settings");
+}
+
+// ---- Pages-CMS ----
+
+// Slugs that would shadow real routes — the dynamic [slug] segment loses
+// to static segments in Next anyway, but refusing them here avoids
+// confusing dead pages.
+const RESERVED_SLUGS = new Set([
+  "collection", "collections", "discover", "feed", "highlight",
+  "reset-password", "routes", "tour", "user", "admin", "embed", "api",
+]);
+
+export async function savePage(formData: FormData) {
+  const { user, sb } = await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const slug = String(formData.get("slug") ?? "").trim().toLowerCase();
+  if (!/^[a-z0-9-]{1,60}$/.test(slug) || RESERVED_SLUGS.has(slug)) {
+    throw new Error("invalid_or_reserved_slug");
+  }
+  const row = {
+    slug,
+    title_nl: String(formData.get("title_nl") ?? "").trim(),
+    title_en: String(formData.get("title_en") ?? "").trim(),
+    content_nl: String(formData.get("content_nl") ?? ""),
+    content_en: String(formData.get("content_en") ?? ""),
+    meta_description_nl: String(formData.get("meta_description_nl") ?? "").trim() || null,
+    meta_description_en: String(formData.get("meta_description_en") ?? "").trim() || null,
+    published: String(formData.get("published")) === "1",
+    noindex: String(formData.get("noindex")) === "1",
+    show_in_footer: String(formData.get("show_in_footer")) === "1",
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = id
+    ? await sb.from("pages").update(row).eq("id", id)
+    : await sb.from("pages").insert(row);
+  if (error) throw new Error(error.message);
+  await audit(sb, user, id ? "page_update" : "page_create", "page", id || slug, {
+    slug,
+    published: row.published,
+  });
+  revalidateTag("pages");
+  for (const locale of ["nl", "en"]) revalidatePath(`/${locale}/${slug}`);
+  revalidatePath("/admin/pages");
+}
+
+export async function deletePage(formData: FormData) {
+  const { user, sb } = await requireAdmin();
+  const id = String(formData.get("id"));
+  const slug = String(formData.get("slug") ?? "");
+  await sb.from("pages").delete().eq("id", id);
+  await audit(sb, user, "page_delete", "page", id, { slug });
+  revalidateTag("pages");
+  if (slug) for (const locale of ["nl", "en"]) revalidatePath(`/${locale}/${slug}`);
+  revalidatePath("/admin/pages");
 }

@@ -4,25 +4,30 @@
 // context — one cached fetch in the layout, brand in the initial HTML,
 // zero client-side queries.
 import { createContext, useContext } from "react";
-import type { SiteSettings } from "@/lib/siteSettings";
+import type { FooterPage, SiteSettings } from "@/lib/siteSettings";
 
-const Ctx = createContext<SiteSettings>({
+type Ctx = SiteSettings & { footer_pages: FooterPage[] };
+
+const SettingsCtx = createContext<Ctx>({
   site_name: "Outdoor Route Planner",
   tagline_nl: "Plan je volgende avontuur",
   tagline_en: "Plan your next adventure",
   logo_url: null,
+  og_image_url: null,
+  google_site_verification: null,
+  footer_pages: [],
 });
 
 export function SiteSettingsProvider({
   value,
   children,
 }: {
-  value: SiteSettings;
+  value: Ctx;
   children: React.ReactNode;
 }) {
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return <SettingsCtx.Provider value={value}>{children}</SettingsCtx.Provider>;
 }
 
-export function useSiteSettings(): SiteSettings {
-  return useContext(Ctx);
+export function useSiteSettings(): Ctx {
+  return useContext(SettingsCtx);
 }

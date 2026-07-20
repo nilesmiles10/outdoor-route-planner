@@ -9,7 +9,7 @@ export default async function AdminSettingsPage() {
   const { sb } = await requireAdmin();
   const { data } = await sb
     .from("site_settings")
-    .select("site_name,tagline_nl,tagline_en,logo_url,updated_at")
+    .select("site_name,tagline_nl,tagline_en,logo_url,og_image_url,google_site_verification,updated_at")
     .eq("id", 1)
     .maybeSingle();
   const s = data ?? {
@@ -17,6 +17,8 @@ export default async function AdminSettingsPage() {
     tagline_nl: "",
     tagline_en: "",
     logo_url: null,
+    og_image_url: null,
+    google_site_verification: null,
     updated_at: null,
   };
 
@@ -76,6 +78,43 @@ export default async function AdminSettingsPage() {
             <span className="text-neutral-400">Square works best (shown at 28×28 in the header).</span>
           </div>
         </div>
+
+        <div className="flex items-center gap-4 border-t border-neutral-100 pt-3">
+          <div>
+            <span className="mb-1 block text-xs font-medium text-neutral-600">
+              Social share image (OG, 1200×630)
+            </span>
+            {s.og_image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={s.og_image_url} alt="og" className="h-16 w-32 rounded-lg border border-neutral-200 object-cover" />
+            ) : (
+              <div className="flex h-16 w-32 items-center justify-center rounded-lg border border-dashed border-neutral-300 text-xs text-neutral-400">
+                none
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col gap-1 text-xs">
+            <input type="file" name="og_image" accept="image/png,image/jpeg,image/webp" />
+            {s.og_image_url && (
+              <label className="flex items-center gap-1 text-neutral-500">
+                <input type="checkbox" name="remove_og" value="1" /> remove
+              </label>
+            )}
+            <span className="text-neutral-400">Shown when links are shared on socials.</span>
+          </div>
+        </div>
+
+        <label className="text-sm">
+          <span className="mb-1 block text-xs font-medium text-neutral-600">
+            Google Search Console verification code
+          </span>
+          <input
+            name="google_site_verification"
+            defaultValue={s.google_site_verification ?? ""}
+            placeholder="abc123… (uit de meta-tag, alleen de content-waarde)"
+            className="w-full rounded-lg border border-neutral-200 px-3 py-2 font-mono text-sm"
+          />
+        </label>
 
         <div className="flex items-center gap-3">
           <button

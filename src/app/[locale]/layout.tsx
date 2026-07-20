@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import AppHeader from "@/components/AppHeader";
 import { SiteSettingsProvider } from "@/components/SiteSettingsProvider";
-import { getSiteSettings, tagline } from "@/lib/siteSettings";
+import { getFooterPages, getSiteSettings, tagline } from "@/lib/siteSettings";
+import { SITE_URL } from "@/app/sitemap";
 import "../globals.css";
 
 export async function generateMetadata({
@@ -13,7 +14,23 @@ export async function generateMetadata({
   params: { locale: string };
 }): Promise<Metadata> {
   const s = await getSiteSettings();
-  return { title: s.site_name, description: tagline(s, params.locale) };
+  const desc = tagline(s, params.locale);
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: s.site_name,
+    description: desc,
+    alternates: { languages: { nl: "/nl", en: "/en" } },
+    openGraph: {
+      siteName: s.site_name,
+      title: s.site_name,
+      description: desc,
+      ...(s.og_image_url ? { images: [s.og_image_url] } : {}),
+    },
+    twitter: { card: s.og_image_url ? "summary_large_image" : "summary" },
+    ...(s.google_site_verification
+      ? { verification: { google: s.google_site_verification } }
+      : {}),
+  };
 }
 
 export function generateStaticParams() {
@@ -29,13 +46,16 @@ export default async function LocaleLayout({
 }) {
   const { locale } = params;
   if (!hasLocale(routing.locales, locale)) notFound();
-  const settings = await getSiteSettings();
+  const [settings, footerPages] = await Promise.all([
+    getSiteSettings(),
+    getFooterPages(),
+  ]);
 
   return (
     <html lang={locale}>
       <body className="antialiased">
         <NextIntlClientProvider>
-          <SiteSettingsProvider value={settings}>
+          <SiteSettingsProvider value={{ ...settings, footer_pages: footerPages }}>
             <AppHeader />
             {children}
           </SiteSettingsProvider>

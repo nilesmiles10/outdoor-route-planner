@@ -14,7 +14,7 @@ const LOCALES = ["nl", "en"];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const sb = supabaseServer();
-  const [tours, highlights, collections] = await Promise.all([
+  const [tours, highlights, collections, pages] = await Promise.all([
     sb.from("tours").select("id,updated_at").eq("visibility", "public").eq("kind", "planned").limit(1000),
     sb
       .from("highlights")
@@ -26,6 +26,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .select("id,updated_at")
       .eq("visibility", "public")
       .limit(1000),
+    sb
+      .from("pages")
+      .select("slug,updated_at")
+      .eq("published", true)
+      .eq("noindex", false)
+      .limit(100),
   ]);
 
   // GEN-116: region × category pages that pass the thin-content gate (≥8).
@@ -85,6 +91,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         url: `${SITE_URL}/${locale}/discover/${combo}`,
         changeFrequency: "weekly",
         priority: 0.7,
+      });
+    }
+    for (const pg of pages.data ?? []) {
+      entries.push({
+        url: `${SITE_URL}/${locale}/${pg.slug}`,
+        lastModified: pg.updated_at,
+        changeFrequency: "monthly",
+        priority: 0.4,
       });
     }
   }
