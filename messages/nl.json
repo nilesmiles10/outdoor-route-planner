@@ -79,6 +79,11 @@
       "remove": "Verwijder uit route",
       "offGrid": "Off-grid segment (rechte lijn)"
     },
+    "mapContent": {
+      "button": "Kaartinhoud",
+      "title": "Kaartinhoud",
+      "kmMarkers": "Afstandsmarkeringen"
+    },
     "rowActions": {
       "remove": "Waypoint verwijderen",
       "up": "Omhoog",

@@ -365,6 +365,10 @@ export default function PlannerApp() {
   const [user, setUser] = useState<User | null>(null);
   const [showHl, setShowHl] = useState(true);
   const [hlRows, setHlRows] = useState<HighlightPoint[] | null>(null);
+  // Map-content panel (GEN-137): per-category highlight toggles + km markers.
+  const [mapContentOpen, setMapContentOpen] = useState(false);
+  const [hiddenCats, setHiddenCats] = useState<Set<string>>(new Set());
+  const [showKmMarkers, setShowKmMarkers] = useState(true);
   const [selectedHl, setSelectedHl] = useState<HighlightClick | null>(null);
   const [hlScore, setHlScore] = useState<number | null>(null);
   const [myVote, setMyVote] = useState<0 | 1 | -1>(0);
@@ -393,9 +397,19 @@ export default function PlannerApp() {
   }, [showHl, hlRows, sb]);
 
   const hlFeatures = useMemo(
-    () => (showHl && hlRows ? toFeatureCollection(hlRows) : null),
-    [showHl, hlRows],
+    () =>
+      showHl && hlRows
+        ? toFeatureCollection(hlRows.filter((h) => !hiddenCats.has(h.category)))
+        : null,
+    [showHl, hlRows, hiddenCats],
   );
+
+  // Category counts for the map-content panel (GEN-137).
+  const catCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const h of hlRows ?? []) m.set(h.category, (m.get(h.category) ?? 0) + 1);
+    return m;
+  }, [hlRows]);
 
   const handleHighlightClick = useCallback(
     (h: HighlightClick) => {
@@ -543,6 +557,30 @@ export default function PlannerApp() {
     }
     return features.length ? { type: "FeatureCollection", features } : null;
   }, [filled]);
+
+  // Distance markers along the route (GEN-137): every 5 km, 10 km on long routes.
+  const kmMarkers = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    if (!showKmMarkers || !routeCoords || !distances || distances.length === 0)
+      return null;
+    const total = distances[distances.length - 1] ?? 0;
+    const stepM = (total > 100_000 ? 10 : 5) * 1000;
+    const features: GeoJSON.Feature[] = [];
+    let next = stepM;
+    for (let i = 0; i < distances.length && next < total; i++) {
+      if ((distances[i] ?? 0) >= next) {
+        const c = routeCoords[i];
+        if (c) {
+          features.push({
+            type: "Feature",
+            properties: { label: String(Math.round(next / 1000)) },
+            geometry: { type: "Point", coordinates: c },
+          });
+        }
+        next += stepM;
+      }
+    }
+    return features.length ? { type: "FeatureCollection", features } : null;
+  }, [showKmMarkers, routeCoords, distances]);
 
   // Per-leg cache: editing one waypoint only refetches the adjacent legs,
   // everything else is served from cache (Komoot-style incremental routing).
@@ -969,6 +1007,7 @@ export default function PlannerApp() {
         onMarkerClick={handleMarkerClick}
         viaHandles={viaHandles}
         offGridLines={offGridLines}
+        kmMarkers={kmMarkers}
         emphasisSlot={emphasisSlot}
         balloonAt={balloon}
         balloonContent={
@@ -1081,36 +1120,106 @@ export default function PlannerApp() {
         }
       />
 
-      {/* Highlights layer toggle + create button (GEN-115) */}
+      {/* Map-content panel (GEN-137): layer + category toggles, km markers */}
       <div className="absolute bottom-6 right-4 flex flex-col items-end gap-2">
-        {user && showHl && (
-          <button
-            type="button"
-            onClick={() => {
-              setAddingHl((v) => !v);
-              setPendingHl(null);
-            }}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium shadow-lg ${
-              addingHl
-                ? "bg-amber-500 text-white"
-                : "bg-white/95 text-neutral-700 hover:bg-white"
-            }`}
-          >
-            {addingHl ? t("highlights.clickMap") : `+ ${t("highlights.add")}`}
-          </button>
+        {mapContentOpen && (
+          <div className="w-60 rounded-2xl bg-white/95 p-3 shadow-xl backdrop-blur">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-neutral-900">
+                {t("mapContent.title")}
+              </span>
+              <button
+                type="button"
+                onClick={() => setMapContentOpen(false)}
+                className="text-neutral-300 hover:text-neutral-600"
+                aria-label="close"
+              >
+                ×
+              </button>
+            </div>
+
+            <label className="mt-2 flex items-center gap-2 text-xs text-neutral-800">
+              <input
+                type="checkbox"
+                checked={showHl}
+                onChange={() => {
+                  setShowHl((v) => !v);
+                  setSelectedHl(null);
+                  setAddingHl(false);
+                }}
+                className="accent-emerald-700"
+              />
+              ✦ {t("highlights.toggle")}
+            </label>
+            {showHl && (
+              <div className="ml-5 mt-1 flex flex-col gap-1">
+                {HIGHLIGHT_CATEGORIES.filter((c) => (catCounts.get(c) ?? 0) > 0).map(
+                  (c) => (
+                    <label
+                      key={c}
+                      className="flex items-center gap-2 text-xs text-neutral-600"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!hiddenCats.has(c)}
+                        onChange={() =>
+                          setHiddenCats((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(c)) next.delete(c);
+                            else next.add(c);
+                            return next;
+                          })
+                        }
+                        className="accent-emerald-700"
+                      />
+                      {CATEGORY_EMOJI[c]} {t(`highlights.cat.${c}` as never)}
+                      <span className="ml-auto text-[10px] text-neutral-400">
+                        {catCounts.get(c)}
+                      </span>
+                    </label>
+                  ),
+                )}
+              </div>
+            )}
+
+            <label className="mt-2 flex items-center gap-2 border-t border-neutral-100 pt-2 text-xs text-neutral-800">
+              <input
+                type="checkbox"
+                checked={showKmMarkers}
+                onChange={() => setShowKmMarkers((v) => !v)}
+                className="accent-emerald-700"
+              />
+              📏 {t("mapContent.kmMarkers")}
+            </label>
+
+            {user && showHl && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAddingHl((v) => !v);
+                  setPendingHl(null);
+                }}
+                className={`mt-2 w-full rounded-lg px-2 py-1.5 text-xs font-medium ${
+                  addingHl
+                    ? "bg-amber-500 text-white"
+                    : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+                }`}
+              >
+                {addingHl ? t("highlights.clickMap") : `+ ${t("highlights.add")}`}
+              </button>
+            )}
+          </div>
         )}
         <button
           type="button"
-          onClick={() => {
-            setShowHl((v) => !v);
-            setSelectedHl(null);
-            setAddingHl(false);
-          }}
+          onClick={() => setMapContentOpen((v) => !v)}
           className={`rounded-full px-3 py-1.5 text-xs font-medium shadow-lg ${
-            showHl ? "bg-emerald-700 text-white" : "bg-white/95 text-neutral-700 hover:bg-white"
+            mapContentOpen
+              ? "bg-emerald-700 text-white"
+              : "bg-white/95 text-neutral-700 hover:bg-white"
           }`}
         >
-          ✦ {t("highlights.toggle")}
+          🗺 {t("mapContent.button")}
         </button>
       </div>
 

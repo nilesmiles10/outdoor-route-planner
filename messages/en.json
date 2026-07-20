@@ -79,6 +79,11 @@
       "remove": "Remove from route",
       "offGrid": "Off-grid segment (straight line)"
     },
+    "mapContent": {
+      "button": "Map content",
+      "title": "Map content",
+      "kmMarkers": "Distance markers"
+    },
     "rowActions": {
       "remove": "Remove waypoint",
       "up": "Move up",

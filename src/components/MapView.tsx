@@ -47,6 +47,8 @@ type Props = {
   // legs (A4), and panel-hover marker emphasis (A6).
   viaHandles?: GeoJSON.FeatureCollection | null;
   offGridLines?: GeoJSON.FeatureCollection | null;
+  // GEN-137: distance markers along the route (every 5/10 km).
+  kmMarkers?: GeoJSON.FeatureCollection | null;
   emphasisSlot?: number | null;
 };
 
@@ -64,6 +66,7 @@ export default function MapView({
   onMarkerClick,
   viaHandles,
   offGridLines,
+  kmMarkers,
   emphasisSlot,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -176,6 +179,34 @@ export default function MapView({
       });
       map.on("mouseleave", "via-handles", () => {
         map.getCanvas().style.cursor = "";
+      });
+      // Distance markers along the route (GEN-137).
+      map.addSource("km-markers", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+      map.addLayer({
+        id: "km-markers-circle",
+        type: "circle",
+        source: "km-markers",
+        paint: {
+          "circle-radius": 8,
+          "circle-color": "#1e293b",
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 1.5,
+        },
+      });
+      map.addLayer({
+        id: "km-markers-label",
+        type: "symbol",
+        source: "km-markers",
+        layout: {
+          "text-field": ["get", "label"],
+          "text-size": 9,
+          "text-font": ["Noto Sans Regular"],
+          "text-allow-overlap": true,
+        },
+        paint: { "text-color": "#ffffff" },
       });
       // Elevation-chart hover position on the route line
       map.addSource("hover-point", {
@@ -369,6 +400,13 @@ export default function MapView({
       offGridLines ?? { type: "FeatureCollection", features: [] },
     );
   }, [offGridLines, ready]);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    (map.getSource("km-markers") as maplibregl.GeoJSONSource | undefined)?.setData(
+      kmMarkers ?? { type: "FeatureCollection", features: [] },
+    );
+  }, [kmMarkers, ready]);
 
   // Sync highlights layer (GEN-115)
   useEffect(() => {
