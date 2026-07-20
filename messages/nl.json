@@ -152,7 +152,11 @@
     "password": "Wachtwoord",
     "loginBtn": "Inloggen",
     "usePassword": "Liever met wachtwoord inloggen",
-    "useCode": "Liever met e-mailcode inloggen"
+    "useCode": "Liever met e-mailcode inloggen",
+    "forgotPassword": "Wachtwoord vergeten?",
+    "deleteAccount": "Account verwijderen",
+    "deleteAccountConfirm": "Dit verwijdert je account, routes, activiteiten, foto's en reacties permanent. Typ je e-mailadres ter bevestiging:",
+    "deleteAccountFailed": "Verwijderen mislukt — probeer het later opnieuw."
   },
   "activities": {
     "upload": "Activiteit uploaden",
@@ -373,5 +377,17 @@
     "verbCompleted": "heeft een activiteit voltooid",
     "verbPlanned": "heeft een route gedeeld",
     "comment": "Reageren"
+  },
+  "resetPassword": {
+    "title": "Wachtwoord opnieuw instellen",
+    "requestHint": "Vul je e-mailadres in; we sturen je een herstel-link.",
+    "email": "E-mailadres",
+    "send": "Stuur herstel-link",
+    "mailSent": "Check je inbox voor de herstel-link.",
+    "newPasswordHint": "Kies een nieuw wachtwoord (minimaal 8 tekens).",
+    "newPassword": "Nieuw wachtwoord",
+    "save": "Wachtwoord opslaan",
+    "updated": "Wachtwoord bijgewerkt — doorsturen…",
+    "tooShort": "Gebruik minimaal 8 tekens."
   }
 }

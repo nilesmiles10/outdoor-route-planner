@@ -152,7 +152,11 @@
     "password": "Password",
     "loginBtn": "Log in",
     "usePassword": "Log in with password instead",
-    "useCode": "Log in with email code instead"
+    "useCode": "Log in with email code instead",
+    "forgotPassword": "Forgot password?",
+    "deleteAccount": "Delete my account",
+    "deleteAccountConfirm": "This permanently deletes your account, routes, activities, photos and comments. Type your e-mail address to confirm:",
+    "deleteAccountFailed": "Deletion failed — please try again later."
   },
   "activities": {
     "upload": "Upload activity",
@@ -373,5 +377,17 @@
     "verbCompleted": "completed an activity",
     "verbPlanned": "shared a route",
     "comment": "Comment"
+  },
+  "resetPassword": {
+    "title": "Reset password",
+    "requestHint": "Enter your e-mail address and we'll send you a reset link.",
+    "email": "E-mail address",
+    "send": "Send reset link",
+    "mailSent": "Check your inbox for the reset link.",
+    "newPasswordHint": "Choose a new password (at least 8 characters).",
+    "newPassword": "New password",
+    "save": "Save password",
+    "updated": "Password updated — redirecting…",
+    "tooShort": "Use at least 8 characters."
   }
 }

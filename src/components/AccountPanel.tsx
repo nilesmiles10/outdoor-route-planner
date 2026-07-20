@@ -199,13 +199,21 @@ export default function AccountPanel({ tour, onLoadTour, hideLoginForm }: Props)
                 </button>
               </div>
             )}
-            <button
-              type="button"
-              onClick={() => setUsePassword((v) => !v)}
-              className="self-start text-[10px] text-emerald-700 hover:underline"
-            >
-              {usePassword ? t("useCode") : t("usePassword")}
-            </button>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setUsePassword((v) => !v)}
+                className="text-[10px] text-emerald-700 hover:underline"
+              >
+                {usePassword ? t("useCode") : t("usePassword")}
+              </button>
+              <a
+                href={`/${locale}/reset-password`}
+                className="text-[10px] text-neutral-400 hover:text-neutral-600 hover:underline"
+              >
+                {t("forgotPassword")}
+              </a>
+            </div>
           </div>
         ) : (
           <div className="flex gap-2">
@@ -243,6 +251,24 @@ export default function AccountPanel({ tour, onLoadTour, hideLoginForm }: Props)
           className="text-[10px] text-neutral-400 hover:text-red-600"
         >
           {t("logout")}
+        </button>
+        <button
+          type="button"
+          onClick={async () => {
+            const phrase = user.email ?? "delete";
+            const v = window.prompt(`${t("deleteAccountConfirm")}\n\n"${phrase}"`);
+            if (v !== phrase) return;
+            const res = await fetch("/api/account/delete", { method: "POST" });
+            if (res.ok) {
+              await sb.auth.signOut();
+              window.location.href = `/${locale}`;
+            } else {
+              alert(t("deleteAccountFailed"));
+            }
+          }}
+          className="text-[10px] text-neutral-300 hover:text-red-600 hover:underline"
+        >
+          {t("deleteAccount")}
         </button>
       </div>
       <div className="flex items-center gap-2">

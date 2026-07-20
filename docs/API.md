@@ -51,3 +51,12 @@ These proxy the VPS geo-services (BRouter/Photon behind
   a compatibility view or new column, never repurposing.
 - `/api/geo/*`: current shape is v1-implicit. If a breaking change is ever
   needed, add `/api/geo/v2/*` alongside — never mutate response shapes in place.
+
+## Account deletion
+
+`POST /api/account/delete` — self-service GDPR deletion. Auth: the caller's
+own Supabase session cookie (401 without). Deletes the auth user (all data
+cascades via FKs; community highlights survive with `creator = null`) and
+wipes the `avatars/{uid}` and `highlight-photos/{uid}` storage prefixes.
+Returns `{ ok: true }`. Mobile (Phase 6) can call this with the same bearer
+session. Requires `SUPABASE_SERVICE_ROLE_KEY` server-side (503 otherwise).
