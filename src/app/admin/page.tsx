@@ -26,6 +26,17 @@ export default async function AdminDashboard() {
         .limit(10),
     ]);
 
+  // Fase E: geo-proxy-gebruik laatste uur uit de rate-limit-vensters.
+  const { data: rl } = await sb
+    .from("rate_limits")
+    .select("key,count,window_start")
+    .gte("window_start", new Date(Date.now() - 3600_000).toISOString());
+  const geoUse = new Map<string, number>();
+  for (const r of rl ?? []) {
+    const bucket = (r.key as string).split(":")[0];
+    geoUse.set(bucket, (geoUse.get(bucket) ?? 0) + (r.count as number));
+  }
+
   const stats: [string, number | null, string?][] = [
     ["Users", users.count, `+${users7d.count ?? 0} last 7d`],
     ["Tours (all)", tours.count],
@@ -57,6 +68,16 @@ export default async function AdminDashboard() {
             <div className="text-2xl font-semibold text-neutral-900">{n ?? "–"}</div>
             <div className="text-xs text-neutral-500">{label}</div>
             {sub && <div className="text-[11px] text-emerald-700">{sub}</div>}
+          </div>
+        ))}
+      </div>
+
+      <h2 className="mt-8 mb-2 text-sm font-semibold text-neutral-700">Geo requests (last hour)</h2>
+      <div className="flex gap-3">
+        {["geo-route", "geo-search", "geo-reverse"].map((b) => (
+          <div key={b} className="rounded-xl border border-neutral-200 bg-white px-4 py-2">
+            <span className="text-lg font-semibold text-neutral-900">{geoUse.get(b) ?? 0}</span>
+            <span className="ml-2 text-xs text-neutral-500">{b.replace("geo-", "")}</span>
           </div>
         ))}
       </div>

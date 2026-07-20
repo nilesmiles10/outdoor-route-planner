@@ -60,3 +60,12 @@ cascades via FKs; community highlights survive with `creator = null`) and
 wipes the `avatars/{uid}` and `highlight-photos/{uid}` storage prefixes.
 Returns `{ ok: true }`. Mobile (Phase 6) can call this with the same bearer
 session. Requires `SUPABASE_SERVICE_ROLE_KEY` server-side (503 otherwise).
+
+## Rate limits (geo endpoints)
+
+Fixed window of 60 s per client IP: `/api/geo/search` and `/api/geo/reverse`
+60 req/min, `/api/geo/route` 30 req/min (BRouter is the expensive VPS call).
+Over the limit → `429` with a `Retry-After` header (seconds). Backend:
+Upstash Redis when `UPSTASH_REDIS_REST_URL/TOKEN` are set, otherwise a
+Postgres fixed-window counter (`rl_hit` RPC). The limiter fails OPEN — an
+unreachable counter never blocks the planner.

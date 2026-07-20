@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkLimit, clientIp } from "@/lib/ratelimit";
 import { GEO_SEARCH_BASE, geoHeaders } from "@/lib/geo";
 
 export const dynamic = "force-dynamic";
@@ -6,6 +7,13 @@ export const dynamic = "force-dynamic";
 // GET /api/geo/search?q=utre&lat=52.1&lon=5.1
 // Proxies Photon and returns simplified suggestions for the planner fields.
 export async function GET(req: NextRequest) {
+  const rl = await checkLimit("geo-search", clientIp(req), 60);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterS) } },
+    );
+  }
   const q = req.nextUrl.searchParams.get("q")?.trim();
   if (!q || q.length < 2) return NextResponse.json({ results: [] });
 

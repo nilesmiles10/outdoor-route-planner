@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkLimit, clientIp } from "@/lib/ratelimit";
 import { GEO_REVERSE_BASE, geoHeaders } from "@/lib/geo";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/geo/reverse?lon=5.1&lat=52.1 — name for a dropped pin.
 export async function GET(req: NextRequest) {
+  const rl = await checkLimit("geo-reverse", clientIp(req), 60);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterS) } },
+    );
+  }
   const lon = req.nextUrl.searchParams.get("lon");
   const lat = req.nextUrl.searchParams.get("lat");
   if (!lon || !lat) {

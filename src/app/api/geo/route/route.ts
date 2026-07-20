@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkLimit, clientIp } from "@/lib/ratelimit";
 import {
   GEO_ROUTE_BASE,
   geoHeaders,
@@ -12,6 +13,13 @@ export const dynamic = "force-dynamic";
 // GET /api/geo/route?points=4.30,52.07|5.12,52.09&sport=gravel
 // Proxies BRouter and returns geometry + stats + surface/waytype breakdown.
 export async function GET(req: NextRequest) {
+  const rl = await checkLimit("geo-route", clientIp(req), 30);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterS) } },
+    );
+  }
   const points = req.nextUrl.searchParams.get("points");
   const sport = req.nextUrl.searchParams.get("sport") ?? "touring";
   if (!points || !isSport(sport)) {
