@@ -389,6 +389,9 @@ export default function PlannerApp() {
   const [mapContentOpen, setMapContentOpen] = useState(false);
   const [hiddenCats, setHiddenCats] = useState<Set<string>>(new Set());
   const [showKmMarkers, setShowKmMarkers] = useState(true);
+  // Sport-netwerk-overlays (Waymarked Trails) — opt-in, sport-bewuste default
+  // zou stille tile-load betekenen; bewust handmatig.
+  const [networks, setNetworks] = useState({ hiking: false, cycling: false, mtb: false });
   // Saved places (GEN-137): owner-only star layer, balloon save/unsave.
   const [savedRows, setSavedRows] = useState<
     { id: string; name: string; lon: number; lat: number }[] | null
@@ -1127,6 +1130,7 @@ export default function PlannerApp() {
         viaHandles={viaHandles}
         offGridLines={offGridLines}
         alertLines={alertLines}
+        networkOverlays={networks}
         kmMarkers={kmMarkers}
         emphasisSlot={emphasisSlot}
         balloonAt={balloon}
@@ -1325,6 +1329,31 @@ export default function PlannerApp() {
               />
               📏 {t("mapContent.kmMarkers")}
             </label>
+
+            <div className="mt-2 border-t border-neutral-100 pt-2">
+              <span className="text-xs font-medium text-neutral-700">
+                {t("mapContent.networks")}
+              </span>
+              {(["hiking", "cycling", "mtb"] as const).map((net) => (
+                <label
+                  key={net}
+                  className="mt-1 flex items-center gap-2 text-xs text-neutral-600"
+                >
+                  <input
+                    type="checkbox"
+                    checked={networks[net]}
+                    onChange={() =>
+                      setNetworks((prev) => ({ ...prev, [net]: !prev[net] }))
+                    }
+                    className="accent-emerald-700"
+                  />
+                  {t(`mapContent.net_${net}` as never)}
+                </label>
+              ))}
+              <p className="mt-1 text-[10px] text-neutral-400">
+                © waymarkedtrails.org
+              </p>
+            </div>
 
             {user && (
               <label className="mt-2 flex items-center gap-2 text-xs text-neutral-800">

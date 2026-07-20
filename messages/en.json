@@ -82,7 +82,11 @@
     "mapContent": {
       "button": "Map content",
       "title": "Map content",
-      "kmMarkers": "Distance markers"
+      "kmMarkers": "Distance markers",
+      "networks": "Route networks",
+      "net_hiking": "Hiking networks",
+      "net_cycling": "Cycling networks (incl. node networks)",
+      "net_mtb": "MTB trails"
     },
     "rowActions": {
       "remove": "Remove waypoint",

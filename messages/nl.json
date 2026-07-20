@@ -82,7 +82,11 @@
     "mapContent": {
       "button": "Kaartinhoud",
       "title": "Kaartinhoud",
-      "kmMarkers": "Afstandsmarkeringen"
+      "kmMarkers": "Afstandsmarkeringen",
+      "networks": "Routenetwerken",
+      "net_hiking": "Wandelnetwerken",
+      "net_cycling": "Fietsnetwerken (incl. knooppunten)",
+      "net_mtb": "MTB-routes"
     },
     "rowActions": {
       "remove": "Waypoint verwijderen",

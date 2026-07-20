@@ -50,6 +50,7 @@ type Props = {
   viaHandles?: GeoJSON.FeatureCollection | null;
   offGridLines?: GeoJSON.FeatureCollection | null;
   alertLines?: GeoJSON.FeatureCollection | null;
+  networkOverlays?: { hiking: boolean; cycling: boolean; mtb: boolean };
   // GEN-137: distance markers along the route (every 5/10 km).
   kmMarkers?: GeoJSON.FeatureCollection | null;
   emphasisSlot?: number | null;
@@ -72,12 +73,15 @@ export default function MapView({
   viaHandles,
   offGridLines,
   alertLines,
+  networkOverlays,
   kmMarkers,
   emphasisSlot,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<Map<number, maplibregl.Marker>>(new Map());
+  // Latest route coordinates for the fit-route control (set by the sync effect).
+  const routeCoordsRef = useRef<GeoJSON.Position[] | null>(null);
   const [ready, setReady] = useState(false);
   const [balloonXY, setBalloonXY] = useState<{ x: number; y: number } | null>(null);
   // Keep latest callbacks without re-binding map listeners.
@@ -121,6 +125,65 @@ export default function MapView({
       new maplibregl.ScaleControl({ maxWidth: 120, unit: "metric" }),
       "bottom-left",
     );
+    map.addControl(new maplibregl.FullscreenControl(), "top-right");
+
+    // Komoot-style right rail: fit-route + 3D terrain toggle as tiny
+    // custom controls (MapLibre control contract: onAdd returns a DOM node).
+    const mkControl = (title: string, label: string, onClick: (btn: HTMLButtonElement) => void) => ({
+      onAdd() {
+        const div = document.createElement("div");
+        div.className = "maplibregl-ctrl maplibregl-ctrl-group";
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.title = title;
+        btn.style.fontSize = "15px";
+        btn.textContent = label;
+        btn.onclick = () => onClick(btn);
+        div.appendChild(btn);
+        return div;
+      },
+      onRemove() {},
+    });
+    map.addControl(
+      mkControl("Zoom naar route", "⌖", () => {
+        const coords = routeCoordsRef.current;
+        if (!coords || coords.length < 2) return;
+        const b = coords.reduce(
+          (acc, c) => acc.extend([c[0], c[1]]),
+          new maplibregl.LngLatBounds([coords[0][0], coords[0][1]], [coords[0][0], coords[0][1]]),
+        );
+        map.fitBounds(b, { padding: 60 });
+      }),
+      "top-right",
+    );
+    let terrainOn = false;
+    map.addControl(
+      mkControl("3D-reliëf", "3D", (btn) => {
+        terrainOn = !terrainOn;
+        if (terrainOn) {
+          if (!map.getSource("terrain-dem")) {
+            map.addSource("terrain-dem", {
+              type: "raster-dem",
+              tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
+              encoding: "terrarium",
+              tileSize: 256,
+              maxzoom: 14,
+              attribution: "Terrain: Mapzen/AWS Open Data",
+            });
+          }
+          map.setTerrain({ source: "terrain-dem", exaggeration: 1.3 });
+          map.easeTo({ pitch: 55, duration: 600 });
+          btn.style.fontWeight = "bold";
+          btn.style.color = "#047857";
+        } else {
+          map.setTerrain(null);
+          map.easeTo({ pitch: 0, duration: 600 });
+          btn.style.fontWeight = "";
+          btn.style.color = "";
+        }
+      }),
+      "top-right",
+    );
 
     // Layer bootstrap is NOT gated on the "load" event: on a slow tile CDN
     // "load" waits for every tile/glyph/sprite and can take tens of seconds
@@ -147,6 +210,24 @@ export default function MapView({
       setReady(true);
     };
     const addAllLayers = () => {
+      // Sport-netwerk-overlays (Waymarked Trails, CC-BY-SA, opt-in in het
+      // Kaartinhoud-paneel). Raster boven de basemap, onder de route.
+      for (const net of ["hiking", "cycling", "mtb"] as const) {
+        ensureSource(`wmt-${net}`, {
+          type: "raster",
+          tiles: [`https://tile.waymarkedtrails.org/${net}/{z}/{x}/{y}.png`],
+          tileSize: 256,
+          maxzoom: 18,
+          attribution: "Routes © waymarkedtrails.org (CC-BY-SA)",
+        });
+        ensureLayer({
+          id: `wmt-${net}`,
+          type: "raster",
+          source: `wmt-${net}`,
+          layout: { visibility: "none" },
+          paint: { "raster-opacity": 0.85 },
+        });
+      }
       ensureSource("route", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
@@ -460,6 +541,8 @@ export default function MapView({
     if (!src) return;
     if (route) {
       src.setData(route);
+      routeCoordsRef.current =
+        (route.geometry as GeoJSON.LineString | undefined)?.coordinates ?? null;
       if (!hasFitRef.current) {
         const coords = (route.geometry as GeoJSON.LineString).coordinates;
         const bounds = coords.reduce(
@@ -522,6 +605,21 @@ export default function MapView({
       highlights ?? { type: "FeatureCollection", features: [] },
     );
   }, [highlights, ready]);
+
+  // Sync network overlays (Kaartinhoud toggles)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    for (const net of ["hiking", "cycling", "mtb"] as const) {
+      if (map.getLayer(`wmt-${net}`)) {
+        map.setLayoutProperty(
+          `wmt-${net}`,
+          "visibility",
+          networkOverlays?.[net] ? "visible" : "none",
+        );
+      }
+    }
+  }, [networkOverlays, ready]);
 
   // Sync saved-places layer (GEN-137)
   useEffect(() => {
