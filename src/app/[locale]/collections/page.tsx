@@ -84,6 +84,7 @@ export default function CollectionsPage() {
       .from("collections")
       .select(SELECT)
       .eq("visibility", "public")
+      .order("editorial_at", { ascending: false, nullsFirst: false })
       .order("updated_at", { ascending: false })
       .limit(60);
     setPublicColls((pub.data as unknown as Coll[]) ?? []);

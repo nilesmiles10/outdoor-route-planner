@@ -129,3 +129,77 @@ export async function deleteUserAccount(formData: FormData) {
   await audit(sb, user, "user_delete", "profile", id);
   revalidatePath("/admin/users");
 }
+
+// ---- Fase C: curatie ----
+
+export async function toggleFeaturedTour(formData: FormData) {
+  const { user, sb } = await requireAdmin();
+  const id = String(formData.get("id"));
+  const on = String(formData.get("on")) === "1";
+  await sb
+    .from("tours")
+    .update({ featured_at: on ? new Date().toISOString() : null })
+    .eq("id", id);
+  await audit(sb, user, on ? "tour_feature" : "tour_unfeature", "tour", id);
+  revalidatePath("/admin/tours");
+}
+
+export async function toggleEditorialCollection(formData: FormData) {
+  const { user, sb } = await requireAdmin();
+  const id = String(formData.get("id"));
+  const on = String(formData.get("on")) === "1";
+  await sb
+    .from("collections")
+    .update({ editorial_at: on ? new Date().toISOString() : null })
+    .eq("id", id);
+  await audit(sb, user, on ? "collection_editorial" : "collection_uneditorial", "collection", id);
+  revalidatePath("/admin/collections");
+}
+
+export async function updateHighlight(formData: FormData) {
+  const { user, sb } = await requireAdmin();
+  const id = String(formData.get("id"));
+  const patch = {
+    name: String(formData.get("name") ?? "").trim(),
+    category: String(formData.get("category") ?? "other"),
+    description: String(formData.get("description") ?? "").trim() || null,
+    region: String(formData.get("region") ?? "").trim() || null,
+  };
+  await sb.from("highlights").update(patch).eq("id", id);
+  await audit(sb, user, "highlight_update", "highlight", id, patch);
+  revalidatePath("/admin/highlights");
+}
+
+export async function deleteHighlight(formData: FormData) {
+  const { user, sb } = await requireAdmin();
+  const id = String(formData.get("id"));
+  await sb.from("highlights").delete().eq("id", id);
+  await audit(sb, user, "highlight_delete", "highlight", id);
+  revalidatePath("/admin/highlights");
+}
+
+export async function mergeHighlights(formData: FormData) {
+  const { user, sb } = await requireAdmin();
+  const src = String(formData.get("src"));
+  const dst = String(formData.get("dst"));
+  const { error } = await sb.rpc("admin_merge_highlights", { src, dst });
+  if (error) throw new Error(error.message);
+  // audit is written inside the RPC (same transaction)
+  void user;
+  revalidatePath("/admin/highlights");
+}
+
+// Photo moderation: RLS row delete (admin policy) + best-effort storage
+// object removal (service role; the row is the source of truth for the UI).
+export async function deleteHighlightPhoto(formData: FormData) {
+  const { user, sb } = await requireAdmin();
+  const id = String(formData.get("id"));
+  const path = String(formData.get("path"));
+  await sb.from("highlight_photos").delete().eq("id", id);
+  const admin = supabaseAdmin();
+  if (admin && path) {
+    await admin.storage.from("highlight-photos").remove([path]);
+  }
+  await audit(sb, user, "highlight_photo_delete", "highlight_photo", id, { path });
+  revalidatePath("/admin/highlights");
+}
