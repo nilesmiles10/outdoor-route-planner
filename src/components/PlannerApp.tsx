@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import MapView, { type HighlightClick, type Waypoint } from "./MapView";
 import SearchField from "./SearchField";
@@ -327,6 +327,7 @@ function mergeLegs(legs: RouteResult[]): RouteResult {
 
 export default function PlannerApp() {
   const t = useTranslations("planner");
+  const locale = useLocale();
   const [plan, dispatch] = useReducer(planReducer, {
     slots: [null, null],
     past: [],
@@ -1123,6 +1124,13 @@ export default function PlannerApp() {
               </div>
               <div className="text-xs capitalize text-neutral-500">
                 {t(`highlights.cat.${selectedHl.category}` as never)}
+                {" · "}
+                <a
+                  href={`/${locale}/highlight/${selectedHl.id}`}
+                  className="normal-case text-emerald-700 hover:underline"
+                >
+                  {t("highlights.viewPage")} ↗
+                </a>
               </div>
             </div>
             <button

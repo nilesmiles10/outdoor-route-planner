@@ -87,6 +87,7 @@
     },
     "highlights": {
       "toggle": "Highlights",
+      "viewPage": "Pagina",
       "add": "Highlight toevoegen",
       "clickMap": "Klik op de kaart…",
       "asWaypoint": "In route",
@@ -140,6 +141,44 @@
   "tourPage": {
     "openInPlanner": "Open in planner",
     "downloadGpx": "GPX downloaden"
+  },
+  "highlightPage": {
+    "breadcrumbDiscover": "Ontdekken",
+    "kind": "Hoogtepunt",
+    "location": "Locatie",
+    "bringMeHere": "Breng me hierheen",
+    "allSports": "Algemeen",
+    "tips": "Tips",
+    "noTips": "Nog geen tips — deel als eerste je ervaring.",
+    "nearbyRoutes": "Routes in de buurt",
+    "noRoutes": "Nog geen publieke routes in de buurt.",
+    "away": "hiervandaan",
+    "weather": "Weer",
+    "pack": {
+      "rain": "Redelijk grote kans op regen — een waterdichte jas kan goed van pas komen.",
+      "cold": "Koud vandaag — neem warme laagjes mee.",
+      "heat": "Warm vandaag — neem extra water en zonnebrand mee."
+    },
+    "nearbyHighlights": "Ook in de buurt",
+    "recommendTitle": "Aanbevelen voor een sport",
+    "recommend": "Aanbevelen",
+    "addTip": "Plaats",
+    "tipPlaceholder": "Deel een tip over deze plek…",
+    "tipAdded": "Tip geplaatst!",
+    "addPhoto": "Foto",
+    "photoAdded": "Foto toegevoegd!",
+    "loginToContribute": "Log in om te stemmen, tips te delen of foto's toe te voegen.",
+    "login": "Inloggen",
+    "cat": {
+      "peak": "Top",
+      "viewpoint": "Uitzichtpunt",
+      "hut": "Hut",
+      "water": "Water",
+      "cafe": "Café",
+      "monument": "Monument",
+      "nature": "Natuur",
+      "other": "Overig"
+    }
   },
   "nav": {
     "planner": "Planner",

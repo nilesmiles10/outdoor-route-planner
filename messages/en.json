@@ -87,6 +87,7 @@
     },
     "highlights": {
       "toggle": "Highlights",
+      "viewPage": "Page",
       "add": "Add highlight",
       "clickMap": "Click the map…",
       "asWaypoint": "Add to route",
@@ -140,6 +141,44 @@
   "tourPage": {
     "openInPlanner": "Open in planner",
     "downloadGpx": "Download GPX"
+  },
+  "highlightPage": {
+    "breadcrumbDiscover": "Discover",
+    "kind": "Highlight",
+    "location": "Location",
+    "bringMeHere": "Take me there",
+    "allSports": "General",
+    "tips": "Tips",
+    "noTips": "No tips yet — be the first to share your experience.",
+    "nearbyRoutes": "Routes nearby",
+    "noRoutes": "No public routes nearby yet.",
+    "away": "away",
+    "weather": "Weather",
+    "pack": {
+      "rain": "Fair chance of rain — a waterproof jacket may come in handy.",
+      "cold": "Cold today — pack warm layers.",
+      "heat": "Hot today — bring extra water and sunscreen."
+    },
+    "nearbyHighlights": "Also nearby",
+    "recommendTitle": "Recommend for a sport",
+    "recommend": "Recommend",
+    "addTip": "Post",
+    "tipPlaceholder": "Share a tip about this place…",
+    "tipAdded": "Tip posted!",
+    "photoAdded": "Photo added!",
+    "addPhoto": "Photo",
+    "loginToContribute": "Log in to vote, share tips or add photos.",
+    "login": "Log in",
+    "cat": {
+      "peak": "Peak",
+      "viewpoint": "Viewpoint",
+      "hut": "Hut",
+      "water": "Water",
+      "cafe": "Café",
+      "monument": "Monument",
+      "nature": "Nature",
+      "other": "Other"
+    }
   },
   "nav": {
     "planner": "Planner",
