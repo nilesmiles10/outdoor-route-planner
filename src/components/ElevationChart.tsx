@@ -68,6 +68,7 @@ export default function ElevationChart({
       viewBox={`0 0 ${W} ${H}`}
       className="w-full cursor-crosshair select-none"
       role="img"
+      aria-label="Elevation profile"
       onMouseMove={(e) => hover(idxFromEvent(e))}
       onMouseLeave={() => hover(null)}
     >

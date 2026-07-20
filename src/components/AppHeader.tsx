@@ -95,7 +95,7 @@ export default function AppHeader() {
 
   return (
     <header className="fixed inset-x-0 top-0 z-30 flex h-12 items-center gap-4 bg-white/95 px-4 shadow-sm backdrop-blur">
-      <a href={`/${locale}`} className="flex items-center gap-2 font-semibold text-emerald-800">
+      <a href={`/${locale}`} aria-label="Outdoor Route Planner" className="flex items-center gap-2 font-semibold text-emerald-800">
         <span aria-hidden>⛰</span>
         <span className="hidden sm:inline">Outdoor Route Planner</span>
       </a>

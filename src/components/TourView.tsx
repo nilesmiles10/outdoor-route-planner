@@ -253,9 +253,9 @@ export default function TourView({
             <div className="mt-1 flex gap-2 overflow-x-auto text-center">
               {weather.days.map((d) => (
                 <div key={d.date} className="min-w-10 shrink-0">
-                  <div className="text-[9px] text-neutral-400">{d.label}</div>
+                  <div className="text-[9px] text-neutral-500">{d.label}</div>
                   <div className="text-xs font-medium">{d.tMax}°</div>
-                  <div className="text-[10px] text-neutral-400">{d.tMin}°</div>
+                  <div className="text-[10px] text-neutral-500">{d.tMin}°</div>
                   <div className="text-[9px] text-sky-600">{d.rain}%</div>
                 </div>
               ))}
@@ -299,10 +299,10 @@ export default function TourView({
                 <a
                   key={hl.href}
                   href={hl.href}
-                  className="flex items-baseline justify-between gap-2 rounded px-1 py-0.5 text-xs text-neutral-700 hover:text-emerald-800"
+                  className="flex items-baseline justify-between gap-2 rounded px-1 py-1 text-xs text-neutral-700 hover:text-emerald-800"
                 >
                   <span className="min-w-0 truncate">{hl.name}</span>
-                  <span className="shrink-0 text-[10px] text-neutral-400">
+                  <span className="shrink-0 text-[10px] text-neutral-500">
                     {hl.meta}
                   </span>
                 </a>
@@ -321,10 +321,10 @@ export default function TourView({
                 <a
                   key={hl.href}
                   href={hl.href}
-                  className="flex items-baseline justify-between gap-2 rounded px-1 py-0.5 text-xs text-neutral-700 hover:text-emerald-800"
+                  className="flex items-baseline justify-between gap-2 rounded px-1 py-1 text-xs text-neutral-700 hover:text-emerald-800"
                 >
                   <span className="min-w-0 truncate">{hl.name}</span>
-                  <span className="shrink-0 text-[10px] text-neutral-400">
+                  <span className="shrink-0 text-[10px] text-neutral-500">
                     {hl.meta}
                   </span>
                 </a>
