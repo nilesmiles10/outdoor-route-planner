@@ -156,7 +156,7 @@
     "activity": {
       "moving": "In beweging",
       "elapsed": "Totaal",
-      "avgSpeed": "\u00d8 km/u",
+      "avgSpeed": "Ø km/u",
       "maxSpeed": "Max km/u",
       "segment": "Selectie",
       "onRoute": "Onderweg"
@@ -223,7 +223,10 @@
     "places": "Plaatsen",
     "logout": "Uitloggen",
     "discover": "Ontdekken",
-    "collections": "Collecties"
+    "collections": "Collecties",
+    "feed": "Feed",
+    "people": "Personen",
+    "myProfile": "Mijn profiel"
   },
   "collections": {
     "title": "Collecties",
@@ -231,7 +234,7 @@
     "new": "Nieuwe collectie",
     "untitled": "Naamloze collectie",
     "mine": "Mijn collecties",
-    "saved": "Bewaard",
+    "saved": "Opgeslagen!",
     "explore": "Ontdekken",
     "empty": "Nog geen publieke collecties.",
     "edit": "Bewerken",
@@ -243,7 +246,6 @@
     "public": "Publiek",
     "private": "Privé",
     "save": "Opslaan",
-    "saved": "Opgeslagen!",
     "routesInCollection": "Routes in deze collectie",
     "noRoutesYet": "Nog geen routes toegevoegd — kies hieronder.",
     "noRoutes": "Deze collectie heeft nog geen publieke routes.",
@@ -260,7 +262,8 @@
     "deleteConfirm": "Deze collectie verwijderen? Je routes blijven bewaard.",
     "needLogin": "Log in om collecties te maken.",
     "login": "Inloggen",
-    "notFound": "Collectie niet gevonden of niet van jou."
+    "notFound": "Collectie niet gevonden of niet van jou.",
+    "bookmarkedTab": "Bewaard"
   },
   "routesPage": {
     "title": "Mijn routes",
@@ -313,5 +316,48 @@
       "nature": "Natuurplekken",
       "other": "Plekken"
     }
+  },
+  "profile": {
+    "anonymous": "Avonturier",
+    "followers": "volgers",
+    "followingCount": "volgend",
+    "follow": "Volgen",
+    "following": "Volgend ✓",
+    "edit": "Profiel bewerken",
+    "name": "Weergavenaam",
+    "region": "Thuisregio",
+    "bio": "Bio",
+    "changePhoto": "Foto wijzigen",
+    "save": "Opslaan",
+    "saved": "Opgeslagen!",
+    "cancel": "Annuleren",
+    "publicRoutes": "Publieke routes",
+    "noRoutes": "Nog geen publieke routes.",
+    "collections": "Collecties",
+    "report": "Rapporteren",
+    "reportPrompt": "Waarom rapporteer je dit? (verplicht)",
+    "reportThanks": "Bedankt — we kijken ernaar.",
+    "block": "Blokkeren",
+    "unblock": "Deblokkeren"
+  },
+  "social": {
+    "anonymous": "Avonturier",
+    "loginToLike": "Log in om te liken",
+    "loginToComment": "Log in om te reageren.",
+    "commentPlaceholder": "Schrijf een reactie…",
+    "post": "Plaatsen",
+    "report": "Rapporteren",
+    "reportPrompt": "Waarom rapporteer je deze reactie? (verplicht)",
+    "reportThanks": "Bedankt — we kijken ernaar."
+  },
+  "feed": {
+    "title": "Feed",
+    "needLogin": "Log in om updates te zien van mensen die je volgt.",
+    "emptyNoFollows": "Je volgt nog niemand. Vind mensen via zoeken of een routepagina en klik op Volgen.",
+    "emptyQuiet": "Het is stil — niemand die je volgt heeft al iets gedeeld.",
+    "anonymous": "Avonturier",
+    "verbCompleted": "heeft een activiteit voltooid",
+    "verbPlanned": "heeft een route gedeeld",
+    "comment": "Reageren"
   }
 }

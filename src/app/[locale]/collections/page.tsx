@@ -164,7 +164,7 @@ export default function CollectionsPage() {
       {bookmarkedNotOwn.length > 0 && (
         <section className="mt-8">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-400">
-            {t("saved")}
+            {t("bookmarkedTab")}
           </h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {bookmarkedNotOwn.map((c) => (

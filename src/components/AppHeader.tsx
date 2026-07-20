@@ -6,7 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 type Hit = {
-  type: "route" | "place";
+  type: "route" | "place" | "person";
   label: string;
   sub: string;
   href: string;
@@ -17,6 +17,7 @@ export default function AppHeader() {
   const locale = useLocale();
   const sb: SupabaseClient = useMemo(() => supabaseBrowser(), []);
   const [email, setEmail] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<Hit[]>([]);
   const [open, setOpen] = useState(false);
@@ -24,10 +25,14 @@ export default function AppHeader() {
   const timer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
-    sb.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
-    const { data: sub } = sb.auth.onAuthStateChange((_e, s) =>
-      setEmail(s?.user?.email ?? null),
-    );
+    sb.auth.getUser().then(({ data }) => {
+      setEmail(data.user?.email ?? null);
+      setUserId(data.user?.id ?? null);
+    });
+    const { data: sub } = sb.auth.onAuthStateChange((_e, s) => {
+      setEmail(s?.user?.email ?? null);
+      setUserId(s?.user?.id ?? null);
+    });
     return () => sub.subscription.unsubscribe();
   }, [sb]);
 
@@ -40,12 +45,17 @@ export default function AppHeader() {
       return;
     }
     timer.current = setTimeout(async () => {
-      const [tours, places] = await Promise.all([
+      const [tours, people, places] = await Promise.all([
         sb
           .from("tours")
           .select("id,name,sport,stats")
           .ilike("name", `%${v}%`)
           .limit(4),
+        sb
+          .from("profiles")
+          .select("id,display_name,home_region")
+          .ilike("display_name", `%${v}%`)
+          .limit(3),
         fetch(`/api/geo/search?q=${encodeURIComponent(v)}`)
           .then((r) => r.json())
           .catch(() => ({ results: [] })),
@@ -58,6 +68,14 @@ export default function AppHeader() {
           href: `/${locale}/tour/${r.id}`,
         }),
       );
+      const personHits: Hit[] = (people.data ?? []).map(
+        (u: { id: string; display_name: string | null; home_region: string | null }) => ({
+          type: "person",
+          label: u.display_name ?? "?",
+          sub: u.home_region ?? "",
+          href: `/${locale}/user/${u.id}`,
+        }),
+      );
       const placeHits: Hit[] = (places.results ?? [])
         .slice(0, 4)
         .map((p: { name: string; label: string; lon: number; lat: number }) => ({
@@ -66,12 +84,13 @@ export default function AppHeader() {
           sub: p.label,
           href: `/${locale}?at=${p.lon.toFixed(5)},${p.lat.toFixed(5)}&atn=${encodeURIComponent(p.name)}`,
         }));
-      setHits([...routeHits, ...placeHits]);
+      setHits([...routeHits, ...personHits, ...placeHits]);
       setOpen(true);
     }, 250);
   }
 
   const routeHits = hits.filter((h) => h.type === "route");
+  const personHits = hits.filter((h) => h.type === "person");
   const placeHits = hits.filter((h) => h.type === "place");
 
   return (
@@ -104,6 +123,17 @@ export default function AppHeader() {
                 <span className="ml-2 text-xs text-neutral-500">{h.sub}</span>
               </a>
             ))}
+            {personHits.length > 0 && (
+              <div className="px-3 pt-2 text-[10px] font-semibold uppercase text-neutral-400">
+                {t("people")}
+              </div>
+            )}
+            {personHits.map((h, i) => (
+              <a key={`u${i}`} href={h.href} className="block px-3 py-2 text-sm hover:bg-neutral-50">
+                <span className="font-medium">{h.label}</span>
+                <span className="ml-2 text-xs text-neutral-500">{h.sub}</span>
+              </a>
+            ))}
             {placeHits.length > 0 && (
               <div className="px-3 pt-2 text-[10px] font-semibold uppercase text-neutral-400">
                 {t("places")}
@@ -126,6 +156,11 @@ export default function AppHeader() {
         <a href={`/${locale}/discover`} className="text-neutral-700 hover:text-emerald-800">
           {t("discover")}
         </a>
+        {email && (
+          <a href={`/${locale}/feed`} className="text-neutral-700 hover:text-emerald-800">
+            {t("feed")}
+          </a>
+        )}
         <a
           href={`/${locale}/collections`}
           className="hidden text-neutral-700 hover:text-emerald-800 sm:inline"
@@ -157,6 +192,14 @@ export default function AppHeader() {
                 <div className="truncate px-3 py-1.5 text-[11px] text-neutral-400">
                   {email}
                 </div>
+                {userId && (
+                  <a
+                    href={`/${locale}/user/${userId}`}
+                    className="block px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+                  >
+                    {t("myProfile")}
+                  </a>
+                )}
                 <a
                   href={`/${locale}/routes`}
                   className="block px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"

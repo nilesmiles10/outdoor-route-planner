@@ -9,6 +9,7 @@ import TourView from "@/components/TourView";
 
 type TourRow = {
   id: string;
+  owner: string;
   name: string;
   sport: string;
   waypoints: { name: string; lon: number; lat: number }[];
@@ -45,7 +46,7 @@ async function getTour(id: string): Promise<TourRow | null> {
   const { data } = await sb
     .from("tours")
     .select(
-      "id,name,sport,waypoints,geometry,elevation,stats,surfaces,updated_at,kind,recorded_at,duration_s,moving_s,max_speed_kmh,time_offsets",
+      "id,owner,name,sport,waypoints,geometry,elevation,stats,surfaces,updated_at,kind,recorded_at,duration_s,moving_s,max_speed_kmh,time_offsets",
     )
     .eq("id", id)
     .maybeSingle();
@@ -222,6 +223,7 @@ export default async function TourPage({
           gpxLabel: t("downloadGpx"),
         }}
         autoDesc={autoDesc}
+        social={{ tourId: tour.id, tourOwner: tour.owner }}
         activity={
           isActivity
             ? {

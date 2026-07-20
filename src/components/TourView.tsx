@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import MapView, { type Waypoint } from "./MapView";
 import ElevationChart from "./ElevationChart";
 import SpeedChart from "./SpeedChart";
+import TourSocial from "./TourSocial";
 import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
 import { speedSeries, fmtDuration } from "@/lib/activity";
 import { buildGpx } from "@/lib/gpx";
@@ -38,6 +39,8 @@ type Props = {
     highlightsTitle: string;
     highlights: { href: string; name: string; meta: string }[];
   };
+  // GEN-118: likes + comments block at the bottom of the panel.
+  social?: { tourId: string; tourOwner: string } | null;
   // GEN-117: present on completed activities — speed profile + recording stats.
   activity?: {
     timeOffsets: number[];
@@ -64,6 +67,7 @@ export default function TourView({
   autoDesc,
   weather,
   related,
+  social,
   activity,
 }: Props) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -304,6 +308,13 @@ export default function TourView({
                 </a>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* GEN-118: likes + comments */}
+        {social && (
+          <div className="border-t border-neutral-100 pt-3">
+            <TourSocial tourId={social.tourId} tourOwner={social.tourOwner} />
           </div>
         )}
       </div>

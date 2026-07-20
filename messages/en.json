@@ -223,7 +223,10 @@
     "places": "Places",
     "logout": "Log out",
     "discover": "Discover",
-    "collections": "Collections"
+    "collections": "Collections",
+    "feed": "Feed",
+    "people": "People",
+    "myProfile": "My profile"
   },
   "collections": {
     "title": "Collections",
@@ -231,7 +234,7 @@
     "new": "New collection",
     "untitled": "Untitled collection",
     "mine": "My collections",
-    "saved": "Bookmarked",
+    "saved": "Saved!",
     "explore": "Explore",
     "empty": "No public collections yet.",
     "edit": "Edit",
@@ -243,7 +246,6 @@
     "public": "Public",
     "private": "Private",
     "save": "Save",
-    "saved": "Saved!",
     "routesInCollection": "Routes in this collection",
     "noRoutesYet": "No routes added yet — pick some below.",
     "noRoutes": "This collection has no public routes yet.",
@@ -260,7 +262,8 @@
     "deleteConfirm": "Delete this collection? Your routes stay saved.",
     "needLogin": "Log in to create collections.",
     "login": "Log in",
-    "notFound": "Collection not found or not yours to edit."
+    "notFound": "Collection not found or not yours to edit.",
+    "bookmarkedTab": "Bookmarked"
   },
   "routesPage": {
     "title": "My routes",
@@ -313,5 +316,48 @@
       "nature": "Nature spots",
       "other": "Places"
     }
+  },
+  "profile": {
+    "anonymous": "Adventurer",
+    "followers": "followers",
+    "followingCount": "following",
+    "follow": "Follow",
+    "following": "Following ✓",
+    "edit": "Edit profile",
+    "name": "Display name",
+    "region": "Home region",
+    "bio": "Bio",
+    "changePhoto": "Change photo",
+    "save": "Save",
+    "saved": "Saved!",
+    "cancel": "Cancel",
+    "publicRoutes": "Public routes",
+    "noRoutes": "No public routes yet.",
+    "collections": "Collections",
+    "report": "Report",
+    "reportPrompt": "Why are you reporting this? (required)",
+    "reportThanks": "Thanks — we'll take a look.",
+    "block": "Block",
+    "unblock": "Unblock"
+  },
+  "social": {
+    "anonymous": "Adventurer",
+    "loginToLike": "Log in to like",
+    "loginToComment": "Log in to comment.",
+    "commentPlaceholder": "Write a comment…",
+    "post": "Post",
+    "report": "Report",
+    "reportPrompt": "Why are you reporting this comment? (required)",
+    "reportThanks": "Thanks — we'll take a look."
+  },
+  "feed": {
+    "title": "Feed",
+    "needLogin": "Log in to see updates from people you follow.",
+    "emptyNoFollows": "You're not following anyone yet. Find people via search or a route page and hit Follow.",
+    "emptyQuiet": "It's quiet — nobody you follow has shared anything yet.",
+    "anonymous": "Adventurer",
+    "verbCompleted": "completed an activity",
+    "verbPlanned": "shared a route",
+    "comment": "Comment"
   }
 }
