@@ -23,11 +23,15 @@ export default async function UsersPage({
   const profiles = data ?? [];
 
   const admin = supabaseAdmin();
-  const authInfo = new Map<string, { email?: string; lastSignIn?: string }>();
+  const authInfo = new Map<string, { email?: string; lastSignIn?: string; isAdmin?: boolean }>();
   if (admin) {
     const { data: list } = await admin.auth.admin.listUsers({ perPage: 200 });
     for (const u of list?.users ?? []) {
-      authInfo.set(u.id, { email: u.email, lastSignIn: u.last_sign_in_at ?? undefined });
+      authInfo.set(u.id, {
+        email: u.email,
+        lastSignIn: u.last_sign_in_at ?? undefined,
+        isAdmin: (u.app_metadata as { role?: string })?.role === "admin",
+      });
     }
   }
 
@@ -63,6 +67,11 @@ export default async function UsersPage({
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-sm font-medium text-neutral-900">
                   {p.display_name ?? p.id.slice(0, 8)}
+                  {info?.isAdmin && (
+                    <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+                      ADMIN
+                    </span>
+                  )}
                   {p.suspended_at && (
                     <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
                       SUSPENDED

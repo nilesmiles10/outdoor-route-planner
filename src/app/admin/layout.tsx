@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getAdmin } from "@/lib/adminAuth";
 import { getSiteSettings } from "@/lib/siteSettings";
+import AdminAccount from "@/components/admin/AdminAccount";
 import "../globals.css";
 
 // Second root layout (multiple-root pattern, like /embed): no next-intl,
@@ -54,13 +55,7 @@ export default async function AdminLayout({
                 {label}
               </a>
             ))}
-            <div className="mt-auto pt-4 text-[11px] text-neutral-400">
-              {admin.user.email}
-              <br />
-              <a href="/nl" className="text-emerald-700 hover:underline">
-                ← Back to site
-              </a>
-            </div>
+            <AdminAccount />
           </aside>
           <main className="min-w-0 flex-1 p-6">{children}</main>
         </div>

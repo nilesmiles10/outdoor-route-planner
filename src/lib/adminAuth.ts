@@ -13,12 +13,13 @@ export async function requireAdmin(): Promise<{
   const sb = supabaseServer();
   const { data } = await sb.auth.getUser();
   const user = data.user;
+  // Multi-admin: the app_metadata.role claim is the gate (only settable via
+  // service role / dashboard, so tamper-proof). ADMIN_USER_ID no longer
+  // restricts access — it marks the OWNER, who cannot be demoted/deleted
+  // from the admin UI (see setAdminRole/deleteUserAccount).
   const allowed =
     user &&
-    (user.app_metadata as { role?: string } | undefined)?.role === "admin" &&
-    // Belt-and-braces allowlist: even a forged/mis-set claim is not enough
-    // unless the uid matches the operator configured in the environment.
-    (!process.env.ADMIN_USER_ID || user.id === process.env.ADMIN_USER_ID);
+    (user.app_metadata as { role?: string } | undefined)?.role === "admin";
   if (!allowed || !user) {
     throw new Error("admin_required");
   }

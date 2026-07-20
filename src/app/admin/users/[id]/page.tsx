@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { suspendUser, unsuspendUser, deleteUserAccount } from "@/app/admin/actions";
+import { suspendUser, unsuspendUser, deleteUserAccount, setAdminRole } from "@/app/admin/actions";
 import ConfirmButton from "@/components/admin/ConfirmButton";
 import Avatar from "@/components/Avatar";
 
@@ -50,14 +50,17 @@ export default async function UserDetailPage({
   let email: string | undefined;
   let lastSignIn: string | undefined;
   let banned = false;
+  let isAdminUser = false;
   if (admin) {
     const { data } = await admin.auth.admin.getUserById(p.id);
     email = data.user?.email;
     lastSignIn = data.user?.last_sign_in_at ?? undefined;
     const u = data.user as { banned_until?: string } | null;
     banned = !!u?.banned_until && new Date(u.banned_until) > new Date();
+    isAdminUser = (data.user?.app_metadata as { role?: string })?.role === "admin";
   }
   const isSelf = p.id === me.id;
+  const isOwner = !!process.env.ADMIN_USER_ID && p.id === process.env.ADMIN_USER_ID;
 
   return (
     <div>
@@ -71,7 +74,12 @@ export default async function UserDetailPage({
                 SUSPENDED {banned ? "+ auth ban" : "(content only)"}
               </span>
             )}
-            {isSelf && (
+            {isAdminUser && (
+              <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                ADMIN{isOwner ? " · owner" : ""}
+              </span>
+            )}
+            {isSelf && !isAdminUser && (
               <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
                 you
               </span>
@@ -92,6 +100,25 @@ export default async function UserDetailPage({
         </div>
         {!isSelf && (
           <div className="flex shrink-0 flex-col gap-2">
+            {admin && !isOwner && (
+              <form action={setAdminRole}>
+                <input type="hidden" name="id" value={p.id} />
+                <input type="hidden" name="on" value={isAdminUser ? "0" : "1"} />
+                <ConfirmButton
+                  label={isAdminUser ? "Revoke admin" : "Make admin"}
+                  message={
+                    isAdminUser
+                      ? "Revoke admin rights? Takes effect on their next login/token refresh (≤1h)."
+                      : "Grant FULL admin rights (moderation, users, settings)? Takes effect on their next login/token refresh (≤1h)."
+                  }
+                  className={
+                    isAdminUser
+                      ? "rounded-lg bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-200"
+                      : "rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-200"
+                  }
+                />
+              </form>
+            )}
             {p.suspended_at ? (
               <form action={unsuspendUser}>
                 <input type="hidden" name="id" value={p.id} />

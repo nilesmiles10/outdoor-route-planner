@@ -115,6 +115,9 @@ export async function deleteUserAccount(formData: FormData) {
   const { user, sb } = await requireAdmin();
   const id = String(formData.get("id"));
   if (id === user.id) throw new Error("refusing to delete the admin account");
+  if (process.env.ADMIN_USER_ID && id === process.env.ADMIN_USER_ID) {
+    throw new Error("the owner account cannot be deleted");
+  }
   const admin = supabaseAdmin();
   if (!admin) throw new Error("SUPABASE_SERVICE_ROLE_KEY not configured");
 
@@ -301,4 +304,39 @@ export async function deletePage(formData: FormData) {
   revalidateTag("pages");
   if (slug) for (const locale of ["nl", "en"]) revalidatePath(`/${locale}/${slug}`);
   revalidatePath("/admin/pages");
+}
+
+// ---- Admin-rol beheer ----
+
+// Grant/revoke the admin role via app_metadata (service role required —
+// app_metadata is exactly what makes the claim tamper-proof). Guards:
+// the OWNER (ADMIN_USER_ID) can never be demoted, and you cannot demote
+// yourself (no locking yourself out). Role changes reach the target's JWT
+// on their next token refresh (≤1h) or next login.
+export async function setAdminRole(formData: FormData) {
+  const { user, sb } = await requireAdmin();
+  const id = String(formData.get("id"));
+  const makeAdmin = String(formData.get("on")) === "1";
+  if (!makeAdmin && process.env.ADMIN_USER_ID && id === process.env.ADMIN_USER_ID) {
+    throw new Error("the owner account cannot be demoted");
+  }
+  if (!makeAdmin && id === user.id) {
+    throw new Error("you cannot demote yourself");
+  }
+  const admin = supabaseAdmin();
+  if (!admin) throw new Error("SUPABASE_SERVICE_ROLE_KEY not configured");
+
+  // Merge-preserve existing app_metadata (provider keys etc.).
+  const { data: target, error: getErr } = await admin.auth.admin.getUserById(id);
+  if (getErr || !target.user) throw new Error(getErr?.message ?? "user not found");
+  const meta = { ...(target.user.app_metadata ?? {}) } as Record<string, unknown>;
+  if (makeAdmin) meta.role = "admin";
+  else delete meta.role;
+  const { error } = await admin.auth.admin.updateUserById(id, {
+    app_metadata: meta,
+  });
+  if (error) throw new Error(error.message);
+  await audit(sb, user, makeAdmin ? "admin_grant" : "admin_revoke", "profile", id);
+  revalidatePath("/admin/users");
+  revalidatePath(`/admin/users/${id}`);
 }
