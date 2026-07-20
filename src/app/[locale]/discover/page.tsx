@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { CATEGORY_EMOJI } from "@/lib/highlights";
+import { slugify } from "@/lib/slug";
 
 type Row = {
   id: string;
@@ -36,12 +38,17 @@ function haversineKm(a: [number, number], b: [number, number]) {
 export default function DiscoverPage() {
   const t = useTranslations("discover");
   const ts = useTranslations("planner.sports");
+  const tr = useTranslations("regionPage");
   const locale = useLocale();
   const sb: SupabaseClient = useMemo(() => supabaseBrowser(), []);
   const [rows, setRows] = useState<Row[]>([]);
   const [sport, setSport] = useState("all");
   const [band, setBand] = useState("all");
   const [pos, setPos] = useState<[number, number] | null>(null);
+  // GEN-116: region × category combos with enough content for a page.
+  const [combos, setCombos] = useState<
+    { region: string; category: string; count: number }[]
+  >([]);
 
   useEffect(() => {
     sb.from("tours")
@@ -49,6 +56,26 @@ export default function DiscoverPage() {
       .eq("visibility", "public")
       .limit(100)
       .then(({ data }) => setRows((data as Row[]) ?? []));
+    sb.from("highlights")
+      .select("region,category")
+      .not("region", "is", null)
+      .limit(2000)
+      .then(({ data }) => {
+        const m = new Map<string, number>();
+        for (const r of (data as { region: string; category: string }[]) ?? []) {
+          const k = `${r.region}|${r.category}`;
+          m.set(k, (m.get(k) ?? 0) + 1);
+        }
+        setCombos(
+          Array.from(m.entries())
+            .map(([k, count]) => {
+              const [region, category] = k.split("|");
+              return { region, category, count };
+            })
+            .filter((c) => c.count >= 8)
+            .sort((a, b) => b.count - a.count),
+        );
+      });
     navigator.geolocation?.getCurrentPosition(
       (p) => setPos([p.coords.longitude, p.coords.latitude]),
       () => {},
@@ -121,6 +148,28 @@ export default function DiscoverPage() {
           </a>
         ))}
       </div>
+
+      {/* GEN-116: programmatic region pages */}
+      {combos.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-400">
+            {t("browseRegions")}
+          </h2>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {combos.map((c) => (
+              <a
+                key={`${c.region}|${c.category}`}
+                href={`/${locale}/discover/${slugify(c.region)}/${c.category}`}
+                className="rounded-full border border-neutral-200 px-3 py-1 text-xs text-neutral-700 hover:border-emerald-400 hover:text-emerald-800"
+              >
+                {CATEGORY_EMOJI[c.category]} {tr(`catPlural.${c.category}` as never)}{" "}
+                in {c.region}{" "}
+                <span className="text-neutral-400">({c.count})</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
 
       <footer className="mt-16 border-t border-neutral-100 pt-4 text-xs text-neutral-400">
         © {new Date().getFullYear()} Outdoor Route Planner ·{" "}

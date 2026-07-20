@@ -269,11 +269,27 @@
     "all": "Alle sporten",
     "empty": "Geen routes voor deze filters.",
     "away": "hiervandaan",
+    "browseRegions": "Ontdek per regio",
     "bands": {
       "all": "Elke afstand",
       "short": "< 20 km",
       "mid": "20–50 km",
       "long": "> 50 km"
+    }
+  },
+  "regionPage": {
+    "breadcrumbDiscover": "Ontdekken",
+    "intro": "De {count} mooiste {category} in {region} — met tips, foto's en routes in de buurt.",
+    "metaDescription": "Ontdek {count} {category} in {region}: community-highlights met tips, foto's en routes in de buurt.",
+    "catPlural": {
+      "peak": "Toppen",
+      "viewpoint": "Uitzichtpunten",
+      "hut": "Hutten",
+      "water": "Waterpunten",
+      "cafe": "Cafés",
+      "monument": "Monumenten",
+      "nature": "Natuurplekken",
+      "other": "Plekken"
     }
   }
 }

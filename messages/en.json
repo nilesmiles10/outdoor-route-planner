@@ -269,11 +269,27 @@
     "all": "All sports",
     "empty": "No routes match these filters.",
     "away": "away",
+    "browseRegions": "Browse by region",
     "bands": {
       "all": "Any distance",
       "short": "< 20 km",
       "mid": "20–50 km",
       "long": "> 50 km"
+    }
+  },
+  "regionPage": {
+    "breadcrumbDiscover": "Discover",
+    "intro": "The {count} best {category} in {region} — with tips, photos and routes nearby.",
+    "metaDescription": "Discover {count} {category} in {region}: community highlights with tips, photos and nearby routes.",
+    "catPlural": {
+      "peak": "Peaks",
+      "viewpoint": "Viewpoints",
+      "hut": "Huts",
+      "water": "Water spots",
+      "cafe": "Cafés",
+      "monument": "Monuments",
+      "nature": "Nature spots",
+      "other": "Places"
     }
   }
 }

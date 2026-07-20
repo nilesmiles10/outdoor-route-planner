@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { supabaseServer } from "@/lib/supabase/server";
+import { slugify } from "@/lib/slug";
 
 // Dynamic sitemap over all public content (tours, highlights, collections),
 // both locales. Until the brand domain exists we advertise the Vercel URL.
@@ -15,13 +16,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const sb = supabaseServer();
   const [tours, highlights, collections] = await Promise.all([
     sb.from("tours").select("id,updated_at").eq("visibility", "public").limit(1000),
-    sb.from("highlights").select("id").eq("kind", "point").limit(5000),
+    sb
+      .from("highlights")
+      .select("id,region,category")
+      .eq("kind", "point")
+      .limit(5000),
     sb
       .from("collections")
       .select("id,updated_at")
       .eq("visibility", "public")
       .limit(1000),
   ]);
+
+  // GEN-116: region × category pages that pass the thin-content gate (≥8).
+  const comboCounts = new Map<string, number>();
+  for (const h of (highlights.data ?? []) as {
+    region: string | null;
+    category: string;
+  }[]) {
+    if (!h.region) continue;
+    const k = `${slugify(h.region)}/${h.category}`;
+    comboCounts.set(k, (comboCounts.get(k) ?? 0) + 1);
+  }
+  const combos = Array.from(comboCounts.entries())
+    .filter(([, n]) => n >= 8)
+    .map(([k]) => k);
 
   const entries: MetadataRoute.Sitemap = [];
   for (const locale of LOCALES) {
@@ -57,6 +76,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       entries.push({
         url: `${SITE_URL}/${locale}/collection/${c.id}`,
         lastModified: c.updated_at,
+        changeFrequency: "weekly",
+        priority: 0.7,
+      });
+    }
+    for (const combo of combos) {
+      entries.push({
+        url: `${SITE_URL}/${locale}/discover/${combo}`,
         changeFrequency: "weekly",
         priority: 0.7,
       });
