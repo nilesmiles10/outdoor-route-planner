@@ -37,6 +37,8 @@ type Props = {
   // GEN-115: community-POI layer (optional — TourView doesn't pass these).
   highlights?: GeoJSON.FeatureCollection | null;
   onHighlightClick?: (h: HighlightClick) => void;
+  savedPlaces?: GeoJSON.FeatureCollection | null;
+  onSavedPlaceClick?: (p: { id: string; name: string; lon: number; lat: number }) => void;
   // Komoot-style click balloon: anchor position + React content, rendered
   // as an overlay that tracks the map camera. Optional (TourView skips it).
   balloonAt?: { lon: number; lat: number } | null;
@@ -61,6 +63,8 @@ export default function MapView({
   onRouteDrop,
   highlights,
   onHighlightClick,
+  savedPlaces,
+  onSavedPlaceClick,
   balloonAt,
   balloonContent,
   onMarkerClick,
@@ -80,6 +84,7 @@ export default function MapView({
     onMarkerDragEnd,
     onRouteDrop,
     onHighlightClick,
+    onSavedPlaceClick,
     onMarkerClick,
   });
   cbRef.current = {
@@ -87,6 +92,7 @@ export default function MapView({
     onMarkerDragEnd,
     onRouteDrop,
     onHighlightClick,
+    onSavedPlaceClick,
     onMarkerClick,
   };
 
@@ -260,11 +266,55 @@ export default function MapView({
         map.getCanvas().style.cursor = "";
       });
 
+      // Saved places (GEN-137): amber stars, owner-only layer.
+      map.addSource("saved-places", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+      map.addLayer({
+        id: "saved-places-stars",
+        type: "symbol",
+        source: "saved-places",
+        layout: {
+          "text-field": "\u2605",
+          "text-font": ["Noto Sans Regular"],
+          "text-size": ["interpolate", ["linear"], ["zoom"], 6, 12, 12, 18],
+          "text-allow-overlap": true,
+        },
+        paint: {
+          "text-color": "#d97706",
+          "text-halo-color": "#ffffff",
+          "text-halo-width": 1.5,
+        },
+      });
+      map.on("mouseenter", "saved-places-stars", () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", "saved-places-stars", () => {
+        map.getCanvas().style.cursor = "";
+      });
+
       // Click on empty map = add waypoint. Suppressed right after a line-drag.
       let suppressClick = false;
       map.on("click", (e) => {
         if (suppressClick) {
           suppressClick = false;
+          return;
+        }
+        // Saved-place stars take top priority, then highlight dots.
+        const spHits = map.queryRenderedFeatures(e.point, {
+          layers: ["saved-places-stars"],
+        });
+        const sp = spHits[0];
+        if (sp && cbRef.current.onSavedPlaceClick) {
+          const [lon, lat] = (sp.geometry as GeoJSON.Point).coordinates;
+          const p = sp.properties as Record<string, string>;
+          cbRef.current.onSavedPlaceClick({
+            id: p.id ?? "",
+            name: p.name ?? "",
+            lon: lon ?? e.lngLat.lng,
+            lat: lat ?? e.lngLat.lat,
+          });
           return;
         }
         // Highlight dots take priority over adding a waypoint.
@@ -420,6 +470,18 @@ export default function MapView({
       highlights ?? { type: "FeatureCollection", features: [] },
     );
   }, [highlights, ready]);
+
+  // Sync saved-places layer (GEN-137)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const src = map.getSource("saved-places") as
+      | maplibregl.GeoJSONSource
+      | undefined;
+    src?.setData(
+      savedPlaces ?? { type: "FeatureCollection", features: [] },
+    );
+  }, [savedPlaces, ready]);
 
   // Sync elevation-hover point
   useEffect(() => {

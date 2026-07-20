@@ -352,6 +352,11 @@ export default function PlannerApp() {
   const [mapContentOpen, setMapContentOpen] = useState(false);
   const [hiddenCats, setHiddenCats] = useState<Set<string>>(new Set());
   const [showKmMarkers, setShowKmMarkers] = useState(true);
+  // Saved places (GEN-137): owner-only star layer, balloon save/unsave.
+  const [savedRows, setSavedRows] = useState<
+    { id: string; name: string; lon: number; lat: number }[] | null
+  >(null);
+  const [showSaved, setShowSaved] = useState(true);
   const [selectedHl, setSelectedHl] = useState<HighlightClick | null>(null);
   const [hlScore, setHlScore] = useState<number | null>(null);
   const [myVote, setMyVote] = useState<0 | 1 | -1>(0);
@@ -368,6 +373,38 @@ export default function PlannerApp() {
     );
     return () => sub.subscription.unsubscribe();
   }, [sb]);
+
+  // Saved places follow the session: load on login, drop on logout.
+  useEffect(() => {
+    if (!user) {
+      setSavedRows(null);
+      return;
+    }
+    sb.from("saved_places")
+      .select("id,name,lon,lat")
+      .order("created_at", { ascending: false })
+      .limit(500)
+      .then(({ data }) =>
+        setSavedRows(
+          (data as { id: string; name: string; lon: number; lat: number }[]) ?? [],
+        ),
+      );
+  }, [sb, user]);
+
+  const savedFeatures = useMemo<GeoJSON.FeatureCollection | null>(
+    () =>
+      showSaved && savedRows && savedRows.length > 0
+        ? {
+            type: "FeatureCollection",
+            features: savedRows.map((r) => ({
+              type: "Feature",
+              properties: { id: r.id, name: r.name },
+              geometry: { type: "Point", coordinates: [r.lon, r.lat] },
+            })),
+          }
+        : null,
+    [showSaved, savedRows],
+  );
 
   // Load all point-highlights once when the layer is on (~700 rows, tiny).
   useEffect(() => {
@@ -818,6 +855,7 @@ export default function PlannerApp() {
     lat: number;
     name: string;
     slotIndex: number | null;
+    savedId?: string | null;
   } | null>(null);
   // Komoot's "off-grid segment" toggle: the placed point connects with a
   // straight line instead of a routed leg (GEN-141 A4).
@@ -853,6 +891,65 @@ export default function PlannerApp() {
     },
     [plan.slots],
   );
+
+  // Saved-place star click → balloon with route actions + unsave.
+  const handleSavedPlaceClick = useCallback(
+    (pl: { id: string; name: string; lon: number; lat: number }) => {
+      setSelectedHl(null);
+      setOffGridChecked(false);
+      setBalloon({
+        lon: pl.lon,
+        lat: pl.lat,
+        name: pl.name,
+        slotIndex: null,
+        savedId: pl.id,
+      });
+    },
+    [],
+  );
+
+  async function toggleSavedPlace() {
+    if (!user || !balloon || balloon.slotIndex !== null) return;
+    if (balloon.savedId) {
+      const id = balloon.savedId;
+      await sb.from("saved_places").delete().eq("id", id);
+      setSavedRows((rows) => (rows ?? []).filter((r) => r.id !== id));
+      setBalloon((prev) => (prev ? { ...prev, savedId: null } : prev));
+    } else {
+      const { data } = await sb
+        .from("saved_places")
+        .insert({
+          owner: user.id,
+          name: balloon.name,
+          kind: "place",
+          lon: balloon.lon,
+          lat: balloon.lat,
+        })
+        .select("id,name,lon,lat")
+        .single();
+      if (data) {
+        setSavedRows((rows) => [data, ...(rows ?? [])]);
+        setBalloon((prev) => (prev ? { ...prev, savedId: data.id } : prev));
+      }
+    }
+  }
+
+  // Save a highlight as a personal place (from the highlight card).
+  async function saveHighlightAsPlace() {
+    if (!user || !selectedHl) return;
+    const { data } = await sb
+      .from("saved_places")
+      .insert({
+        owner: user.id,
+        name: selectedHl.name,
+        kind: "highlight",
+        lon: selectedHl.lon,
+        lat: selectedHl.lat,
+      })
+      .select("id,name,lon,lat")
+      .single();
+    if (data) setSavedRows((rows) => [data, ...(rows ?? [])]);
+  }
 
   // Where along the route should a via at (lon,lat) be inserted? Returns the
   // slot index, or null when there's no route to bracket against.
@@ -987,6 +1084,8 @@ export default function PlannerApp() {
         onRouteDrop={handleRouteDrop}
         highlights={hlFeatures}
         onHighlightClick={handleHighlightClick}
+        savedPlaces={savedFeatures}
+        onSavedPlaceClick={handleSavedPlaceClick}
         onMarkerClick={handleMarkerClick}
         viaHandles={viaHandles}
         offGridLines={offGridLines}
@@ -1064,6 +1163,20 @@ export default function PlannerApp() {
                       </>
                     );
                   })()}
+                  {user && (
+                    <button
+                      type="button"
+                      onClick={toggleSavedPlace}
+                      className="flex items-center gap-2 rounded-lg bg-neutral-50 px-2 py-1.5 text-left text-xs hover:bg-amber-50"
+                    >
+                      <span className="flex h-4 w-4 items-center justify-center text-amber-600">
+                        {balloon.savedId ? "★" : "☆"}
+                      </span>
+                      {balloon.savedId
+                        ? t("savedPlaces.remove")
+                        : t("savedPlaces.save")}
+                    </button>
+                  )}
                   {/* Komoot's off-grid toggle: straight line instead of routing */}
                   <button
                     type="button"
@@ -1175,6 +1288,22 @@ export default function PlannerApp() {
               📏 {t("mapContent.kmMarkers")}
             </label>
 
+            {user && (
+              <label className="mt-2 flex items-center gap-2 text-xs text-neutral-800">
+                <input
+                  type="checkbox"
+                  checked={showSaved}
+                  onChange={() => setShowSaved((v) => !v)}
+                  className="accent-emerald-700"
+                />
+                <span className="text-amber-600">★</span>{" "}
+                {t("savedPlaces.toggle")}
+                <span className="ml-auto text-[10px] text-neutral-400">
+                  {savedRows?.length ?? 0}
+                </span>
+              </label>
+            )}
+
             {user && showHl && (
               <button
                 type="button"
@@ -1266,6 +1395,16 @@ export default function PlannerApp() {
                 ▼
               </button>
             </div>
+            {user && (
+              <button
+                type="button"
+                onClick={saveHighlightAsPlace}
+                title={t("savedPlaces.save")}
+                className="rounded-lg bg-neutral-100 px-2 py-1 text-sm text-amber-600 hover:bg-amber-50"
+              >
+                ☆
+              </button>
+            )}
             <div className="flex items-center gap-1" title={t("highlights.asWaypoint")}>
               <button
                 type="button"

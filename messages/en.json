@@ -120,7 +120,12 @@
     "roundTripHint": "Set a starting point first",
     "roundTripOnlyStart": "Works from just a starting point — use 'Back to start' instead",
     "share": "Share",
-    "copied": "Copied!"
+    "copied": "Copied!",
+    "savedPlaces": {
+      "toggle": "Saved places",
+      "save": "Save this place",
+      "remove": "Remove from saved"
+    }
   },
   "account": {
     "login": "Log in to save routes",

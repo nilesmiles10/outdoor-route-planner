@@ -120,7 +120,12 @@
     "roundTripHint": "Kies eerst een startpunt",
     "roundTripOnlyStart": "Werkt alleen met enkel een startpunt — gebruik anders 'Heen en terug'",
     "share": "Delen",
-    "copied": "Gekopieerd!"
+    "copied": "Gekopieerd!",
+    "savedPlaces": {
+      "toggle": "Opgeslagen plekken",
+      "save": "Plek opslaan",
+      "remove": "Verwijderen uit opgeslagen"
+    }
   },
   "account": {
     "login": "Log in om routes op te slaan",
