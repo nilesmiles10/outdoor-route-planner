@@ -410,7 +410,8 @@
     "noActivity": "Nog geen routes of activiteiten.",
     "verbPlanned": "plande een route",
     "verbCompleted": "voltooide een activiteit",
-    "privateBadge": "Privéprofiel"
+    "privateBadge": "Privéprofiel",
+    "accountTitle": "Account"
   },
   "social": {
     "anonymous": "Avonturier",

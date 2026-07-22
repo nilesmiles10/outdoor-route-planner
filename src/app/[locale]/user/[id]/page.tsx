@@ -7,6 +7,7 @@ import Avatar from "@/components/Avatar";
 import ProfileActions from "@/components/ProfileActions";
 import ProfileTimeline, { type TimelineItem } from "@/components/ProfileTimeline";
 import ProfileOwnerPanels from "@/components/ProfileOwnerPanels";
+import AccountSections from "@/components/AccountSections";
 import SiteFooter from "@/components/SiteFooter";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 
@@ -298,7 +299,12 @@ export default async function UserPage({
             </section>
           )}
 
-          {isOwner && <ProfileOwnerPanels userId={p.id} />}
+          {isOwner && (
+            <>
+              <ProfileOwnerPanels userId={p.id} />
+              <AccountSections userId={p.id} />
+            </>
+          )}
         </div>
 
         {/* Timeline-kolom */}

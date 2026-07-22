@@ -46,7 +46,7 @@ export default function PrivacySettings({ userId }: { userId: string }) {
   if (!row) return null;
 
   return (
-    <div className="border-t border-neutral-200 pt-2">
+    <div>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

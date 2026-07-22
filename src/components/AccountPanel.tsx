@@ -4,8 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import MfaSection from "./MfaSection";
-import PrivacySettings from "./PrivacySettings";
 import VisibilitySelect from "./VisibilitySelect";
 import type { Visibility } from "@/lib/visibility";
 import type { Waypoint } from "./MapView";
@@ -321,38 +319,11 @@ export default function AccountPanel({ tour, onLoadTour, hideLoginForm }: Props)
     );
   }
 
+  // Accountbeheer (uitloggen, 2FA, privacy, account verwijderen) zit in
+  // de header-dropdown en op de eigen profielpagina — dit paneel gaat
+  // alleen nog over routes opslaan en laden.
   return (
     <div className="flex flex-col gap-2 rounded-lg bg-neutral-50 p-3">
-      <div className="flex items-center justify-between">
-        <span className="truncate text-xs text-neutral-600">{user.email}</span>
-        <button
-          type="button"
-          onClick={() => sb.auth.signOut()}
-          className="text-[10px] text-neutral-400 hover:text-red-600"
-        >
-          {t("logout")}
-        </button>
-        <button
-          type="button"
-          onClick={async () => {
-            const phrase = user.email ?? "delete";
-            const v = window.prompt(`${t("deleteAccountConfirm")}\n\n"${phrase}"`);
-            if (v !== phrase) return;
-            const res = await fetch("/api/account/delete", { method: "POST" });
-            if (res.ok) {
-              await sb.auth.signOut();
-              window.location.href = `/${locale}`;
-            } else {
-              alert(t("deleteAccountFailed"));
-            }
-          }}
-          className="text-[10px] text-neutral-300 hover:text-red-600 hover:underline"
-        >
-          {t("deleteAccount")}
-        </button>
-      </div>
-      <MfaSection />
-      <PrivacySettings userId={user.id} />
       <div className="flex items-center gap-2">
         <button
           type="button"
