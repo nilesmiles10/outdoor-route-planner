@@ -260,6 +260,7 @@ export async function updateSiteSettings(formData: FormData) {
 const RESERVED_SLUGS = new Set([
   "collection", "collections", "discover", "feed", "highlight",
   "reset-password", "routes", "tour", "user", "admin", "embed", "api",
+  "trail", "trails",
 ]);
 
 export async function savePage(formData: FormData) {

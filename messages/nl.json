@@ -350,7 +350,9 @@
       "mid": "20–50 km",
       "long": "> 50 km"
     },
-    "featured": "Uitgelicht"
+    "featured": "Uitgelicht",
+    "trailsTitle": "Officiële routes",
+    "trailsMore": "Alle officiële routes →"
   },
   "regionPage": {
     "breadcrumbDiscover": "Ontdekken",
@@ -462,5 +464,28 @@
     "gpxHint": "universeel",
     "courseHint": "Garmin/Wahoo, met afslagen",
     "note": "TCX/FIT bevatten turn-instructies als de route ze heeft; routes van vóór deze update en geüploade activiteiten niet."
+  },
+  "trailsPage": {
+    "title": "Officiële routes",
+    "subtitle": "Bewegwijzerde routes van route-beheerders, geïmporteerd uit OpenStreetMap. Start: Nederland.",
+    "allSports": "Alle sporten",
+    "allRegions": "Alle regio's",
+    "searchPlaceholder": "Zoek op naam…",
+    "empty": "Geen routes gevonden met deze filters.",
+    "attribution": "Routegegevens © OpenStreetMap-bijdragers (ODbL)."
+  },
+  "trailPage": {
+    "official": "Officiële route",
+    "roundtrip": "Rondje",
+    "start": "Start",
+    "detailWithOperator": "Beheerder {operator} · gegevens © OpenStreetMap-bijdragers",
+    "detailNoOperator": "Gegevens © OpenStreetMap-bijdragers",
+    "viewOsm": "Bekijk op OpenStreetMap",
+    "metaDescription": "{name}: officiële route van {km} km in {region}. Bekijk hoogteprofiel, ondergrond en exporteer naar GPX/TCX/FIT.",
+    "sportNoun": {
+      "hike": "wandelroute",
+      "touring": "fietsroute",
+      "mtb": "MTB-route"
+    }
   }
 }

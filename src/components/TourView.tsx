@@ -43,6 +43,14 @@ type Props = {
     label: string;
     dateLabel: string;
   } | null;
+  // GEN-145: bron-attributie voor officiële trails (i.p.v. auteur) —
+  // ODbL vereist zichtbare OSM-attributie op geïmporteerde routes.
+  source?: {
+    badge: string;       // "Officiële route"
+    detail: string;      // "beheerder X · gegevens © OpenStreetMap-bijdragers"
+    href: string;        // OSM-relatie-URL
+    linkText: string;    // "Bekijk op OpenStreetMap"
+  } | null;
   // Tour page v2 (GEN-132): all strings pre-translated server-side.
   autoDesc?: string;
   weather?: {
@@ -98,6 +106,7 @@ export default function TourView({
   embedId,
   durationS,
   turns,
+  source,
 }: Props) {
   const [embedCopied, setEmbedCopied] = useState(false);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -172,6 +181,24 @@ export default function TourView({
                 </div>
               </div>
             </>
+          )}
+          {source && (
+            <div className="mb-1.5">
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+                ✓ {source.badge}
+              </span>
+              <p className="mt-1 text-[10px] leading-snug text-neutral-500">
+                {source.detail}{" "}
+                <a
+                  href={source.href}
+                  target="_blank"
+                  rel="noopener"
+                  className="text-emerald-700 hover:underline"
+                >
+                  {source.linkText}
+                </a>
+              </p>
+            </div>
           )}
           <h1 className="text-lg font-semibold text-neutral-900">{header.name}</h1>
           <p className="text-xs capitalize text-neutral-500">

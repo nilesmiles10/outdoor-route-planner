@@ -350,7 +350,9 @@
       "mid": "20–50 km",
       "long": "> 50 km"
     },
-    "featured": "Featured"
+    "featured": "Featured",
+    "trailsTitle": "Official trails",
+    "trailsMore": "All official trails →"
   },
   "regionPage": {
     "breadcrumbDiscover": "Discover",
@@ -462,5 +464,28 @@
     "gpxHint": "universal",
     "courseHint": "Garmin/Wahoo, with turns",
     "note": "TCX/FIT include turn instructions when the route has them; routes saved before this update and uploaded activities don't."
+  },
+  "trailsPage": {
+    "title": "Official trails",
+    "subtitle": "Waymarked trails from route operators, imported from OpenStreetMap. Starting with the Netherlands.",
+    "allSports": "All sports",
+    "allRegions": "All regions",
+    "searchPlaceholder": "Search by name…",
+    "empty": "No trails match these filters.",
+    "attribution": "Trail data © OpenStreetMap contributors (ODbL)."
+  },
+  "trailPage": {
+    "official": "Official trail",
+    "roundtrip": "Loop",
+    "start": "Start",
+    "detailWithOperator": "Managed by {operator} · data © OpenStreetMap contributors",
+    "detailNoOperator": "Data © OpenStreetMap contributors",
+    "viewOsm": "View on OpenStreetMap",
+    "metaDescription": "{name}: official {km} km trail in {region}. See the elevation profile, surfaces and export to GPX/TCX/FIT.",
+    "sportNoun": {
+      "hike": "hiking trail",
+      "touring": "cycling route",
+      "mtb": "MTB trail"
+    }
   }
 }

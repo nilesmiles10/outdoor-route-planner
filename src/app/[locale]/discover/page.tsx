@@ -44,6 +44,10 @@ export default function DiscoverPage() {
   const sb: SupabaseClient = useMemo(() => supabaseBrowser(), []);
   const [rows, setRows] = useState<Row[]>([]);
   const [featured, setFeatured] = useState<Row[]>([]);
+  // GEN-145: officiële routes (OSM-import) — kleine rail met doorlink.
+  const [trails, setTrails] = useState<
+    { id: string; name: string; sport: string; region: string | null; stats: { distanceM: number; ascendM: number } }[]
+  >([]);
   const [sport, setSport] = useState("all");
   const [band, setBand] = useState("all");
   const [pos, setPos] = useState<[number, number] | null>(null);
@@ -67,6 +71,10 @@ export default function DiscoverPage() {
       .order("featured_at", { ascending: false })
       .limit(10)
       .then(({ data }) => setFeatured((data as Row[]) ?? []));
+    sb.from("trails")
+      .select("id,name,sport,region,stats")
+      .limit(10)
+      .then(({ data }) => setTrails((data as typeof trails) ?? []));
     sb.from("highlights")
       .select("region,category")
       .not("region", "is", null)
@@ -124,6 +132,32 @@ export default function DiscoverPage() {
                 <div className="truncate text-sm font-medium text-neutral-900">{r.name}</div>
                 <div className="mt-0.5 text-xs text-neutral-500">
                   {(r.stats.distanceM / 1000).toFixed(1)} km · ↗ {r.stats.ascendM} m · {ts(r.sport as never)}
+                </div>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {trails.length > 0 && (
+        <section className="mt-4">
+          <h2 className="mb-2 flex items-baseline justify-between text-sm font-semibold text-neutral-700">
+            <span>✓ {t("trailsTitle")}</span>
+            <a href={`/${locale}/trails`} className="text-xs font-normal text-emerald-700 hover:underline">
+              {t("trailsMore")}
+            </a>
+          </h2>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {trails.map((r) => (
+              <a
+                key={r.id}
+                href={`/${locale}/trail/${r.id}`}
+                className="w-56 shrink-0 rounded-xl border border-emerald-200 bg-emerald-50/50 px-4 py-3 hover:border-emerald-300"
+              >
+                <div className="truncate text-sm font-medium text-neutral-900">{r.name}</div>
+                <div className="mt-0.5 text-xs text-neutral-500">
+                  {(r.stats.distanceM / 1000).toFixed(1)} km · ↗ {r.stats.ascendM} m · {ts(r.sport as never)}
+                  {r.region ? ` · ${r.region}` : ""}
                 </div>
               </a>
             ))}
