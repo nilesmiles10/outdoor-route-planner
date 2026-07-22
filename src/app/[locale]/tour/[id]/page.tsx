@@ -26,6 +26,8 @@ type TourRow = {
   moving_s: number | null;
   max_speed_kmh: number | null;
   time_offsets: number[] | null;
+  // Author attribution (Komoot teardown): joined via tours_owner_profiles_fkey.
+  profile: { display_name: string | null; avatar_url: string | null } | null;
 };
 
 function haversineKm(aLon: number, aLat: number, bLon: number, bLat: number) {
@@ -47,11 +49,11 @@ async function getTour(id: string): Promise<TourRow | null> {
   const { data } = await sb
     .from("tours")
     .select(
-      "id,owner,name,visibility,sport,waypoints,geometry,elevation,stats,surfaces,updated_at,kind,recorded_at,duration_s,moving_s,max_speed_kmh,time_offsets",
+      "id,owner,name,visibility,sport,waypoints,geometry,elevation,stats,surfaces,updated_at,kind,recorded_at,duration_s,moving_s,max_speed_kmh,time_offsets,profile:profiles!tours_owner_profiles_fkey(display_name,avatar_url)",
     )
     .eq("id", id)
     .maybeSingle();
-  return (data as TourRow) ?? null;
+  return (data as unknown as TourRow) ?? null;
 }
 
 // Komoot-style auto description (GEN-132), templated from difficulty +
@@ -83,9 +85,10 @@ export async function generateMetadata({
   if (!tour) return { title: "Tour not found" };
   const km = (tour.stats.distanceM / 1000).toFixed(1);
   const t = await getTranslations("tourPage");
+  const authorName = tour.profile?.display_name ?? t("anonymous");
   return {
     title: `${tour.name} | ${km} km ${tour.sport}`,
-    description: `${km} km · ↗ ${tour.stats.ascendM} m — ${buildAutoDesc(t, tour)}`,
+    description: `${km} km · ↗ ${tour.stats.ascendM} m — ${buildAutoDesc(t, tour)} · ${t("byline", { name: authorName })}`,
   };
 }
 
@@ -182,7 +185,36 @@ export default async function TourPage({
     .sort((a, b) => a.atKm - b.atKm)
     .slice(0, 8));
 
+  // Komoot-teardown: "Tip van {naam}" bij highlights op de route — recentste
+  // tip per passed highlight, auteur via de dual-FK profiles-embed.
+  type TipRow = {
+    highlight_id: string;
+    text: string;
+    profile: { display_name: string | null } | null;
+  };
+  const tipByHighlight = new Map<string, TipRow>();
+  if (passed.length > 0) {
+    const { data: tipRows } = await sb
+      .from("highlight_tips")
+      .select(
+        "highlight_id,text,profile:profiles!highlight_tips_author_profiles_fkey(display_name)",
+      )
+      .in(
+        "highlight_id",
+        passed.map((hl) => hl.id),
+      )
+      .order("created_at", { ascending: false })
+      .limit(40);
+    for (const row of (tipRows as TipRow[] | null) ?? []) {
+      if (!tipByHighlight.has(row.highlight_id)) tipByHighlight.set(row.highlight_id, row);
+    }
+  }
+
   const autoDesc = buildAutoDesc(t, tour);
+  const authorName = tour.profile?.display_name ?? t("anonymous");
+  const authorDate = new Date(
+    tour.kind === "completed" && tour.recorded_at ? tour.recorded_at : tour.updated_at,
+  ).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" });
 
   const isActivity = tour.kind === "completed" && !!tour.time_offsets;
   const avgKmh =
@@ -200,6 +232,7 @@ export default async function TourPage({
             "@type": "Trip",
             name: tour.name,
             description: `${km} km ${tour.sport} route — ${autoDesc}`,
+            author: { "@type": "Person", name: authorName },
             itinerary: tour.waypoints.map((w) => ({
               "@type": "Place",
               name: w.name,
@@ -226,6 +259,13 @@ export default async function TourPage({
           embedCopied: t("embedCopied"),
         }}
         embedId={tour.visibility === "public" ? tour.id : null}
+        author={{
+          href: `/${locale}/user/${tour.owner}`,
+          name: authorName,
+          avatarUrl: tour.profile?.avatar_url ?? null,
+          label: t(tour.kind === "completed" ? "authorCompleted" : "authorPlanned"),
+          dateLabel: authorDate,
+        }}
         autoDesc={autoDesc}
         social={{ tourId: tour.id, tourOwner: tour.owner }}
         activity={
@@ -272,11 +312,18 @@ export default async function TourPage({
             meta: `${(tr.stats.distanceM / 1000).toFixed(1)} km · ↗ ${tr.stats.ascendM} m · ${ts(tr.sport as never)} · ${Math.round(tr.distKm)} km ${t("away")}`,
           })),
           passedTitle: t("activity.onRoute"),
-          passed: passed.map((hl) => ({
-            href: `/${locale}/highlight/${hl.id}`,
-            name: `${CATEGORY_EMOJI[hl.category] ?? "📍"} ${hl.name}`,
-            meta: `km ${hl.atKm.toFixed(1)}`,
-          })),
+          passed: passed.map((hl) => {
+            const tip = tipByHighlight.get(hl.id);
+            return {
+              href: `/${locale}/highlight/${hl.id}`,
+              name: `${CATEGORY_EMOJI[hl.category] ?? "📍"} ${hl.name}`,
+              meta: `km ${hl.atKm.toFixed(1)}`,
+              tipText: tip?.text ?? null,
+              tipBy: tip
+                ? `${t("tipBy")} ${tip.profile?.display_name ?? t("anonymous")}`
+                : null,
+            };
+          }),
           highlightsTitle: t("relatedHighlights"),
           highlights: relatedHls.map((hl) => ({
             href: `/${locale}/highlight/${hl.id}`,

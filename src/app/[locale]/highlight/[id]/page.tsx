@@ -8,6 +8,7 @@ import { CATEGORY_EMOJI } from "@/lib/highlights";
 import { gradientFor } from "@/lib/collections";
 import HighlightMap from "@/components/HighlightMap";
 import HighlightActions from "@/components/HighlightActions";
+import Avatar from "@/components/Avatar";
 import SiteFooter from "@/components/SiteFooter";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 
@@ -26,7 +27,14 @@ type Highlight = {
   description: string | null;
 };
 type Vote = { value: number; sport: string | null };
-type Tip = { id: string; sport: string | null; text: string; created_at: string };
+type Tip = {
+  id: string;
+  sport: string | null;
+  text: string;
+  created_at: string;
+  author: string | null;
+  profile: { display_name: string | null; avatar_url: string | null } | null;
+};
 type Photo = { id: string; path: string };
 type TourLite = {
   id: string;
@@ -110,7 +118,9 @@ export default async function HighlightPage({
       sb.from("highlight_votes").select("value,sport").eq("highlight_id", hl.id),
       sb
         .from("highlight_tips")
-        .select("id,sport,text,created_at")
+        .select(
+          "id,sport,text,created_at,author,profile:profiles!highlight_tips_author_profiles_fkey(display_name,avatar_url)",
+        )
         .eq("highlight_id", hl.id)
         .order("created_at", { ascending: false })
         .limit(20),
@@ -136,7 +146,7 @@ export default async function HighlightPage({
     ]);
 
   const votes = (votesQ.data as Vote[]) ?? [];
-  const tips = (tipsQ.data as Tip[]) ?? [];
+  const tips = (tipsQ.data as unknown as Tip[]) ?? [];
   const photos = (photosQ.data as Photo[]) ?? [];
 
   // Per-sport recommendation percentages (Komoot's signature block).
@@ -288,17 +298,37 @@ export default async function HighlightPage({
             <p className="mt-2 text-sm text-neutral-400">{t("noTips")}</p>
           ) : (
             <ul className="mt-3 flex flex-col gap-4">
-              {tips.map((tip) => (
-                <li key={tip.id} className="border-b border-neutral-100 pb-3">
-                  <div className="text-xs text-neutral-400">
-                    {new Date(tip.created_at).toLocaleDateString(locale)}
-                    {tip.sport ? ` · ${ts(tip.sport as never)}` : ""}
-                  </div>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-neutral-700">
-                    {tip.text}
-                  </p>
-                </li>
-              ))}
+              {tips.map((tip) => {
+                const tipName = tip.profile?.display_name ?? t("anonymous");
+                return (
+                  <li key={tip.id} className="border-b border-neutral-100 pb-3">
+                    <div className="flex items-center gap-1.5 text-xs text-neutral-400">
+                      <Avatar
+                        name={tipName}
+                        url={tip.profile?.avatar_url ?? null}
+                        size={16}
+                      />
+                      {tip.author ? (
+                        <a
+                          href={`/${locale}/user/${tip.author}`}
+                          className="font-medium text-neutral-600 hover:underline"
+                        >
+                          {tipName}
+                        </a>
+                      ) : (
+                        <span className="font-medium text-neutral-600">{tipName}</span>
+                      )}
+                      <span>
+                        · {new Date(tip.created_at).toLocaleDateString(locale)}
+                        {tip.sport ? ` · ${ts(tip.sport as never)}` : ""}
+                      </span>
+                    </div>
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-neutral-700">
+                      {tip.text}
+                    </p>
+                  </li>
+                );
+              })}
             </ul>
           )}
 

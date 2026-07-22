@@ -5,6 +5,7 @@ import MapView, { type Waypoint } from "./MapView";
 import ElevationChart from "./ElevationChart";
 import SpeedChart from "./SpeedChart";
 import TourSocial from "./TourSocial";
+import Avatar from "./Avatar";
 import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
 import { speedSeries, fmtDuration } from "@/lib/activity";
 import { buildGpx } from "@/lib/gpx";
@@ -28,6 +29,15 @@ type Props = {
   };
   // GEN-135: present on public tours — id for the iframe snippet.
   embedId?: string | null;
+  // Auteur-attributie (Komoot teardown): breadcrumb + avatar-blok boven de
+  // titel; alle strings server-side vertaald.
+  author?: {
+    href: string;
+    name: string;
+    avatarUrl: string | null;
+    label: string;
+    dateLabel: string;
+  } | null;
   // Tour page v2 (GEN-132): all strings pre-translated server-side.
   autoDesc?: string;
   weather?: {
@@ -39,7 +49,13 @@ type Props = {
     toursTitle: string;
     tours: { href: string; name: string; meta: string }[];
     passedTitle?: string;
-    passed?: { href: string; name: string; meta: string }[];
+    passed?: {
+      href: string;
+      name: string;
+      meta: string;
+      tipText?: string | null;
+      tipBy?: string | null;
+    }[];
     highlightsTitle: string;
     highlights: { href: string; name: string; meta: string }[];
   };
@@ -68,6 +84,7 @@ export default function TourView({
   elevation,
   waypoints,
   header,
+  author,
   autoDesc,
   weather,
   related,
@@ -121,6 +138,34 @@ export default function TourView({
       />
       <div className="absolute flex flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur max-md:inset-x-2 max-md:bottom-2 max-md:max-h-[45dvh] md:left-4 md:top-16 md:max-h-[calc(100dvh-5rem)] md:w-[340px]">
         <div>
+          {author && (
+            <>
+              <nav className="truncate text-[11px] text-neutral-400">
+                <a href={author.href} className="hover:underline">
+                  {author.name}
+                </a>
+                {" / "}
+                <span className="text-neutral-600">{header.name}</span>
+              </nav>
+              <div className="mb-1.5 mt-1.5 flex items-center gap-2">
+                <Avatar name={author.name} url={author.avatarUrl} size={32} />
+                <div className="min-w-0 text-xs leading-tight">
+                  <div className="truncate">
+                    <a
+                      href={author.href}
+                      className="font-medium text-emerald-800 hover:underline"
+                    >
+                      {author.name}
+                    </a>{" "}
+                    <span className="text-neutral-600">{author.label}</span>
+                  </div>
+                  <div className="text-[10px] text-neutral-400">
+                    {author.dateLabel}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
           <h1 className="text-lg font-semibold text-neutral-900">{header.name}</h1>
           <p className="text-xs capitalize text-neutral-500">
             {header.sport}
@@ -299,12 +344,20 @@ export default function TourView({
                 <a
                   key={hl.href}
                   href={hl.href}
-                  className="flex items-baseline justify-between gap-2 rounded px-1 py-1 text-xs text-neutral-700 hover:text-emerald-800"
+                  className="rounded px-1 py-1 text-xs text-neutral-700 hover:text-emerald-800"
                 >
-                  <span className="min-w-0 truncate">{hl.name}</span>
-                  <span className="shrink-0 text-[10px] text-neutral-500">
-                    {hl.meta}
+                  <span className="flex items-baseline justify-between gap-2">
+                    <span className="min-w-0 truncate">{hl.name}</span>
+                    <span className="shrink-0 text-[10px] text-neutral-500">
+                      {hl.meta}
+                    </span>
                   </span>
+                  {hl.tipText && (
+                    <span className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-neutral-500">
+                      “{hl.tipText}”{" "}
+                      <span className="text-neutral-400">— {hl.tipBy}</span>
+                    </span>
+                  )}
                 </a>
               ))}
             </div>
