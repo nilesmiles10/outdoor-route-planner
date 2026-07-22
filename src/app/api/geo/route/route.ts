@@ -38,6 +38,10 @@ export async function GET(req: NextRequest) {
   url.searchParams.set("profile", SPORT_PROFILES[sport]);
   url.searchParams.set("alternativeidx", "0");
   url.searchParams.set("format", "geojson");
+  // GEN-143: voicehints voor turn-by-turn course-export. Empirisch geprobed
+  // op onze 1.7.10 (2026-07-22): timode=2 werkt zonder profielaanpassing,
+  // shape = [[coordIndex, command, roundaboutExit, distM, angle], ...].
+  url.searchParams.set("timode", "2");
 
   try {
     const res = await fetch(url, { headers: geoHeaders(), cache: "no-store" });
@@ -89,6 +93,36 @@ export async function GET(req: NextRequest) {
       }
       return best;
     };
+
+    // GEN-143: voicehints → compacte turns. Commandcodes (locus/timode=2,
+    // empirisch geverifieerd tegen de hoeken in de probe-response):
+    // 1=C 2=TL 3=TSLL 4=TSHL 5=TR 6=TSLR 7=TSHR 8=KL 9=KR 10..12=u-turns,
+    // 13+=rotonde (3e element = afrit-nummer).
+    const TURN_CODE: Record<number, string> = {
+      1: "straight",
+      2: "left",
+      3: "slight_left",
+      4: "sharp_left",
+      5: "right",
+      6: "slight_right",
+      7: "sharp_right",
+      8: "keep_left",
+      9: "keep_right",
+      10: "uturn",
+      11: "uturn",
+      12: "uturn",
+    };
+    type Turn = { i: number; t: string; exit?: number };
+    const voicehints: number[][] = props.voicehints ?? [];
+    const turns: Turn[] = voicehints
+      .map((h) => {
+        const [i, cmd, exit] = [h[0] ?? 0, h[1] ?? 0, h[2] ?? 0];
+        if (i <= 0 || i >= coords.length) return null;
+        const t = TURN_CODE[cmd] ?? (cmd >= 13 ? "roundabout" : null);
+        if (!t) return null;
+        return t === "roundabout" && exit > 0 ? { i, t, exit } : { i, t };
+      })
+      .filter((x): x is Turn => x !== null);
 
     // messages: [header, ...rows] — per-way-stretch WayTags. Each row's
     // Longitude/Latitude is the END of its stretch; the stretch starts at
@@ -145,6 +179,7 @@ export async function GET(req: NextRequest) {
       waytypes: waytypesKm,
       elevation,
       alerts,
+      turns,
     });
   } catch {
     return NextResponse.json(

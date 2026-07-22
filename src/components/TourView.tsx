@@ -8,7 +8,8 @@ import TourSocial from "./TourSocial";
 import Avatar from "./Avatar";
 import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
 import { speedSeries, fmtDuration } from "@/lib/activity";
-import { buildGpx } from "@/lib/gpx";
+import ExportMenu from "./ExportMenu";
+import type { CourseTurn } from "@/lib/course";
 
 type Props = {
   geometry: GeoJSON.LineString;
@@ -29,6 +30,10 @@ type Props = {
   };
   // GEN-135: present on public tours — id for the iframe snippet.
   embedId?: string | null;
+  // GEN-143: course-export (TCX/FIT) — duur voor virtual partner +
+  // turn-instructies (null bij oude tours/uploads).
+  durationS?: number;
+  turns?: CourseTurn[] | null;
   // Auteur-attributie (Komoot teardown): breadcrumb + avatar-blok boven de
   // titel; alle strings server-side vertaald.
   author?: {
@@ -91,6 +96,8 @@ export default function TourView({
   social,
   activity,
   embedId,
+  durationS,
+  turns,
 }: Props) {
   const [embedCopied, setEmbedCopied] = useState(false);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -116,15 +123,15 @@ export default function TourView({
     .map((p) => `${p.lon.toFixed(5)},${p.lat.toFixed(5)}`)
     .join(";")}&sport=${header.sport}`;
 
-  function downloadGpx() {
-    const gpx = buildGpx(header.name, geometry.coordinates, elevation, waypoints);
-    const blob = new Blob([gpx], { type: "application/gpx+xml" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${header.name.replace(/[^\w\- ]+/g, "").slice(0, 60) || "route"}.gpx`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
+  const exportData = () => ({
+    name: header.name,
+    sport: header.sport,
+    coords: geometry.coordinates,
+    elevation,
+    waypoints,
+    durationS: durationS ?? 3600,
+    turns,
+  });
 
   return (
     <>
@@ -254,13 +261,7 @@ export default function TourView({
           </div>
         )}
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={downloadGpx}
-            className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
-          >
-            ⤓ {header.gpxLabel}
-          </button>
+          <ExportMenu getData={exportData} />
           <a
             href={plannerHref}
             className="rounded-lg bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-200"

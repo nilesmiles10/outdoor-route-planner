@@ -15,7 +15,8 @@ import SearchField from "./SearchField";
 import ElevationChart from "./ElevationChart";
 import AccountPanel, { type TourPayload } from "./AccountPanel";
 import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
-import { buildGpx, parseGpx, sampleAnchors } from "@/lib/gpx";
+import { parseGpx, sampleAnchors } from "@/lib/gpx";
+import ExportMenu from "./ExportMenu";
 import { loopVias } from "@/lib/roundtrip";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { difficulty } from "@/lib/difficulty";
@@ -36,6 +37,9 @@ type RouteAlert = {
   distanceM: number;
 };
 
+// GEN-143: turn-instructie op geometry-index (uit BRouter voicehints).
+type RouteTurn = { i: number; t: string; exit?: number };
+
 type RouteResult = {
   geometry: GeoJSON.Feature;
   stats: { distanceM: number; timeS: number; ascendM: number; descendM: number };
@@ -46,6 +50,7 @@ type RouteResult = {
   waytypes: Record<string, number>;
   elevation: number[];
   alerts?: RouteAlert[];
+  turns?: RouteTurn[];
 };
 
 type Slots = (Waypoint | null)[];
@@ -262,6 +267,7 @@ function straightLeg(from: Waypoint, to: Waypoint, sport: Sport): RouteResult {
     waytypes: {},
     elevation: [0, 0],
     alerts: [],
+    turns: [],
   };
 }
 
@@ -287,6 +293,7 @@ function mergeLegs(legs: RouteResult[]): RouteResult {
   const detailM: Record<string, number> = {};
   const waytypes: Record<string, number> = {};
   const alerts: RouteAlert[] = [];
+  const turns: RouteTurn[] = [];
   legs.forEach((leg, i) => {
     const legCoords = (leg.geometry.geometry as GeoJSON.LineString).coordinates;
     // Leg-local index k maps to the merged array: legs after the first drop
@@ -299,6 +306,9 @@ function mergeLegs(legs: RouteResult[]): RouteResult {
         fromIdx: globalIdx(a.fromIdx),
         toIdx: globalIdx(a.toIdx),
       });
+    }
+    for (const tr of leg.turns ?? []) {
+      turns.push({ ...tr, i: globalIdx(tr.i) });
     }
     coords.push(...(i === 0 ? legCoords : legCoords.slice(1)));
     elevation.push(...(i === 0 ? leg.elevation : leg.elevation.slice(1)));
@@ -327,6 +337,7 @@ function mergeLegs(legs: RouteResult[]): RouteResult {
     waytypes,
     elevation,
     alerts,
+    turns,
   };
 }
 
@@ -788,22 +799,7 @@ export default function PlannerApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(filled), sport]);
 
-  // --- GPX export/import (GEN-108) ---
-  const handleDownloadGpx = useCallback(() => {
-    if (!route || !routeCoords) return;
-    const name =
-      filled.length >= 2
-        ? `${filled[0].name} - ${filled[filled.length - 1].name}`
-        : "route";
-    const gpx = buildGpx(name, routeCoords, route.elevation, filled);
-    const blob = new Blob([gpx], { type: "application/gpx+xml" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${name.replace(/[^\w\- ]+/g, "").slice(0, 60) || "route"}.gpx`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }, [route, routeCoords, filled]);
-
+  // --- GPX import (GEN-108); export loopt via ExportMenu (GEN-143) ---
   const handleImportFile = useCallback(
     async (file: File) => {
       const pts = parseGpx(await file.text());
@@ -1102,6 +1098,7 @@ export default function PlannerApp() {
           stats: route.stats,
           surfaces: route.surfaces,
           waytypes: route.waytypes,
+          turns: route.turns ?? [],
         }
       : null;
 
@@ -1808,13 +1805,21 @@ export default function PlannerApp() {
                     {climbs.length} {t("climbs")}
                   </span>
                 )}
-                <button
-                  type="button"
-                  onClick={handleDownloadGpx}
-                  className="rounded-lg bg-neutral-100 px-2 py-1 text-[11px] font-medium text-neutral-700 hover:bg-neutral-200"
-                >
-                  ⤓ GPX
-                </button>
+                <ExportMenu
+                  compact
+                  getData={() => ({
+                    name:
+                      filled.length >= 2
+                        ? `${filled[0].name} - ${filled[filled.length - 1].name}`
+                        : "route",
+                    sport,
+                    coords: routeCoords ?? [],
+                    elevation: route?.elevation ?? [],
+                    waypoints: filled,
+                    durationS: route?.stats.timeS ?? 3600,
+                    turns: route?.turns ?? [],
+                  })}
+                />
                 <button
                   type="button"
                   onClick={handleCopyLink}

@@ -456,5 +456,11 @@
       "followers": "Followers and close friends",
       "public": "Everyone"
     }
+  },
+  "export": {
+    "button": "Export",
+    "gpxHint": "universal",
+    "courseHint": "Garmin/Wahoo, with turns",
+    "note": "TCX/FIT include turn instructions when the route has them; routes saved before this update and uploaded activities don't."
   }
 }

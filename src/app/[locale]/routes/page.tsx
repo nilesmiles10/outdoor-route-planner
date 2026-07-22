@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { buildGpx } from "@/lib/gpx";
 import { difficulty } from "@/lib/difficulty";
+import ExportMenu from "@/components/ExportMenu";
 import AccountPanel from "@/components/AccountPanel";
 import UploadActivity from "@/components/UploadActivity";
 import SiteFooter from "@/components/SiteFooter";
@@ -90,25 +90,23 @@ export default function RoutesPage() {
     if (user) refresh();
   }, [user, refresh]);
 
-  async function download(row: Row) {
+  // GEN-143: export-menu haalt geometry/turns lazy op (lijst-query blijft licht).
+  async function exportData(row: Row) {
     const { data } = await sb
       .from("tours")
-      .select("geometry,elevation")
+      .select("geometry,elevation,turns")
       .eq("id", row.id)
       .single();
-    if (!data) return;
-    const gpx = buildGpx(
-      row.name,
-      (data.geometry as GeoJSON.LineString).coordinates,
-      data.elevation as number[],
-      row.waypoints,
-    );
-    const blob = new Blob([gpx], { type: "application/gpx+xml" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${row.name.replace(/[^\w\- ]+/g, "").slice(0, 60) || "route"}.gpx`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    if (!data) throw new Error("tour_fetch_failed");
+    return {
+      name: row.name,
+      sport: row.sport,
+      coords: (data.geometry as GeoJSON.LineString).coordinates,
+      elevation: data.elevation as number[],
+      waypoints: row.waypoints,
+      durationS: row.stats.timeS,
+      turns: data.turns as { i: number; t: string; exit?: number }[] | null,
+    };
   }
 
   async function savePace(row: Row, value: string) {
@@ -309,13 +307,7 @@ export default function RoutesPage() {
                     >
                       {t("view")}
                     </a>
-                    <button
-                      type="button"
-                      onClick={() => download(row)}
-                      className="rounded-lg bg-neutral-100 px-2 py-1 hover:bg-neutral-200"
-                    >
-                      ⤓ GPX
-                    </button>
+                    <ExportMenu compact getData={() => exportData(row)} />
                     <VisibilitySelect
                       compact
                       value={row.visibility}

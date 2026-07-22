@@ -17,6 +17,8 @@ export type TourPayload = {
   stats: unknown;
   surfaces: unknown;
   waytypes: unknown;
+  // GEN-143: turn-instructies uit BRouter-voicehints; leeg bij off-grid-only.
+  turns: unknown;
 };
 
 type TourRow = {
