@@ -18,14 +18,19 @@ type Profile = {
   bio: string | null;
   avatar_url: string | null;
   preferred_sports: string[];
+  website: string | null;
 };
+
+// Follow-request-model: de DB-trigger bepaalt de status (accepted bij
+// publiek profiel, pending bij privé) — de client insert alleen het paar.
+type FollowStatus = "none" | "pending" | "accepted";
 
 export default function ProfileActions({ profile }: { profile: Profile }) {
   const t = useTranslations("profile");
   const tp = useTranslations("planner");
   const sb: SupabaseClient = useMemo(() => supabaseBrowser(), []);
   const [user, setUser] = useState<User | null>(null);
-  const [following, setFollowing] = useState<boolean | null>(null);
+  const [followStatus, setFollowStatus] = useState<FollowStatus | null>(null);
   const [blocked, setBlocked] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -34,6 +39,7 @@ export default function ProfileActions({ profile }: { profile: Profile }) {
     display_name: profile.display_name ?? "",
     home_region: profile.home_region ?? "",
     bio: profile.bio ?? "",
+    website: profile.website ?? "",
     sports: profile.preferred_sports ?? [],
   });
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -45,11 +51,13 @@ export default function ProfileActions({ profile }: { profile: Profile }) {
   useEffect(() => {
     if (!user || user.id === profile.id) return;
     sb.from("follows")
-      .select("followee_id")
+      .select("status")
       .eq("follower_id", user.id)
       .eq("followee_id", profile.id)
       .maybeSingle()
-      .then(({ data }) => setFollowing(!!data));
+      .then(({ data }) =>
+        setFollowStatus(((data as { status?: string } | null)?.status as FollowStatus) ?? "none"),
+      );
     sb.from("blocks")
       .select("blocked_id")
       .eq("blocker_id", user.id)
@@ -62,18 +70,27 @@ export default function ProfileActions({ profile }: { profile: Profile }) {
 
   async function toggleFollow() {
     if (!user) return;
-    if (following) {
+    if (followStatus === "accepted" || followStatus === "pending") {
+      // Ontvolgen óf verzoek intrekken — beide zijn een delete.
       await sb
         .from("follows")
         .delete()
         .eq("follower_id", user.id)
         .eq("followee_id", profile.id);
-      setFollowing(false);
+      setFollowStatus("none");
     } else {
-      await sb
+      const { error } = await sb
         .from("follows")
         .insert({ follower_id: user.id, followee_id: profile.id });
-      setFollowing(true);
+      if (error) return;
+      // Trigger besliste accepted/pending — teruglezen voor de juiste knop.
+      const { data } = await sb
+        .from("follows")
+        .select("status")
+        .eq("follower_id", user.id)
+        .eq("followee_id", profile.id)
+        .maybeSingle();
+      setFollowStatus(((data as { status?: string } | null)?.status as FollowStatus) ?? "pending");
     }
   }
 
@@ -117,6 +134,7 @@ export default function ProfileActions({ profile }: { profile: Profile }) {
         display_name: form.display_name.trim() || null,
         home_region: form.home_region.trim() || null,
         bio: form.bio.trim() || null,
+        website: form.website.trim() || null,
         preferred_sports: form.sports,
         updated_at: new Date().toISOString(),
       })
@@ -192,6 +210,13 @@ export default function ProfileActions({ profile }: { profile: Profile }) {
               rows={2}
               className="rounded border border-neutral-200 px-2 py-1.5 text-sm"
             />
+            <input
+              value={form.website}
+              onChange={(e) => setForm({ ...form, website: e.target.value })}
+              placeholder={t("website")}
+              inputMode="url"
+              className="rounded border border-neutral-200 px-2 py-1.5 text-sm"
+            />
             <div className="flex flex-wrap gap-1">
               {SPORTS.map((s) => (
                 <button
@@ -242,14 +267,20 @@ export default function ProfileActions({ profile }: { profile: Profile }) {
       <button
         type="button"
         onClick={toggleFollow}
-        disabled={following === null}
+        disabled={followStatus === null}
         className={`rounded-lg px-4 py-1.5 text-xs font-medium ${
-          following
+          followStatus === "accepted"
             ? "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
-            : "bg-emerald-700 text-white hover:bg-emerald-800"
+            : followStatus === "pending"
+              ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
+              : "bg-emerald-700 text-white hover:bg-emerald-800"
         }`}
       >
-        {following ? t("following") : t("follow")}
+        {followStatus === "accepted"
+          ? t("following")
+          : followStatus === "pending"
+            ? t("requested")
+            : t("follow")}
       </button>
       <div className="relative">
         <button

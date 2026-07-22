@@ -172,6 +172,16 @@
       "remove": "remove",
       "removeConfirm": "Disable two-factor authentication?",
       "stepUpTitle": "Enter your authenticator code"
+    },
+    "privacy": {
+      "title": "Privacy",
+      "saved": "Saved ✓",
+      "privateProfile": "Private profile",
+      "privateProfileHint": "New followers need your approval first. Your name and avatar stay visible; your content doesn't.",
+      "searchOptOut": "Hide from search results",
+      "searchOptOutHint": "Your profile can then only be found via a direct link.",
+      "defaultTour": "Default for new routes & activities",
+      "defaultCollection": "Default for new collections"
     }
   },
   "activities": {
@@ -378,7 +388,29 @@
     "reportPrompt": "Why are you reporting this? (required)",
     "reportThanks": "Thanks — we'll take a look.",
     "block": "Block",
-    "unblock": "Unblock"
+    "unblock": "Unblock",
+    "requested": "Requested ⏳",
+    "requests": "Follow requests",
+    "accept": "Accept",
+    "deny": "Deny",
+    "closeFriends": "Close friends",
+    "closeFriendsHint": "Only you can see this list. Close friends see content set to 🤝 (plus everything for followers).",
+    "searchPeople": "Search people to add…",
+    "removeFriend": "Remove",
+    "stats": "Statistics",
+    "statsActivities": "Activities",
+    "statsTime": "Time",
+    "lockedTitle": "This profile is private",
+    "lockedBody": "Follow this profile to see routes, activities and statistics. The owner approves follow requests.",
+    "website": "Website (e.g. yoursite.com)",
+    "routesRow": "Routes",
+    "activitiesRow": "Activities",
+    "collectionsRow": "Collections",
+    "timeline": "Timeline",
+    "noActivity": "No routes or activities yet.",
+    "verbPlanned": "planned a route",
+    "verbCompleted": "completed an activity",
+    "privateBadge": "Private profile"
   },
   "social": {
     "anonymous": "Adventurer",
@@ -411,5 +443,17 @@
     "save": "Save password",
     "updated": "Password updated — redirecting…",
     "tooShort": "Use at least 8 characters."
+  },
+  "visibility": {
+    "private": "Private",
+    "close_friends": "Close friends",
+    "followers": "Followers",
+    "public": "Public",
+    "hint": {
+      "private": "Only you",
+      "close_friends": "Only your close friends",
+      "followers": "Followers and close friends",
+      "public": "Everyone"
+    }
   }
 }

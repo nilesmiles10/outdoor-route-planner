@@ -5,6 +5,9 @@ import { useLocale, useTranslations } from "next-intl";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import MfaSection from "./MfaSection";
+import PrivacySettings from "./PrivacySettings";
+import VisibilitySelect from "./VisibilitySelect";
+import type { Visibility } from "@/lib/visibility";
 import type { Waypoint } from "./MapView";
 
 export type TourPayload = {
@@ -22,7 +25,7 @@ type TourRow = {
   id: string;
   name: string;
   sport: string;
-  visibility: "private" | "public";
+  visibility: Visibility;
   stats: { distanceM: number };
   updated_at: string;
 };
@@ -173,11 +176,8 @@ export default function AccountPanel({ tour, onLoadTour, hideLoginForm }: Props)
     refreshTours();
   }
 
-  async function toggleVisibility(row: TourRow) {
-    await sb
-      .from("tours")
-      .update({ visibility: row.visibility === "public" ? "private" : "public" })
-      .eq("id", row.id);
+  async function setVisibility(row: TourRow, v: Visibility) {
+    await sb.from("tours").update({ visibility: v }).eq("id", row.id);
     refreshTours();
   }
 
@@ -352,6 +352,7 @@ export default function AccountPanel({ tour, onLoadTour, hideLoginForm }: Props)
         </button>
       </div>
       <MfaSection />
+      <PrivacySettings userId={user.id} />
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -400,14 +401,11 @@ export default function AccountPanel({ tour, onLoadTour, hideLoginForm }: Props)
                   ↗
                 </a>
               )}
-              <button
-                type="button"
-                onClick={() => toggleVisibility(row)}
-                className={`shrink-0 ${row.visibility === "public" ? "text-emerald-700" : "text-neutral-400"}`}
-                title={t(row.visibility)}
-              >
-                {row.visibility === "public" ? "🌐" : "🔒"}
-              </button>
+              <VisibilitySelect
+                compact
+                value={row.visibility}
+                onChange={(v) => setVisibility(row, v)}
+              />
               <button
                 type="button"
                 onClick={() => deleteTour(row.id)}

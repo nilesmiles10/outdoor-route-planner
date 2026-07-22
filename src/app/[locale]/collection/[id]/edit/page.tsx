@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { SPORT_EMOJI } from "@/lib/collections";
+import VisibilitySelect from "@/components/VisibilitySelect";
+import type { Visibility } from "@/lib/visibility";
 
 type MyTour = {
   id: string;
@@ -19,7 +21,7 @@ type Coll = {
   owner: string;
   title: string;
   intro: string | null;
-  visibility: "private" | "public";
+  visibility: Visibility;
 };
 
 export default function EditCollectionPage({
@@ -40,7 +42,7 @@ export default function EditCollectionPage({
   const [myTours, setMyTours] = useState<MyTour[]>([]);
   const [title, setTitle] = useState("");
   const [intro, setIntro] = useState("");
-  const [visibility, setVisibility] = useState<"private" | "public">("private");
+  const [visibility, setVisibility] = useState<Visibility>("private");
   const [flash, setFlash] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -216,17 +218,7 @@ export default function EditCollectionPage({
           />
         </label>
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setVisibility((v) => (v === "public" ? "private" : "public"))}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
-              visibility === "public"
-                ? "bg-emerald-700 text-white"
-                : "bg-neutral-100 text-neutral-700"
-            }`}
-          >
-            {visibility === "public" ? `🌐 ${t("public")}` : `🔒 ${t("private")}`}
-          </button>
+          <VisibilitySelect value={visibility} onChange={setVisibility} />
           <button
             type="button"
             onClick={saveMeta}

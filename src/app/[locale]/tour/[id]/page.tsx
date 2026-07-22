@@ -11,7 +11,7 @@ type TourRow = {
   id: string;
   owner: string;
   name: string;
-  visibility: "private" | "public";
+  visibility: "private" | "close_friends" | "followers" | "public";
   sport: string;
   waypoints: { name: string; lon: number; lat: number }[];
   geometry: GeoJSON.LineString;

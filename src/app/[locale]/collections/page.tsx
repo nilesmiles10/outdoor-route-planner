@@ -14,7 +14,7 @@ type Coll = {
   title: string;
   intro: string | null;
   owner: string;
-  visibility: "private" | "public";
+  visibility: "private" | "close_friends" | "followers" | "public";
   collection_items: ItemTour[];
 };
 
@@ -39,9 +39,9 @@ function CollectionCard({ c, locale }: { c: Coll; locale: string }) {
         <span className="text-4xl opacity-90 drop-shadow">
           {(sport && SPORT_EMOJI[sport]) || "🗺️"}
         </span>
-        {c.visibility === "private" && (
+        {c.visibility !== "public" && (
           <span className="absolute right-2 top-2 rounded-full bg-black/30 px-2 py-0.5 text-[10px] font-medium text-white">
-            🔒
+            {c.visibility === "private" ? "🔒" : c.visibility === "followers" ? "👥" : "🤝"}
           </span>
         )}
       </div>

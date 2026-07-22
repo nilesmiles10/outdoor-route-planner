@@ -54,7 +54,11 @@ export default function FeedPage() {
     (async () => {
       setLoading(true);
       const [{ data: follows }, { data: blocks }] = await Promise.all([
-        sb.from("follows").select("followee_id").eq("follower_id", user.id),
+        sb
+          .from("follows")
+          .select("followee_id")
+          .eq("follower_id", user.id)
+          .eq("status", "accepted"),
         sb.from("blocks").select("blocked_id").eq("blocker_id", user.id),
       ]);
       const followees = (follows ?? []).map((f) => f.followee_id as string);
@@ -72,7 +76,9 @@ export default function FeedPage() {
           "id,owner,name,sport,kind,recorded_at,moving_s,stats,created_at,profile:profiles!tours_owner_profiles_fkey(display_name,avatar_url)",
         )
         .in("owner", targets)
-        .eq("visibility", "public")
+        // Geen visibility-filter: RLS (can_view_content) geeft van followees
+        // ook followers-/close-friends-tier terug, private nooit.
+        .neq("visibility", "private")
         .order("created_at", { ascending: false })
         .limit(30);
       const rows = ((tours ?? []) as unknown as Omit<Item, "likeCount" | "likedByMe">[]);

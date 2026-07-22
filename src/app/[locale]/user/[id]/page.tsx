@@ -2,15 +2,19 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { supabaseServer } from "@/lib/supabase/server";
-import { difficulty } from "@/lib/difficulty";
+import { fmtDuration } from "@/lib/activity";
 import Avatar from "@/components/Avatar";
 import ProfileActions from "@/components/ProfileActions";
+import ProfileTimeline, { type TimelineItem } from "@/components/ProfileTimeline";
+import ProfileOwnerPanels from "@/components/ProfileOwnerPanels";
 import SiteFooter from "@/components/SiteFooter";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 
-// GEN-118 — public profile page, the anchor of the social graph
-// (Komoot-style): identity, follower counts, public routes/activities
-// and collections.
+// Profiel-v2 (Komoot-model, profile-optimization plan): identiteitskolom
+// links (avatar, bio, website, counters, content-index, statistieken),
+// timeline-feed rechts. Content is RLS-gefilterd (can_view_content) —
+// de pagina filtert zelf niet op visibility; wat de viewer mag zien,
+// komt terug. Privé-profiel zonder toegang → locked-state.
 
 type Profile = {
   id: string;
@@ -19,6 +23,8 @@ type Profile = {
   bio: string | null;
   avatar_url: string | null;
   preferred_sports: string[];
+  website: string | null;
+  privacy: "public" | "private";
   created_at: string;
 };
 
@@ -26,7 +32,9 @@ async function getProfile(id: string): Promise<Profile | null> {
   const sb = supabaseServer();
   const { data } = await sb
     .from("profiles")
-    .select("id,display_name,home_region,bio,avatar_url,preferred_sports,created_at")
+    .select(
+      "id,display_name,home_region,bio,avatar_url,preferred_sports,website,privacy,created_at",
+    )
     .eq("id", id)
     .maybeSingle();
   return (data as Profile) ?? null;
@@ -56,25 +64,48 @@ export default async function UserPage({
   const { locale } = params;
   const t = await getTranslations("profile");
   const tp = await getTranslations("planner");
-  const tr = await getTranslations("routesPage");
 
   const sb = supabaseServer();
-  const [followers, followingN, toursQ, colsQ] = await Promise.all([
-    sb.from("follows").select("follower_id", { count: "exact", head: true }).eq("followee_id", p.id),
-    sb.from("follows").select("followee_id", { count: "exact", head: true }).eq("follower_id", p.id),
+  const {
+    data: { user: viewer },
+  } = await sb.auth.getUser();
+  const isOwner = viewer?.id === p.id;
+
+  const [followers, followingN, toursQ, colsQ, followQ, cfQ] = await Promise.all([
+    sb
+      .from("follows")
+      .select("follower_id", { count: "exact", head: true })
+      .eq("followee_id", p.id)
+      .eq("status", "accepted"),
+    sb
+      .from("follows")
+      .select("followee_id", { count: "exact", head: true })
+      .eq("follower_id", p.id)
+      .eq("status", "accepted"),
+    // Geen visibility-filter: RLS geeft de viewer-passende set terug
+    // (owner ziet ook privé — Komoot-gedrag op het eigen profiel).
     sb
       .from("tours")
-      .select("id,name,sport,kind,recorded_at,stats,updated_at")
+      .select("id,name,sport,kind,recorded_at,stats,moving_s,created_at,updated_at")
       .eq("owner", p.id)
-      .eq("visibility", "public")
-      .order("updated_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(50),
-    sb
-      .from("collections")
-      .select("id,title")
-      .eq("owner", p.id)
-      .eq("visibility", "public")
-      .limit(20),
+    sb.from("collections").select("id,title,visibility").eq("owner", p.id).limit(20),
+    viewer && !isOwner
+      ? sb
+          .from("follows")
+          .select("status")
+          .eq("follower_id", viewer.id)
+          .eq("followee_id", p.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    // Close-friends-count: RLS is owner-only, dus alleen op eigen profiel >0.
+    isOwner
+      ? sb
+          .from("close_friends")
+          .select("friend", { count: "exact", head: true })
+          .eq("owner", p.id)
+      : Promise.resolve({ count: null }),
   ]);
 
   type TourLite = {
@@ -84,43 +115,82 @@ export default async function UserPage({
     kind: "planned" | "completed";
     recorded_at: string | null;
     stats: { distanceM: number; ascendM: number };
+    moving_s: number | null;
+    created_at: string;
     updated_at: string;
   };
-  const tours = ((toursQ.data as TourLite[]) ?? []);
-  const planned = tours.filter((x) => x.kind !== "completed");
+  const tours = (toursQ.data as TourLite[]) ?? [];
   const completed = tours.filter((x) => x.kind === "completed");
-  const collections = (colsQ.data as { id: string; title: string }[]) ?? [];
+  const collections =
+    (colsQ.data as { id: string; title: string; visibility: string }[]) ?? [];
   const name = p.display_name ?? t("anonymous");
+  const followStatus = (followQ.data as { status?: string } | null)?.status ?? "none";
 
-  const tourRow = (x: TourLite) => (
-    <a
-      key={x.id}
-      href={`/${locale}/tour/${x.id}`}
-      className="flex items-center justify-between gap-3 rounded-xl border border-neutral-100 bg-white px-4 py-2.5 shadow-sm hover:border-emerald-200"
-    >
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          {x.kind === "completed" && <span aria-hidden>🏁</span>}
-          <span className="truncate text-sm font-medium text-neutral-900">{x.name}</span>
-        </div>
-        <div className="text-xs text-neutral-500">
-          {(x.stats.distanceM / 1000).toFixed(1)} km · ↗ {x.stats.ascendM} m ·{" "}
-          {tp(`sports.${x.sport}` as never)} ·{" "}
-          {new Date(x.kind === "completed" && x.recorded_at ? x.recorded_at : x.updated_at).toLocaleDateString(locale)}
-        </div>
-      </div>
-      <span
-        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-          x.kind === "completed" ? "bg-sky-100 text-sky-800" : "bg-emerald-100 text-emerald-800"
-        }`}
-      >
-        {tp(`difficultyLabels.${difficulty(x.sport, x.stats.distanceM, x.stats.ascendM)}` as never)}
+  // Locked-state: privé-profiel en de viewer heeft (voor zover zichtbaar)
+  // geen toegang. Een close friend is voor ons niet queryable (owner-only
+  // RLS) maar krijgt via RLS wél content terug — dan is het niet locked.
+  const locked =
+    p.privacy === "private" &&
+    !isOwner &&
+    followStatus !== "accepted" &&
+    tours.length === 0 &&
+    collections.length === 0;
+
+  // Likes + comment-counts voor de timeline in twee bulk-queries.
+  const ids = tours.map((x) => x.id);
+  const [likesQ, commentsQ] = ids.length
+    ? await Promise.all([
+        sb.from("tour_likes").select("tour_id,user_id").in("tour_id", ids),
+        sb
+          .from("tour_comments")
+          .select("tour_id")
+          .in("tour_id", ids)
+          .is("deleted_at", null),
+      ])
+    : [{ data: [] }, { data: [] }];
+  const likeRows = (likesQ.data as { tour_id: string; user_id: string }[]) ?? [];
+  const commentRows = (commentsQ.data as { tour_id: string }[]) ?? [];
+
+  const timelineItems: TimelineItem[] = tours.map((x) => {
+    const isCompleted = x.kind === "completed";
+    return {
+      id: x.id,
+      name: x.name,
+      kind: x.kind,
+      sportLabel: tp(`sports.${x.sport}` as never),
+      dateLabel: new Date(
+        isCompleted && x.recorded_at ? x.recorded_at : x.created_at,
+      ).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" }),
+      distanceKm: (x.stats.distanceM / 1000).toFixed(1),
+      ascendM: x.stats.ascendM,
+      movingLabel: isCompleted && x.moving_s ? fmtDuration(x.moving_s) : null,
+      likeCount: likeRows.filter((l) => l.tour_id === x.id).length,
+      likedByMe: !!viewer && likeRows.some((l) => l.tour_id === x.id && l.user_id === viewer.id),
+      commentCount: commentRows.filter((c) => c.tour_id === x.id).length,
+    };
+  });
+
+  // Statistieken over wat de viewer mag zien (owner = alles).
+  const statDistanceKm = completed.reduce((s, x) => s + x.stats.distanceM, 0) / 1000;
+  const statMovingS = completed.reduce((s, x) => s + (x.moving_s ?? 0), 0);
+
+  const websiteHref = p.website
+    ? /^https?:\/\//i.test(p.website)
+      ? p.website
+      : `https://${p.website}`
+    : null;
+
+  const indexRow = (emoji: string, label: string, count: number) => (
+    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 text-sm">
+      <span className="text-neutral-700">
+        {emoji} {label}
       </span>
-    </a>
+      <span className="font-semibold text-neutral-900">{count}</span>
+    </div>
   );
 
   return (
-    <main className="mx-auto min-h-dvh max-w-3xl px-4 pb-16 pt-20">
+    <main className="mx-auto min-h-dvh max-w-5xl px-4 pb-16 pt-20">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -130,24 +200,55 @@ export default async function UserPage({
             name,
             description: p.bio ?? undefined,
             homeLocation: p.home_region ?? undefined,
+            url: websiteHref ?? undefined,
           }),
         }}
       />
-      <div className="flex items-start gap-4">
-        <Avatar name={name} url={p.avatar_url} size={72} />
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-semibold text-neutral-900">{name}</h1>
-          <div className="mt-0.5 text-sm text-neutral-500">
-            {p.home_region && <span>📍 {p.home_region} · </span>}
-            <span>
-              {followers.count ?? 0} {t("followers")} · {followingN.count ?? 0} {t("followingCount")}
-            </span>
+      <div className="grid gap-8 md:grid-cols-[280px_1fr]">
+        {/* Identiteitskolom */}
+        <div>
+          <Avatar name={name} url={p.avatar_url} size={88} />
+          <h1 className="mt-3 flex items-center gap-2 text-xl font-semibold text-neutral-900">
+            {name}
+            {p.privacy === "private" && <span title={t("privateBadge")}>🔒</span>}
+          </h1>
+          {p.home_region && (
+            <div className="mt-0.5 text-sm text-neutral-500">📍 {p.home_region}</div>
+          )}
+          {p.bio && <p className="mt-1.5 text-sm text-neutral-600">{p.bio}</p>}
+          {websiteHref && (
+            <a
+              href={websiteHref}
+              target="_blank"
+              rel="noopener nofollow"
+              className="mt-1 block truncate text-sm text-emerald-700 hover:underline"
+            >
+              🌐 {p.website?.replace(/^https?:\/\//i, "")}
+            </a>
+          )}
+          <div className="mt-3 flex gap-5 text-sm">
+            <div>
+              <div className="font-semibold text-neutral-900">{followers.count ?? 0}</div>
+              <div className="text-xs text-neutral-500">{t("followers")}</div>
+            </div>
+            <div>
+              <div className="font-semibold text-neutral-900">{followingN.count ?? 0}</div>
+              <div className="text-xs text-neutral-500">{t("followingCount")}</div>
+            </div>
+            {isOwner && (
+              <div>
+                <div className="font-semibold text-neutral-900">{cfQ.count ?? 0}</div>
+                <div className="text-xs text-neutral-500">{t("closeFriends")}</div>
+              </div>
+            )}
           </div>
-          {p.bio && <p className="mt-1 text-sm text-neutral-600">{p.bio}</p>}
           {p.preferred_sports.length > 0 && (
-            <div className="mt-1.5 flex flex-wrap gap-1">
+            <div className="mt-2.5 flex flex-wrap gap-1">
               {p.preferred_sports.map((s) => (
-                <span key={s} className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600">
+                <span
+                  key={s}
+                  className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600"
+                >
                   {tp(`sports.${s}` as never)}
                 </span>
               ))}
@@ -156,47 +257,96 @@ export default async function UserPage({
           <div className="mt-3">
             <ProfileActions profile={p} />
           </div>
+
+          {!locked && (
+            <div className="mt-5 flex flex-col gap-1.5">
+              {indexRow("🗺", t("routesRow"), tours.length - completed.length)}
+              {indexRow("🏁", t("activitiesRow"), completed.length)}
+              {indexRow("📚", t("collectionsRow"), collections.length)}
+            </div>
+          )}
+
+          {!locked && completed.length > 0 && (
+            <section className="mt-5">
+              <h2 className="text-sm font-semibold text-neutral-700">{t("stats")}</h2>
+              <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-lg bg-neutral-50 px-2 py-2">
+                  <div className="text-base font-semibold text-neutral-900">
+                    {completed.length}
+                  </div>
+                  <div className="text-[10px] uppercase text-neutral-500">
+                    {t("statsActivities")}
+                  </div>
+                </div>
+                <div className="rounded-lg bg-neutral-50 px-2 py-2">
+                  <div className="text-base font-semibold text-neutral-900">
+                    {statDistanceKm >= 100
+                      ? Math.round(statDistanceKm).toLocaleString(locale)
+                      : statDistanceKm.toFixed(1)}
+                  </div>
+                  <div className="text-[10px] uppercase text-neutral-500">km</div>
+                </div>
+                <div className="rounded-lg bg-neutral-50 px-2 py-2">
+                  <div className="text-base font-semibold text-neutral-900">
+                    {fmtDuration(statMovingS)}
+                  </div>
+                  <div className="text-[10px] uppercase text-neutral-500">
+                    {t("statsTime")}
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {isOwner && <ProfileOwnerPanels userId={p.id} />}
+        </div>
+
+        {/* Timeline-kolom */}
+        <div className="min-w-0">
+          {locked ? (
+            <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-6 py-12 text-center">
+              <div className="text-3xl">🔒</div>
+              <h2 className="mt-2 text-base font-semibold text-neutral-800">
+                {t("lockedTitle")}
+              </h2>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-neutral-500">
+                {t("lockedBody")}
+              </p>
+            </div>
+          ) : (
+            <>
+              <h2 className="mb-3 text-sm font-semibold text-neutral-700">
+                {t("timeline")}
+              </h2>
+              <ProfileTimeline items={timelineItems} />
+
+              {collections.length > 0 && (
+                <section className="mt-8">
+                  <h2 className="mb-2 text-sm font-semibold text-neutral-700">
+                    {t("collections")} ({collections.length})
+                  </h2>
+                  <div className="flex flex-col gap-1">
+                    {collections.map((c) => (
+                      <a
+                        key={c.id}
+                        href={`/${locale}/collection/${c.id}`}
+                        className="rounded-lg px-2 py-1.5 text-sm text-emerald-800 hover:bg-emerald-50"
+                      >
+                        📚 {c.title}
+                        {c.visibility !== "public" && (
+                          <span className="ml-1.5 text-xs text-neutral-400">
+                            {c.visibility === "private" ? "🔒" : c.visibility === "followers" ? "👥" : "🤝"}
+                          </span>
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </>
+          )}
         </div>
       </div>
-
-      {completed.length > 0 && (
-        <section className="mt-8">
-          <h2 className="mb-2 text-sm font-semibold text-neutral-700">
-            🏁 {tr("kinds.completed")} ({completed.length})
-          </h2>
-          <div className="flex flex-col gap-2">{completed.map(tourRow)}</div>
-        </section>
-      )}
-
-      <section className="mt-8">
-        <h2 className="mb-2 text-sm font-semibold text-neutral-700">
-          {t("publicRoutes")} ({planned.length})
-        </h2>
-        {planned.length === 0 ? (
-          <p className="text-sm text-neutral-400">{t("noRoutes")}</p>
-        ) : (
-          <div className="flex flex-col gap-2">{planned.map(tourRow)}</div>
-        )}
-      </section>
-
-      {collections.length > 0 && (
-        <section className="mt-8">
-          <h2 className="mb-2 text-sm font-semibold text-neutral-700">
-            {t("collections")} ({collections.length})
-          </h2>
-          <div className="flex flex-col gap-1">
-            {collections.map((c) => (
-              <a
-                key={c.id}
-                href={`/${locale}/collection/${c.id}`}
-                className="rounded-lg px-2 py-1.5 text-sm text-emerald-800 hover:bg-emerald-50"
-              >
-                📚 {c.title}
-              </a>
-            ))}
-          </div>
-        </section>
-      )}
 
       <SiteFooter />
     </main>

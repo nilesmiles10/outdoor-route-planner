@@ -53,11 +53,9 @@ export default function AppHeader() {
           .select("id,name,sport,stats")
           .ilike("name", `%${v}%`)
           .limit(4),
-        sb
-          .from("profiles")
-          .select("id,display_name,home_region")
-          .ilike("display_name", `%${v}%`)
-          .limit(3),
+        // RPC ipv directe tabel-query: respecteert search_opt_out,
+        // suspension en blocks (profile-optimization plan).
+        sb.rpc("search_profiles", { q: v }),
         fetch(`/api/geo/search?q=${encodeURIComponent(v)}`)
           .then((r) => r.json())
           .catch(() => ({ results: [] })),

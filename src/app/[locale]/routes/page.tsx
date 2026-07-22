@@ -9,12 +9,14 @@ import { difficulty } from "@/lib/difficulty";
 import AccountPanel from "@/components/AccountPanel";
 import UploadActivity from "@/components/UploadActivity";
 import SiteFooter from "@/components/SiteFooter";
+import VisibilitySelect from "@/components/VisibilitySelect";
+import type { Visibility } from "@/lib/visibility";
 
 type Row = {
   id: string;
   name: string;
   sport: string;
-  visibility: "private" | "public";
+  visibility: Visibility;
   kind: "planned" | "completed";
   recorded_at: string | null;
   moving_s: number | null;
@@ -314,22 +316,17 @@ export default function RoutesPage() {
                     >
                       ⤓ GPX
                     </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
+                    <VisibilitySelect
+                      compact
+                      value={row.visibility}
+                      onChange={async (v) => {
                         await sb
                           .from("tours")
-                          .update({
-                            visibility:
-                              row.visibility === "public" ? "private" : "public",
-                          })
+                          .update({ visibility: v })
                           .eq("id", row.id);
                         refresh();
                       }}
-                      title={row.visibility}
-                    >
-                      {row.visibility === "public" ? "🌐" : "🔒"}
-                    </button>
+                    />
                     <button
                       type="button"
                       onClick={async () => {

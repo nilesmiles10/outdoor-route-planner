@@ -172,6 +172,16 @@
       "remove": "verwijderen",
       "removeConfirm": "Tweestapsverificatie uitschakelen?",
       "stepUpTitle": "Vul je authenticator-code in"
+    },
+    "privacy": {
+      "title": "Privacy",
+      "saved": "Opgeslagen ✓",
+      "privateProfile": "Privéprofiel",
+      "privateProfileHint": "Nieuwe volgers moeten eerst door jou worden goedgekeurd. Je naam en avatar blijven zichtbaar; je content niet.",
+      "searchOptOut": "Niet tonen in zoekresultaten",
+      "searchOptOutHint": "Je profiel is dan alleen via een directe link te vinden.",
+      "defaultTour": "Standaard voor nieuwe routes & activiteiten",
+      "defaultCollection": "Standaard voor nieuwe collecties"
     }
   },
   "activities": {
@@ -378,7 +388,29 @@
     "reportPrompt": "Waarom rapporteer je dit? (verplicht)",
     "reportThanks": "Bedankt — we kijken ernaar.",
     "block": "Blokkeren",
-    "unblock": "Deblokkeren"
+    "unblock": "Deblokkeren",
+    "requested": "Verzocht ⏳",
+    "requests": "Volgverzoeken",
+    "accept": "Accepteren",
+    "deny": "Weigeren",
+    "closeFriends": "Close friends",
+    "closeFriendsHint": "Alleen jij ziet deze lijst. Close friends zien content die je op 🤝 zet (en alles voor volgers).",
+    "searchPeople": "Zoek mensen om toe te voegen…",
+    "removeFriend": "Verwijderen",
+    "stats": "Statistieken",
+    "statsActivities": "Activiteiten",
+    "statsTime": "Tijd",
+    "lockedTitle": "Dit profiel is privé",
+    "lockedBody": "Volg dit profiel om routes, activiteiten en statistieken te zien. De eigenaar keurt volgverzoeken goed.",
+    "website": "Website (bijv. jouwsite.nl)",
+    "routesRow": "Routes",
+    "activitiesRow": "Activiteiten",
+    "collectionsRow": "Collecties",
+    "timeline": "Tijdlijn",
+    "noActivity": "Nog geen routes of activiteiten.",
+    "verbPlanned": "plande een route",
+    "verbCompleted": "voltooide een activiteit",
+    "privateBadge": "Privéprofiel"
   },
   "social": {
     "anonymous": "Avonturier",
@@ -411,5 +443,17 @@
     "save": "Wachtwoord opslaan",
     "updated": "Wachtwoord bijgewerkt — doorsturen…",
     "tooShort": "Gebruik minimaal 8 tekens."
+  },
+  "visibility": {
+    "private": "Privé",
+    "close_friends": "Close friends",
+    "followers": "Volgers",
+    "public": "Publiek",
+    "hint": {
+      "private": "Alleen jij",
+      "close_friends": "Alleen jouw close friends",
+      "followers": "Volgers en close friends",
+      "public": "Iedereen"
+    }
   }
 }

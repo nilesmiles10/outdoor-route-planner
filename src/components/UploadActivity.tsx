@@ -2,7 +2,7 @@
 
 // GEN-117 — upload a recorded GPX/FIT file as a completed activity.
 // Parse happens fully client-side; the row lands in `tours` with
-// kind='completed' (private by default, like every save).
+// kind='completed', visibility = de profiel-default (fallback private).
 
 import { useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -72,13 +72,18 @@ export default function UploadActivity({
     const stats = computeActivityStats(parsed);
     const first = parsed.coords[0];
     const last = parsed.coords[parsed.coords.length - 1];
+    const { data: prof } = await sb
+      .from("profiles")
+      .select("default_tour_visibility")
+      .eq("id", user.id)
+      .maybeSingle();
     const { data, error: err } = await sb
       .from("tours")
       .insert({
         owner: user.id,
         name: name.trim() || t("autoName", { date: "" }).trim(),
         sport,
-        visibility: "private",
+        visibility: prof?.default_tour_visibility ?? "private",
         kind: "completed",
         recorded_at: parsed.startISO,
         duration_s: stats.durationS,

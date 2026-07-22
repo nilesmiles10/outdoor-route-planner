@@ -21,7 +21,7 @@ type Coll = {
   owner: string;
   title: string;
   intro: string | null;
-  visibility: "private" | "public";
+  visibility: "private" | "close_friends" | "followers" | "public";
   updated_at: string;
   collection_items: Item[];
 };
