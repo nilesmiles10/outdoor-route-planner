@@ -58,8 +58,21 @@ export default async function OgImage({
         >
           {((hl?.name as string) ?? "Highlight").slice(0, 50)}
         </div>
-        <div style={{ fontSize: 28, marginTop: 24, opacity: 0.85 }}>
-          TARNOO
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            marginTop: 24,
+            opacity: 0.85,
+          }}
+        >
+          <svg width="40" height="40" viewBox="0 0 512 512">
+            <path d="M232 340 L330 200 L430 340 Z" fill="#a7f3d0" />
+            <path d="M96 340 L212 150 L318 340 Z" fill="#ffffff" />
+            <rect x="150" y="360" width="150" height="16" rx="8" fill="#ffffff" />
+          </svg>
+          <div style={{ fontSize: 28 }}>TARNOO</div>
         </div>
       </div>
     ),

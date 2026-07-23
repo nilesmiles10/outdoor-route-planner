@@ -84,8 +84,17 @@ export default async function OgImage({
             width: 480,
           }}
         >
-          <div style={{ fontSize: 22, color: "#047857", fontWeight: 700 }}>
-            TARNOO
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <svg width="72" height="72" viewBox="0 0 512 512">
+              <rect width="512" height="512" rx="116" fill="#047857" />
+              <path d="M232 316 L330 188 L430 316 Z" fill="#6ee7b7" />
+              <path d="M96 316 L212 150 L318 316 Z" fill="#ffffff" />
+              <rect x="150" y="352" width="150" height="12" rx="6" fill="#ffffff" />
+              <rect x="118" y="386" width="90" height="12" rx="6" fill="#a7f3d0" />
+            </svg>
+            <div style={{ fontSize: 22, color: "#047857", fontWeight: 700 }}>
+              TARNOO
+            </div>
           </div>
           <div
             style={{
