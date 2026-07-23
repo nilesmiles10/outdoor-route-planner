@@ -42,5 +42,5 @@ export default function middleware(req: NextRequest) {
 
 export const config = {
   // Skip api routes, embeds, Next internals and all static files
-  matcher: ["/((?!api|embed|_next|_vercel|.*\\..*).*)"],
+  matcher: ["/((?!api|embed|_next|_vercel|apple-icon|.*\\..*).*)"],
 };
