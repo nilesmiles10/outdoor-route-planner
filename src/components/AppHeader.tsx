@@ -161,6 +161,9 @@ export default function AppHeader() {
         <a href={`/${locale}/discover`} className="text-neutral-700 hover:text-emerald-800">
           {t("discover")}
         </a>
+        <a href={`/${locale}/trails`} className="text-neutral-700 hover:text-emerald-800">
+          {t("trails")}
+        </a>
         {email && (
           <a href={`/${locale}/feed`} className="text-neutral-700 hover:text-emerald-800">
             {t("feed")}

@@ -275,7 +275,8 @@
     "collections": "Collections",
     "feed": "Feed",
     "people": "People",
-    "myProfile": "My profile"
+    "myProfile": "My profile",
+    "trails": "Trails"
   },
   "collections": {
     "title": "Collections",
