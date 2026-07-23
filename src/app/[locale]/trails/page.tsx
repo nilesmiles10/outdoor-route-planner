@@ -63,7 +63,7 @@ export default async function TrailsPage({
 
   const [{ data }, regionsQ] = await Promise.all([
     query,
-    sb.from("trails").select("region").not("region", "is", null).limit(2000),
+    sb.from("trails").select("region").not("region", "is", null).limit(5000),
   ]);
   const trails = (data as TrailRow[]) ?? [];
   const regions = Array.from(
