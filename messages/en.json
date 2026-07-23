@@ -473,7 +473,8 @@
     "allRegions": "All regions",
     "searchPlaceholder": "Search by name…",
     "empty": "No trails match these filters.",
-    "attribution": "Trail data © OpenStreetMap contributors (ODbL)."
+    "attribution": "Trail data © OpenStreetMap contributors (ODbL).",
+    "allCountries": "All countries"
   },
   "trailPage": {
     "official": "Official trail",

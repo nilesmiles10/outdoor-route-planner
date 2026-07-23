@@ -14,7 +14,8 @@ const LOCALES = ["nl", "en"];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const sb = supabaseServer();
-  const [tours, highlights, collections, pages, trails] = await Promise.all([
+  // Trail-URL's zitten in gesegmenteerde sitemaps: /trails-sitemap/sitemap/<n>.xml
+  const [tours, highlights, collections, pages] = await Promise.all([
     sb.from("tours").select("id,updated_at").eq("visibility", "public").eq("kind", "planned").limit(1000),
     sb
       .from("highlights")
@@ -32,8 +33,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .eq("published", true)
       .eq("noindex", false)
       .limit(100),
-    // GEN-145: officiële routes — de "MTB route X"-zoektermen.
-    sb.from("trails").select("id,updated_at").limit(5000),
   ]);
 
   // GEN-116: region × category pages that pass the thin-content gate (≥8).
@@ -97,14 +96,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       entries.push({
         url: `${SITE_URL}/${locale}/discover/${combo}`,
         changeFrequency: "weekly",
-        priority: 0.7,
-      });
-    }
-    for (const tr of trails.data ?? []) {
-      entries.push({
-        url: `${SITE_URL}/${locale}/trail/${tr.id}`,
-        lastModified: tr.updated_at,
-        changeFrequency: "monthly",
         priority: 0.7,
       });
     }

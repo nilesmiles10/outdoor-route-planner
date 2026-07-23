@@ -473,7 +473,8 @@
     "allRegions": "Alle regio's",
     "searchPlaceholder": "Zoek op naam…",
     "empty": "Geen routes gevonden met deze filters.",
-    "attribution": "Routegegevens © OpenStreetMap-bijdragers (ODbL)."
+    "attribution": "Routegegevens © OpenStreetMap-bijdragers (ODbL).",
+    "allCountries": "Alle landen"
   },
   "trailPage": {
     "official": "Officiële route",

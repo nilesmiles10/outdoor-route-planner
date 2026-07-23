@@ -1,25 +1,32 @@
 // GEN-145 — importeer officiële routes uit OSM-routerelaties (ODbL).
-// Draaien: npx tsx scripts/import-trails.ts <mtb|hike|touring> [--limit N]
+// Draaien: npx tsx scripts/import-trails.ts <mtb|hike|touring> [--country XX] [--limit N]
 //
-// Pipeline: Overpass (out geom) → way-assembly (greedy endpoint-match,
-// gap/afstand-gates) → Douglas-Peucker-simplify → terrarium-elevation →
-// surfaces/waytypes uit way-tags → Photon-region (localhost:2322, via
-// SSH-tunnel: ssh -L 2322:127.0.0.1:2322 root@VPS_HOST_REDACTED) →
-// NDJSON naar scripts/out/trails-<sport>.ndjson (insert gaat daarna via
-// Supabase execute_sql in chunks — zie scripts/README in dit bestand).
+// Pipeline: Overpass (out geom) → way-assembly (greedy endpoint-match aan
+// beide uiteinden, rollen alternate/excursion uitgesloten, gap/afstand-
+// gates) → Douglas-Peucker-simplify → terrarium-elevation →
+// surfaces/waytypes uit way-tags → regio via Natural-Earth admin-1
+// point-in-polygon (offline; NL/BE mag ook Photon via SSH-tunnel 2322) →
+// NDJSON naar scripts/out/trails-<sport>-<XX>.ndjson; laden via
+// scripts/load-trails.ts (edge function).
 //
 // Elke reject wordt gelogd met reden: geen stille truncatie.
 
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from "node:fs";
 import { surfaceBucket } from "../src/lib/geo";
 
 const SPORT = process.argv[2] as "mtb" | "hike" | "touring";
+const COUNTRY = (() => {
+  const i = process.argv.indexOf("--country");
+  return (i > 0 ? process.argv[i + 1] : "NL").toUpperCase();
+})();
 const LIMIT = (() => {
   const i = process.argv.indexOf("--limit");
   return i > 0 ? parseInt(process.argv[i + 1], 10) : Infinity;
 })();
-if (!["mtb", "hike", "touring"].includes(SPORT)) {
-  console.error("usage: npx tsx scripts/import-trails.ts <mtb|hike|touring> [--limit N]");
+if (!["mtb", "hike", "touring"].includes(SPORT) || !/^[A-Z]{2}$/.test(COUNTRY)) {
+  console.error(
+    "usage: npx tsx scripts/import-trails.ts <mtb|hike|touring> [--country XX] [--limit N]",
+  );
   process.exit(1);
 }
 
@@ -29,14 +36,18 @@ const OVERPASS_MIRRORS = [
   "https://overpass.kumi.systems/api/interpreter",
   "https://overpass-api.de/api/interpreter",
 ];
-const PHOTON_REVERSE = "http://127.0.0.1:2322/reverse";
+// Regio-bron: Natural Earth 10m admin-1 (public domain) — offline
+// point-in-polygon, werkt voor álle landen (onze Photon kent alleen NL+BE).
+const NE_URL =
+  "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_admin_1_states_provinces.geojson";
+const NE_FILE = "scripts/out/ne_admin1.geojson";
 
-// Overpass-selectie per sport (NL). Gates op lengte volgen ná assembly.
+// Overpass-selectie per sport. Gates op lengte volgen ná assembly.
 const QUERY: Record<string, string> = {
-  mtb: `relation["route"="mtb"]["name"](area.nl);`,
-  hike: `( relation["route"="hiking"]["name"](area.nl);
-           relation["route"="foot"]["name"](area.nl); );`,
-  touring: `relation["route"="bicycle"]["name"]["network"!="rcn"](area.nl);`,
+  mtb: `relation["route"="mtb"]["name"](area.c);`,
+  hike: `( relation["route"="hiking"]["name"](area.c);
+           relation["route"="foot"]["name"](area.c); );`,
+  touring: `relation["route"="bicycle"]["name"]["network"!="rcn"](area.c);`,
 };
 // Lengte-vensters (meters) per sport — plan: dagroutes eerst.
 const LENGTH_GATE: Record<string, [number, number]> = {
@@ -46,8 +57,17 @@ const LENGTH_GATE: Record<string, [number, number]> = {
 };
 const SPEED_KMH: Record<string, number> = { mtb: 15, hike: 4.5, touring: 18 };
 
-// hike-curatie: netwerk of naam-patroon (plan-gate).
+// hike-curatie: NL houdt het oorspronkelijke gedrag (netwerk incl. lwn óf
+// NL-naam-patroon); overige landen alléén nwn/rwn — buitenlandse lwn's
+// (zeker DE) zijn gigantisch en naam-patronen zijn taalgebonden.
 const HIKE_NAME_RE = /klompenpad|NS-wandeling|ommetje|wandelroute|wandeling|streekpad|pad$/i;
+function hikeAllowed(t: Record<string, string>, name: string): boolean {
+  if (COUNTRY === "NL") {
+    const netOk = t.network === "nwn" || t.network === "rwn" || t.network === "lwn";
+    return netOk || HIKE_NAME_RE.test(name);
+  }
+  return t.network === "nwn" || t.network === "rwn";
+}
 
 type LonLat = [number, number];
 
@@ -267,30 +287,88 @@ function climbStats(elev: number[]): { ascendM: number; descendM: number } {
   return { ascendM: Math.round(up), descendM: Math.round(down) };
 }
 
-async function photonRegion(lon: number, lat: number): Promise<string | null> {
-  try {
-    const res = await fetch(`${PHOTON_REVERSE}?lon=${lon}&lat=${lat}`);
-    const d = (await res.json()) as {
-      features?: { properties?: { state?: string; county?: string } }[];
-    };
-    return d.features?.[0]?.properties?.state ?? d.features?.[0]?.properties?.county ?? null;
-  } catch {
-    return null;
+// --- Natural-Earth admin-1 point-in-polygon (offline, alle landen) ---
+type NeFeature = {
+  name: string;
+  bbox: [number, number, number, number];
+  polys: LonLat[][][]; // multipolygon: [poly][ring][point]
+};
+let neFeatures: NeFeature[] | null = null;
+
+async function loadNe(): Promise<NeFeature[]> {
+  if (neFeatures) return neFeatures;
+  if (!existsSync(NE_FILE)) {
+    console.log("Natural Earth admin-1 downloaden (~25MB, eenmalig)…");
+    const res = await fetch(NE_URL);
+    if (!res.ok) throw new Error(`NE download failed: ${res.status}`);
+    writeFileSync(NE_FILE, Buffer.from(await res.arrayBuffer()));
   }
+  const gj = JSON.parse(readFileSync(NE_FILE, "utf8")) as {
+    features: {
+      properties: { name: string; iso_a2: string };
+      geometry: { type: string; coordinates: unknown };
+    }[];
+  };
+  neFeatures = gj.features
+    .filter((f) => f.properties.iso_a2 === COUNTRY)
+    .map((f) => {
+      const polys = (
+        f.geometry.type === "Polygon"
+          ? [f.geometry.coordinates]
+          : f.geometry.coordinates
+      ) as LonLat[][][];
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const poly of polys)
+        for (const pt of poly[0]) {
+          if (pt[0] < minX) minX = pt[0];
+          if (pt[0] > maxX) maxX = pt[0];
+          if (pt[1] < minY) minY = pt[1];
+          if (pt[1] > maxY) maxY = pt[1];
+        }
+      return { name: f.properties.name, bbox: [minX, minY, maxX, maxY], polys };
+    });
+  console.log(`NE admin-1: ${neFeatures.length} regio's voor ${COUNTRY}`);
+  return neFeatures;
+}
+
+function inRing(pt: LonLat, ring: LonLat[]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if (
+      yi > pt[1] !== yj > pt[1] &&
+      pt[0] < ((xj - xi) * (pt[1] - yi)) / (yj - yi) + xi
+    ) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+async function neRegion(lon: number, lat: number): Promise<string | null> {
+  const feats = await loadNe();
+  for (const f of feats) {
+    const [minX, minY, maxX, maxY] = f.bbox;
+    if (lon < minX || lon > maxX || lat < minY || lat > maxY) continue;
+    for (const poly of f.polys) {
+      if (inRing([lon, lat], poly[0])) return f.name;
+    }
+  }
+  return null;
 }
 
 async function main() {
-  console.log(`== trails-import: sport=${SPORT} (NL) ==`);
+  console.log(`== trails-import: sport=${SPORT} country=${COUNTRY} ==`);
   const skipped: Record<string, string[]> = {};
   const skip = (reason: string, name: string) => {
     (skipped[reason] ??= []).push(name);
   };
 
   // 1) tags-only ophalen (licht) en de relatie-niveau curatie VOORAF
-  //    toepassen — zo halen we alleen geometrie op voor kandidaten
-  //    (bij hike: ~5600 → een fractie).
-  const ids = (await overpass(`[out:json][timeout:180];
-area["ISO3166-1"="NL"][admin_level=2]->.nl;
+  //    toepassen — zo halen we alleen geometrie op voor kandidaten.
+  const ids = (await overpass(`[out:json][timeout:300];
+area["ISO3166-1"="${COUNTRY}"][admin_level=2]->.c;
 ${QUERY[SPORT]}
 out tags;`)) as { elements: { id: number; tags?: Record<string, string> }[] };
   console.log(`relations found: ${ids.elements.length}`);
@@ -301,12 +379,9 @@ out tags;`)) as { elements: { id: number; tags?: Record<string, string> }[] };
       skip("connector", name);
       return false;
     }
-    if (SPORT === "hike") {
-      const netOk = t.network === "nwn" || t.network === "rwn" || t.network === "lwn";
-      if (!(netOk || HIKE_NAME_RE.test(name))) {
-        skip("hike-curatie (netwerk/naam)", name);
-        return false;
-      }
+    if (SPORT === "hike" && !hikeAllowed(t, name)) {
+      skip("hike-curatie (netwerk/naam)", name);
+      return false;
     }
     return true;
   });
@@ -324,6 +399,8 @@ out tags;`)) as { elements: { id: number; tags?: Record<string, string> }[] };
   for (let c = 0; c < relIds.length; c += CHUNK) {
     const chunk = relIds.slice(c, c + CHUNK);
     console.log(`chunk ${c / CHUNK + 1}/${Math.ceil(relIds.length / CHUNK)} (${chunk.length} rels)`);
+    // Onbeheerde queue: één kapotte chunk mag geen land killen.
+    try {
     // let op: 'out geom;' (body-verbosity) — 'out tags geom' laat de
     // members-array weg en dan lijkt élke relatie way-loos.
     const data = (await overpass(`[out:json][timeout:300];
@@ -360,12 +437,9 @@ out tags;`)) as {
         skip("connector", name);
         continue;
       }
-      if (SPORT === "hike") {
-        const netOk = t.network === "nwn" || t.network === "rwn" || t.network === "lwn";
-        if (!(netOk || HIKE_NAME_RE.test(name))) {
-          skip("hike-curatie (netwerk/naam)", name);
-          continue;
-        }
+      if (SPORT === "hike" && !hikeAllowed(t, name)) {
+        skip("hike-curatie (netwerk/naam)", name);
+        continue;
       }
       const ways: Way[] = (rel.members ?? [])
         .filter(
@@ -420,12 +494,21 @@ out tags;`)) as {
       }
 
       const mid = coords[Math.floor(coords.length / 2)];
-      const region = await photonRegion(mid[0], mid[1]);
+      const region = await neRegion(mid[0], mid[1]);
+      // Grensoverschrijdende relaties verschijnen in de area-query van
+      // beide landen; midpoint buiten de NE-polygonen van dít land =
+      // duplicaat van de buurland-run → skippen (voorkomt ook dat de
+      // upsert country/region van de eerdere run overschrijft).
+      if (region === null) {
+        skip("midpoint buiten land (grens-duplicaat?)", name);
+        continue;
+      }
 
       out.push({
         osm_id: rel.id,
         name: name.slice(0, 120),
         sport: SPORT,
+        country: COUNTRY,
         region,
         network: t.network ?? null,
         operator: t.operator ?? null,
@@ -454,13 +537,17 @@ out tags;`)) as {
       });
       console.log(`  + ${name} (${(distM / 1000).toFixed(1)} km, ${region ?? "?"})`);
     }
+    } catch (e) {
+      console.log(`  !! chunk ${c / CHUNK + 1} overgeslagen na fout: ${(e as Error).message}`);
+      skip("chunk-fout (zie log)", `chunk ${c / CHUNK + 1}`);
+    }
   }
 
   mkdirSync("scripts/out", { recursive: true });
-  const file = `scripts/out/trails-${SPORT}.ndjson`;
+  const file = `scripts/out/trails-${SPORT}-${COUNTRY}.ndjson`;
   writeFileSync(file, out.map((r) => JSON.stringify(r)).join("\n"));
 
-  console.log(`\n== QA-rapport (${SPORT}) ==`);
+  console.log(`\n== QA-rapport (${SPORT} ${COUNTRY}) ==`);
   console.log(`imported: ${out.length} → ${file}`);
   for (const [reason, names] of Object.entries(skipped)) {
     console.log(`skipped ${names.length}× ${reason}`);

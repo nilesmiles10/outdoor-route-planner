@@ -22,6 +22,13 @@ type TrailRow = {
 
 const SPORTS = ["all", "hike", "touring", "mtb"] as const;
 
+// ISO-landcode → vlag-emoji (regional indicators); naam via Intl.DisplayNames.
+function flag(iso: string): string {
+  return String.fromCodePoint(
+    ...iso.toUpperCase().split("").map((c) => 0x1f1e6 + c.charCodeAt(0) - 65),
+  );
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -39,7 +46,7 @@ export default async function TrailsPage({
   searchParams,
 }: {
   params: { locale: string };
-  searchParams: { sport?: string; region?: string; q?: string };
+  searchParams: { sport?: string; country?: string; region?: string; q?: string };
 }) {
   const { locale } = params;
   const t = await getTranslations("trailsPage");
@@ -47,6 +54,9 @@ export default async function TrailsPage({
 
   const sport = SPORTS.includes(searchParams.sport as never)
     ? (searchParams.sport as (typeof SPORTS)[number])
+    : "all";
+  const country = /^[A-Z]{2}$/.test(searchParams.country ?? "")
+    ? searchParams.country!
     : "all";
   const region = searchParams.region ?? "all";
   const q = searchParams.q?.trim() ?? "";
@@ -58,22 +68,41 @@ export default async function TrailsPage({
     .order("name")
     .limit(200);
   if (sport !== "all") query = query.eq("sport", sport);
+  if (country !== "all") query = query.eq("country", country);
   if (region !== "all") query = query.eq("region", region);
   if (q) query = query.ilike("name", `%${q}%`);
 
-  const [{ data }, regionsQ] = await Promise.all([
+  // Regio-chips alleen bínnen een gekozen land (Europa-breed = te veel).
+  const [{ data }, countriesQ, regionsQ] = await Promise.all([
     query,
-    sb.from("trails").select("region").not("region", "is", null).limit(5000),
+    sb.rpc("trail_countries").then(
+      (r) => r,
+      () => ({ data: null }),
+    ),
+    country !== "all"
+      ? sb
+          .from("trails")
+          .select("region")
+          .eq("country", country)
+          .not("region", "is", null)
+          .limit(5000)
+      : Promise.resolve({ data: [] }),
   ]);
   const trails = (data as TrailRow[]) ?? [];
+  const countries = (
+    (countriesQ.data as { country: string }[] | null) ?? [{ country: "NL" }]
+  ).map((c) => c.country);
   const regions = Array.from(
     new Set(((regionsQ.data as { region: string }[]) ?? []).map((r) => r.region)),
   ).sort();
+  const countryName = new Intl.DisplayNames([locale], { type: "region" });
 
   const href = (patch: Record<string, string>) => {
     const p = new URLSearchParams();
-    const merged = { sport, region, q, ...patch };
+    // land wisselen reset de regio (regio's zijn land-gebonden)
+    const merged = { sport, country, region, q, ...("country" in patch ? { region: "all" } : {}), ...patch };
     if (merged.sport !== "all") p.set("sport", merged.sport);
+    if (merged.country !== "all") p.set("country", merged.country);
     if (merged.region !== "all") p.set("region", merged.region);
     if (merged.q) p.set("q", merged.q);
     const s = p.toString();
@@ -85,7 +114,35 @@ export default async function TrailsPage({
       <h1 className="text-2xl font-bold text-neutral-900">{t("title")}</h1>
       <p className="mt-1 text-sm text-neutral-500">{t("subtitle")}</p>
 
-      <div className="mt-4 flex flex-wrap gap-1.5">
+      {countries.length > 1 && (
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          <a
+            href={href({ country: "all" })}
+            className={`rounded-full px-3 py-1 text-xs font-medium ${
+              country === "all"
+                ? "bg-neutral-800 text-white"
+                : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+            }`}
+          >
+            🌍 {t("allCountries")}
+          </a>
+          {countries.map((c) => (
+            <a
+              key={c}
+              href={href({ country: c })}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                country === c
+                  ? "bg-neutral-800 text-white"
+                  : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+              }`}
+            >
+              {flag(c)} {countryName.of(c) ?? c}
+            </a>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-2 flex flex-wrap gap-1.5">
         {SPORTS.map((s) => (
           <a
             key={s}
@@ -125,6 +182,7 @@ export default async function TrailsPage({
       )}
       <form className="mt-3">
         {sport !== "all" && <input type="hidden" name="sport" value={sport} />}
+        {country !== "all" && <input type="hidden" name="country" value={country} />}
         {region !== "all" && <input type="hidden" name="region" value={region} />}
         <input
           name="q"
