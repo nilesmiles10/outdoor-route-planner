@@ -91,7 +91,7 @@ async function overpass(body: string): Promise<Record<string, unknown>> {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         // Zonder UA weigeren beide mirrors (kumi expliciet, .de met 406).
-        "User-Agent": "outdoor-route-planner-import/1.0 (trails import; contact via repo)",
+        "User-Agent": "tarnoo-import/1.0 (trails import; contact via repo)",
       },
       body: `data=${encodeURIComponent(body)}`,
     });

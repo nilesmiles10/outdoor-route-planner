@@ -17,7 +17,7 @@ export type SiteSettings = {
 export type FooterPage = { slug: string; title_nl: string; title_en: string };
 
 const FALLBACK: SiteSettings = {
-  site_name: "Outdoor Route Planner",
+  site_name: "Tarnoo",
   tagline_nl: "Plan je volgende avontuur",
   tagline_en: "Plan your next adventure",
   logo_url: null,

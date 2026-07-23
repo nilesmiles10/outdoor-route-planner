@@ -59,7 +59,7 @@ export default async function OgImage({
           {((hl?.name as string) ?? "Highlight").slice(0, 50)}
         </div>
         <div style={{ fontSize: 28, marginTop: 24, opacity: 0.85 }}>
-          OUTDOOR ROUTE PLANNER
+          TARNOO
         </div>
       </div>
     ),

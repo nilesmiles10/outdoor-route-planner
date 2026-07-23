@@ -34,7 +34,7 @@ export default async function OgImage({
             fontSize: 48,
           }}
         >
-          Outdoor Route Planner
+          Tarnoo
         </div>
       ),
       size,
@@ -85,7 +85,7 @@ export default async function OgImage({
           }}
         >
           <div style={{ fontSize: 22, color: "#047857", fontWeight: 700 }}>
-            OUTDOOR ROUTE PLANNER
+            TARNOO
           </div>
           <div
             style={{

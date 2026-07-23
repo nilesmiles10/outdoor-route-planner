@@ -9,7 +9,7 @@ import type { FooterPage, SiteSettings } from "@/lib/siteSettings";
 type Ctx = SiteSettings & { footer_pages: FooterPage[] };
 
 const SettingsCtx = createContext<Ctx>({
-  site_name: "Outdoor Route Planner",
+  site_name: "Tarnoo",
   tagline_nl: "Plan je volgende avontuur",
   tagline_en: "Plan your next adventure",
   logo_url: null,

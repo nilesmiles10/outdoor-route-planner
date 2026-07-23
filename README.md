@@ -1,6 +1,6 @@
-# Outdoor Route Planner
+# Tarnoo
 
-Web-first outdoor route planner (working title) — sport-specific routing on
+Web-first outdoor route planner — sport-specific routing on
 OpenStreetMap. Komoot competitor; plan and backlog live in Linear project
 *"Outdoor Route Planner — Komoot rival"* (GEN-98…139).
 

@@ -212,7 +212,7 @@ export async function deleteHighlightPhoto(formData: FormData) {
 export async function updateSiteSettings(formData: FormData) {
   const { user, sb } = await requireAdmin();
   const patch: Record<string, string | null> = {
-    site_name: String(formData.get("site_name") ?? "").trim() || "Outdoor Route Planner",
+    site_name: String(formData.get("site_name") ?? "").trim() || "Tarnoo",
     tagline_nl: String(formData.get("tagline_nl") ?? "").trim(),
     tagline_en: String(formData.get("tagline_en") ?? "").trim(),
   };

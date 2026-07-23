@@ -1,10 +1,10 @@
 {
   "app": {
-    "title": "Outdoor Route Planner",
+    "title": "Tarnoo",
     "tagline": "Plan your next adventure"
   },
   "planner": {
-    "title": "Outdoor Route Planner",
+    "title": "Tarnoo",
     "tagline": "Plan your next adventure",
     "start": "Enter starting point",
     "destination": "Enter destination",

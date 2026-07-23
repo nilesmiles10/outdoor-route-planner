@@ -13,7 +13,7 @@ export default async function AdminSettingsPage() {
     .eq("id", 1)
     .maybeSingle();
   const s = data ?? {
-    site_name: "Outdoor Route Planner",
+    site_name: "Tarnoo",
     tagline_nl: "",
     tagline_en: "",
     logo_url: null,

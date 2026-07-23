@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Tarnoo">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#10b981"/>
+      <stop offset="1" stop-color="#047857"/>
+    </linearGradient>
+    <clipPath id="t"><rect width="512" height="512" rx="116"/></clipPath>
+  </defs>
+  <g clip-path="url(#t)">
+    <rect width="512" height="512" fill="url(#g)"/>
+    <rect x="0" y="300" width="512" height="212" fill="#065f46" opacity="0.30"/>
+    <path d="M232 300 L330 172 L430 300 Z" fill="#a7f3d0"/>
+    <path d="M96 300 L212 128 L318 300 Z" fill="#ffffff"/>
+    <rect x="150" y="346" width="140" height="12" rx="6" fill="#ffffff" opacity="0.42"/>
+  </g>
+</svg>
