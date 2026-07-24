@@ -33,7 +33,25 @@ async function adminSession(req: NextRequest): Promise<NextResponse> {
   return res;
 }
 
+// Consolidate all traffic onto the canonical apex host. www and the old
+// Vercel production alias 301 -> tarnoo.com so search engines don't index
+// duplicates. Scoped to an explicit allowlist: preview deployments
+// (outdoor-route-planner-<hash>-*.vercel.app) are never redirected.
+const CANONICAL_HOST = "tarnoo.com";
+const REDIRECT_HOSTS = new Set([
+  "www.tarnoo.com",
+  "outdoor-route-planner-seven.vercel.app",
+]);
+
 export default function middleware(req: NextRequest) {
+  const host = (req.headers.get("host") ?? "").toLowerCase();
+  if (REDIRECT_HOSTS.has(host)) {
+    const url = req.nextUrl.clone();
+    url.protocol = "https:";
+    url.hostname = CANONICAL_HOST;
+    url.port = "";
+    return NextResponse.redirect(url, 301);
+  }
   if (req.nextUrl.pathname.startsWith("/admin")) {
     return adminSession(req);
   }
