@@ -33,7 +33,7 @@ full-resync ids periodically or we add a `deleted_at` tombstone column then.
 
 ## 2. Geo: Next.js route handlers (`/api/geo/*`)
 
-Base: `https://outdoor-route-planner-seven.vercel.app/api/geo/`
+Base: `https://tarnoo.com/api/geo/`
 Stateless GETs, no auth (rate limiting TBD before public launch):
 
 - `GET /api/geo/search?q=<text>[&lat=&lon=]` → `{results:[{name,label,type,lon,lat}]}`
