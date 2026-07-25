@@ -105,6 +105,9 @@
       "namePlaceholder": "Name (e.g. Viewpoint over the valley)",
       "save": "Save",
       "cancel": "Cancel",
+      "saveSegment": "Save as segment",
+      "saveSegmentHint": "Save the current route as a segment highlight",
+      "newSegmentTitle": "Route as segment highlight",
       "cat": {
         "peak": "Peak",
         "viewpoint": "Viewpoint",

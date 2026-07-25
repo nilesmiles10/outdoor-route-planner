@@ -4,7 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { GEO_REVERSE_BASE, geoHeaders } from "@/lib/geo";
 import { getWeather } from "@/lib/weather";
-import { CATEGORY_EMOJI } from "@/lib/highlights";
+import { CATEGORY_EMOJI, CATEGORY_COLOR } from "@/lib/highlights";
 import { gradientFor } from "@/lib/collections";
 import HighlightMap from "@/components/HighlightMap";
 import HighlightActions from "@/components/HighlightActions";
@@ -25,6 +25,8 @@ type Highlight = {
   lon: number;
   lat: number;
   description: string | null;
+  kind: string;
+  geometry: GeoJSON.LineString | null;
 };
 type Vote = { value: number; sport: string | null };
 type Tip = {
@@ -60,9 +62,8 @@ async function getHighlight(id: string): Promise<Highlight | null> {
   const sb = supabaseServer();
   const { data } = await sb
     .from("highlights")
-    .select("id,name,category,lon,lat,description")
+    .select("id,name,category,lon,lat,description,kind,geometry")
     .eq("id", id)
-    .eq("kind", "point")
     .maybeSingle();
   return (data as Highlight) ?? null;
 }
@@ -363,7 +364,12 @@ export default async function HighlightPage({
         </div>
 
         <aside>
-          <HighlightMap lon={hl.lon} lat={hl.lat} />
+          <HighlightMap
+            lon={hl.lon}
+            lat={hl.lat}
+            geometry={hl.kind === "segment" ? hl.geometry : undefined}
+            color={CATEGORY_COLOR[hl.category] ?? undefined}
+          />
 
           {/* Weather + packing tip */}
           {weather && (

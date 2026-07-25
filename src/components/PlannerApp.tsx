@@ -419,6 +419,9 @@ export default function PlannerApp() {
   const [pendingHl, setPendingHl] = useState<{ lon: number; lat: number } | null>(null);
   const [newHlName, setNewHlName] = useState("");
   const [newHlCat, setNewHlCat] = useState<string>("viewpoint");
+  const [segOpen, setSegOpen] = useState(false);
+  const [segName, setSegName] = useState("");
+  const [segCat, setSegCat] = useState<string>("water");
 
   useEffect(() => {
     sb.auth.getUser().then(({ data }) => setUser(data.user));
@@ -564,6 +567,37 @@ export default function PlannerApp() {
       setHlRows((rows) => [...(rows ?? []), data as HighlightPoint]);
       setPendingHl(null);
       setNewHlName("");
+    }
+  }
+
+  // A3: turn the current planned route into a segment highlight (kind=segment,
+  // geometry = the route line). lon/lat = route midpoint as the anchor point.
+  async function createSegment() {
+    if (!routeCoords || routeCoords.length < 2 || !user || !segName.trim())
+      return;
+    const mid = routeCoords[Math.floor(routeCoords.length / 2)];
+    if (!mid || mid[0] == null || mid[1] == null) return;
+    const geometry: GeoJSON.LineString = {
+      type: "LineString",
+      coordinates: routeCoords,
+    };
+    const { data, error: err } = await sb
+      .from("highlights")
+      .insert({
+        creator: user.id,
+        name: segName.trim(),
+        category: segCat,
+        kind: "segment",
+        lon: mid[0],
+        lat: mid[1],
+        geometry,
+      })
+      .select("id,name,category,description,geometry")
+      .single();
+    if (!err && data) {
+      setHlSegRows((rows) => [...(rows ?? []), data as HighlightSegment]);
+      setSegOpen(false);
+      setSegName("");
     }
   }
 
@@ -1583,6 +1617,53 @@ export default function PlannerApp() {
         </div>
       )}
 
+      {segOpen && (
+        <div className="absolute right-4 top-16 w-72 rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur">
+          <div className="text-sm font-medium text-neutral-900">
+            {t("highlights.newSegmentTitle")}
+          </div>
+          <input
+            value={segName}
+            onChange={(e) => setSegName(e.target.value)}
+            placeholder={t("highlights.namePlaceholder")}
+            className="mt-2 w-full rounded-lg border border-neutral-200 px-2 py-1.5 text-sm"
+          />
+          <div className="mt-2 flex flex-wrap gap-1">
+            {HIGHLIGHT_CATEGORIES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setSegCat(c)}
+                className={`rounded-full px-2 py-0.5 text-[11px] ${
+                  segCat === c
+                    ? "bg-emerald-700 text-white"
+                    : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                }`}
+              >
+                {CATEGORY_EMOJI[c]} {t(`highlights.cat.${c}` as never)}
+              </button>
+            ))}
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={createSegment}
+              disabled={!segName.trim()}
+              className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+            >
+              {t("highlights.save")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSegOpen(false)}
+              className="text-xs text-neutral-400 hover:text-neutral-700"
+            >
+              {t("highlights.cancel")}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Desktop: floating left panel. Mobile: bottom sheet so the map stays visible. */}
       <div className="absolute flex flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur max-md:inset-x-2 max-md:bottom-2 max-md:max-h-[45dvh] md:left-4 md:top-16 md:max-h-[calc(100dvh-5rem)] md:w-[340px]">
         <div className="flex items-start justify-between">
@@ -1851,6 +1932,16 @@ export default function PlannerApp() {
                 >
                   {copied ? t("copied") : `⧉ ${t("share")}`}
                 </button>
+                {user && (
+                  <button
+                    type="button"
+                    onClick={() => setSegOpen(true)}
+                    title={t("highlights.saveSegmentHint")}
+                    className="rounded-lg bg-neutral-100 px-2 py-1 text-[11px] font-medium text-neutral-700 hover:bg-neutral-200"
+                  >
+                    ✚ {t("highlights.saveSegment")}
+                  </button>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-4 gap-2 text-center">

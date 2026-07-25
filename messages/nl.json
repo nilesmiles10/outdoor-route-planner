@@ -105,6 +105,9 @@
       "namePlaceholder": "Naam (bijv. Uitzicht over het dal)",
       "save": "Opslaan",
       "cancel": "Annuleren",
+      "saveSegment": "Bewaar als segment",
+      "saveSegmentHint": "Bewaar de huidige route als segment-highlight",
+      "newSegmentTitle": "Route als segment-highlight",
       "cat": {
         "peak": "Top",
         "viewpoint": "Uitzichtpunt",
