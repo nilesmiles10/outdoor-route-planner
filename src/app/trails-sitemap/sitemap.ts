@@ -6,7 +6,10 @@ import { SITE_URL } from "../sitemap";
 // plain PostgREST-fetch (supabaseServer gebruikt cookies() en mag hier
 // niet; zelfde patroon als lib/siteSettings).
 
-const PER_SEGMENT = 5000;
+// 1000 = PostgREST's max-rows cap: een hogere limit levert stil 1.000 rijen
+// (gevonden 2026-07-25: segmenten hadden 2.000 i.p.v. 10.000 URL's, dus
+// 23k van de 30k trails stonden in géén enkele sitemap).
+const PER_SEGMENT = 1000;
 export const revalidate = 3600;
 
 const BASE = process.env.NEXT_PUBLIC_SUPABASE_URL!;

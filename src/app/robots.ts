@@ -23,7 +23,9 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     );
     const count =
       parseInt((res.headers.get("content-range") ?? "0/0").split("/")[1] ?? "0", 10) || 0;
-    segments = Math.max(1, Math.ceil(count / 5000));
+    // 1000 = PostgREST max-rows; moet gelijk zijn aan PER_SEGMENT in
+    // trails-sitemap/sitemap.ts, anders mist of verzint robots segmenten.
+    segments = Math.max(1, Math.ceil(count / 1000));
   } catch {
     // fallback: één segment
   }
