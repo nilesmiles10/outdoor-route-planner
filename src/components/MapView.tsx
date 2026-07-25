@@ -705,8 +705,21 @@ export default function MapView({
             [coords[0][0], coords[0][1]],
           ),
         );
+        // Padding volgt de layout: op md+ staat het paneel links (340px),
+        // op smalle schermen onderaan (max 45dvh). Hardcoded left:400 was
+        // fout op mobiel — dat is méér dan de vensterbreedte, waardoor
+        // fitBounds geen bruikbare camera kon berekenen en de route
+        // helemaal niet in beeld kwam. Alles geclampt op 40% van de as.
+        const cw = map.getContainer().clientWidth;
+        const ch = map.getContainer().clientHeight;
+        const wide = cw >= 768;
         map.fitBounds(bounds, {
-          padding: { top: 60, bottom: 60, left: 400, right: 60 },
+          padding: {
+            top: 60,
+            right: 60,
+            left: wide ? Math.min(400, Math.round(cw * 0.4)) : 40,
+            bottom: wide ? 60 : Math.min(Math.round(ch * 0.45) + 24, Math.round(ch * 0.5)),
+          },
         });
         hasFitRef.current = true;
       }
