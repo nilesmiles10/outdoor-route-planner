@@ -136,7 +136,15 @@ export default function MapView({
       new maplibregl.ScaleControl({ maxWidth: 120, unit: "metric" }),
       "bottom-left",
     );
-    map.addControl(new maplibregl.FullscreenControl(), "top-right");
+    // Fullscreen op de app-shell i.p.v. alleen de kaart: fullscreen rendert
+    // uitsluitend het gekozen element, dus met de kaart-container verdween de
+    // (fixed) navigatiebalk compleet — en wie niet wist dat hij in fullscreen
+    // zat, zag "de balk is weg en komt niet terug". Met body blijft de header
+    // staan en is de knop zelf de weg terug.
+    map.addControl(
+      new maplibregl.FullscreenControl({ container: document.body }),
+      "top-right",
+    );
 
     // Komoot-style right rail: fit-route + 3D terrain toggle as tiny
     // custom controls (MapLibre control contract: onAdd returns a DOM node).
@@ -195,6 +203,18 @@ export default function MapView({
       }),
       "top-right",
     );
+
+    // De kaart vult het venster tot y=0, maar de navigatiebalk (fixed, 48px)
+    // ligt eroverheen: zonder deze marge zit "Zoom in" volledig onder de balk
+    // (gemeten: top=10px) en "Zoom out" half — onklikbaar, waardoor je
+    // onbedoeld op de knoppen eronder mikt. Marge = balkhoogte.
+    const HEADER_H = 48;
+    for (const pos of ["top-right", "top-left"] as const) {
+      const el = map
+        .getContainer()
+        .querySelector<HTMLElement>(`.maplibregl-ctrl-${pos}`);
+      if (el) el.style.marginTop = `${HEADER_H}px`;
+    }
 
     // Layer bootstrap is NOT gated on the "load" event: on a slow tile CDN
     // "load" waits for every tile/glyph/sprite and can take tens of seconds
