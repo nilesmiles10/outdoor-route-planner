@@ -43,35 +43,48 @@ export default function HighlightMap({
     if (coords) {
       const drawLine = () => {
         if (map.getSource("seg")) return;
-        map.addSource("seg", {
-          type: "geojson",
-          data: {
-            type: "Feature",
-            properties: {},
-            geometry: { type: "LineString", coordinates: coords },
-          },
-        });
-        map.addLayer({
-          id: "seg-casing",
-          type: "line",
-          source: "seg",
-          layout: { "line-join": "round", "line-cap": "round" },
-          paint: { "line-color": "#ffffff", "line-width": 7 },
-        });
-        map.addLayer({
-          id: "seg-line",
-          type: "line",
-          source: "seg",
-          layout: { "line-join": "round", "line-cap": "round" },
-          paint: { "line-color": color, "line-width": 4 },
-        });
-        const bounds = coords.reduce(
-          (acc, c) => acc.extend(c),
-          new maplibregl.LngLatBounds(coords[0], coords[0]),
-        );
-        map.fitBounds(bounds, { padding: 36, duration: 0 });
+        try {
+          map.addSource("seg", {
+            type: "geojson",
+            data: {
+              type: "Feature",
+              properties: {},
+              geometry: { type: "LineString", coordinates: coords },
+            },
+          });
+          map.addLayer({
+            id: "seg-casing",
+            type: "line",
+            source: "seg",
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: { "line-color": "#ffffff", "line-width": 7 },
+          });
+          map.addLayer({
+            id: "seg-line",
+            type: "line",
+            source: "seg",
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: { "line-color": color, "line-width": 4 },
+          });
+        } catch {
+          return; // style JSON not in yet — a later styledata/load retries
+        }
+        try {
+          const bounds = coords.reduce(
+            (acc, c) => acc.extend(c),
+            new maplibregl.LngLatBounds(coords[0], coords[0]),
+          );
+          map.fitBounds(bounds, { padding: 36, duration: 0 });
+        } catch {
+          /* map not sized yet — keeps the constructor center/zoom */
+        }
       };
+      // OpenFreeMap's CDN sometimes stalls so "load" never fires; addSource/
+      // addLayer already work once the style JSON is in (styledata), so the
+      // line renders on a blank basemap instead of waiting forever.
+      map.on("styledata", drawLine);
       map.on("load", drawLine);
+      drawLine();
     } else {
       new maplibregl.Marker({ color: "#dc2626" })
         .setLngLat([lon, lat])
