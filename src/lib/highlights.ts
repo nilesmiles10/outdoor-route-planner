@@ -63,3 +63,35 @@ export function toFeatureCollection(
     })),
   };
 }
+
+// A segment highlight is a notable stretch (a river to paddle, a scenic
+// climb, a great path) stored as a LineString in highlights.geometry with
+// kind='segment'. lon/lat still hold a representative point (for list views
+// and the detail-page anchor); the map renders the line.
+export type HighlightSegment = {
+  id: string;
+  name: string;
+  category: string;
+  description: string | null;
+  geometry: GeoJSON.LineString;
+};
+
+export function toSegmentFeatureCollection(
+  rows: HighlightSegment[],
+): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: rows
+      .filter((h) => h.geometry?.type === "LineString")
+      .map((h) => ({
+        type: "Feature",
+        properties: {
+          id: h.id,
+          name: h.name,
+          category: h.category,
+          description: h.description ?? "",
+        },
+        geometry: h.geometry,
+      })),
+  };
+}

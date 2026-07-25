@@ -24,7 +24,9 @@ import {
   CATEGORY_EMOJI,
   HIGHLIGHT_CATEGORIES,
   toFeatureCollection,
+  toSegmentFeatureCollection,
   type HighlightPoint,
+  type HighlightSegment,
 } from "@/lib/highlights";
 
 const SPORTS = ["hike", "run", "touring", "gravel", "mtb", "road", "ebike"] as const;
@@ -396,6 +398,7 @@ export default function PlannerApp() {
   const [user, setUser] = useState<User | null>(null);
   const [showHl, setShowHl] = useState(true);
   const [hlRows, setHlRows] = useState<HighlightPoint[] | null>(null);
+  const [hlSegRows, setHlSegRows] = useState<HighlightSegment[] | null>(null);
   // Map-content panel (GEN-137): per-category highlight toggles + km markers.
   const [mapContentOpen, setMapContentOpen] = useState(false);
   const [hiddenCats, setHiddenCats] = useState<Set<string>>(new Set());
@@ -467,12 +470,32 @@ export default function PlannerApp() {
       .then(({ data }) => setHlRows((data as HighlightPoint[]) ?? []));
   }, [showHl, hlRows, sb]);
 
+  // Load segment-highlights (lines) once when the layer is on.
+  useEffect(() => {
+    if (!showHl || hlSegRows !== null) return;
+    sb.from("highlights")
+      .select("id,name,category,description,geometry")
+      .eq("kind", "segment")
+      .limit(2000)
+      .then(({ data }) => setHlSegRows((data as HighlightSegment[]) ?? []));
+  }, [showHl, hlSegRows, sb]);
+
   const hlFeatures = useMemo(
     () =>
       showHl && hlRows
         ? toFeatureCollection(hlRows.filter((h) => !hiddenCats.has(h.category)))
         : null,
     [showHl, hlRows, hiddenCats],
+  );
+
+  const hlSegFeatures = useMemo(
+    () =>
+      showHl && hlSegRows
+        ? toSegmentFeatureCollection(
+            hlSegRows.filter((h) => !hiddenCats.has(h.category)),
+          )
+        : null,
+    [showHl, hlSegRows, hiddenCats],
   );
 
   // Category counts for the map-content panel (GEN-137).
@@ -1120,6 +1143,7 @@ export default function PlannerApp() {
         onMarkerDragEnd={handleMarkerDragEnd}
         onRouteDrop={handleRouteDrop}
         highlights={hlFeatures}
+        highlightSegments={hlSegFeatures}
         onHighlightClick={handleHighlightClick}
         savedPlaces={savedFeatures}
         onSavedPlaceClick={handleSavedPlaceClick}

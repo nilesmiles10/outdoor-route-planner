@@ -36,6 +36,7 @@ type Props = {
   onRouteDrop: (lon: number, lat: number) => void;
   // GEN-115: community-POI layer (optional — TourView doesn't pass these).
   highlights?: GeoJSON.FeatureCollection | null;
+  highlightSegments?: GeoJSON.FeatureCollection | null;
   onHighlightClick?: (h: HighlightClick) => void;
   savedPlaces?: GeoJSON.FeatureCollection | null;
   onSavedPlaceClick?: (p: { id: string; name: string; lon: number; lat: number }) => void;
@@ -64,6 +65,7 @@ export default function MapView({
   onMarkerDragEnd,
   onRouteDrop,
   highlights,
+  highlightSegments,
   onHighlightClick,
   savedPlaces,
   onSavedPlaceClick,
@@ -196,8 +198,11 @@ export default function MapView({
     const ensureSource = (id: string, spec: maplibregl.SourceSpecification) => {
       if (!map.getSource(id)) map.addSource(id, spec);
     };
-    const ensureLayer = (spec: maplibregl.LayerSpecification) => {
-      if (!map.getLayer(spec.id)) map.addLayer(spec);
+    const ensureLayer = (
+      spec: maplibregl.LayerSpecification,
+      beforeId?: string,
+    ) => {
+      if (!map.getLayer(spec.id)) map.addLayer(spec, beforeId);
     };
     const initLayers = () => {
       if (layersReady) return;
@@ -373,6 +378,52 @@ export default function MapView({
         },
       });
 
+      // GEN-115: segment highlights (kind='segment') drawn as a line, placed
+      // just below the route so a planned route stays on top where they cross.
+      ensureSource("highlight-segments", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+      const segBefore = map.getLayer("route-casing") ? "route-casing" : undefined;
+      ensureLayer(
+        {
+          id: "highlight-segments-casing",
+          type: "line",
+          source: "highlight-segments",
+          layout: { "line-join": "round", "line-cap": "round" },
+          paint: {
+            "line-color": "#ffffff",
+            "line-opacity": 0.85,
+            "line-width": ["interpolate", ["linear"], ["zoom"], 8, 5, 14, 10],
+          },
+        },
+        segBefore,
+      );
+      ensureLayer(
+        {
+          id: "highlight-segments-line",
+          type: "line",
+          source: "highlight-segments",
+          layout: { "line-join": "round", "line-cap": "round" },
+          paint: {
+            "line-color": [
+              "match",
+              ["get", "category"],
+              "peak", CATEGORY_COLOR.peak ?? "#b45309",
+              "viewpoint", CATEGORY_COLOR.viewpoint ?? "#0284c7",
+              "hut", CATEGORY_COLOR.hut ?? "#92400e",
+              "water", CATEGORY_COLOR.water ?? "#0ea5e9",
+              "cafe", CATEGORY_COLOR.cafe ?? "#db2777",
+              "monument", CATEGORY_COLOR.monument ?? "#7c3aed",
+              "nature", CATEGORY_COLOR.nature ?? "#16a34a",
+              "#dc2626",
+            ],
+            "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.5, 14, 6],
+          },
+        },
+        segBefore,
+      );
+
       // Saved places (GEN-137): amber stars, owner-only layer.
       ensureSource("saved-places", {
         type: "geojson",
@@ -412,6 +463,12 @@ export default function MapView({
       map.getCanvas().style.cursor = "pointer";
     });
     map.on("mouseleave", "highlights-dots", () => {
+      map.getCanvas().style.cursor = "";
+    });
+    map.on("mouseenter", "highlight-segments-line", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+    map.on("mouseleave", "highlight-segments-line", () => {
       map.getCanvas().style.cursor = "";
     });
     map.on("mouseenter", "saved-places-stars", () => {
@@ -461,6 +518,22 @@ export default function MapView({
             description: p.description ?? "",
             lon: lon ?? e.lngLat.lng,
             lat: lat ?? e.lngLat.lat,
+          });
+          return;
+        }
+        // Segment highlights (lines) — a line has no single point, so anchor
+        // the balloon at the click location.
+        const segHits = hitsAt(e.point, "highlight-segments-line");
+        const segHl = segHits[0];
+        if (segHl && cbRef.current.onHighlightClick) {
+          const p = segHl.properties as Record<string, string>;
+          cbRef.current.onHighlightClick({
+            id: p.id ?? "",
+            name: p.name ?? "",
+            category: p.category ?? "other",
+            description: p.description ?? "",
+            lon: e.lngLat.lng,
+            lat: e.lngLat.lat,
           });
           return;
         }
@@ -605,6 +678,18 @@ export default function MapView({
       highlights ?? { type: "FeatureCollection", features: [] },
     );
   }, [highlights, ready]);
+
+  // Sync segment-highlights layer (GEN-115)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const src = map.getSource("highlight-segments") as
+      | maplibregl.GeoJSONSource
+      | undefined;
+    src?.setData(
+      highlightSegments ?? { type: "FeatureCollection", features: [] },
+    );
+  }, [highlightSegments, ready]);
 
   // Sync network overlays (Kaartinhoud toggles)
   useEffect(() => {
