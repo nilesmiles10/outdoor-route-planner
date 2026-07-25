@@ -89,9 +89,10 @@ export default async function TrailsPage({
       : Promise.resolve({ data: [] }),
   ]);
   const trails = (data as TrailRow[]) ?? [];
-  const countries = (
-    (countriesQ.data as { country: string }[] | null) ?? [{ country: "NL" }]
-  ).map((c) => c.country);
+  // RPC levert land + aantal, gesorteerd op aantal (meeste content eerst).
+  const countries = (countriesQ.data as { country: string; n: number }[] | null) ?? [
+    { country: "NL", n: 0 },
+  ];
   const regions = Array.from(
     new Set(((regionsQ.data as { region: string }[]) ?? []).map((r) => r.region)),
   ).sort();
@@ -114,32 +115,49 @@ export default async function TrailsPage({
       <h1 className="text-2xl font-bold text-neutral-900">{t("title")}</h1>
       <p className="mt-1 text-sm text-neutral-500">{t("subtitle")}</p>
 
+      {/* Land achter een label i.p.v. 28 vlaggen open en bloot (Komoot zet
+          filters ook achter een knop). <details> = geen JS nodig, links
+          blijven crawlbaar voor SEO. */}
       {countries.length > 1 && (
-        <div className="mt-4 flex flex-wrap gap-1.5">
-          <a
-            href={href({ country: "all" })}
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
-              country === "all"
-                ? "bg-neutral-800 text-white"
-                : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-            }`}
-          >
-            🌍 {t("allCountries")}
-          </a>
-          {countries.map((c) => (
+        <details className="group mt-4">
+          <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-200">
+            <span>
+              {country === "all"
+                ? `🌍 ${t("allCountries")}`
+                : `${flag(country)} ${countryName.of(country) ?? country}`}
+            </span>
+            <span className="text-neutral-400 group-open:hidden">▾</span>
+            <span className="hidden text-neutral-400 group-open:inline">▴</span>
+          </summary>
+          <div className="mt-2 flex flex-wrap gap-1.5">
             <a
-              key={c}
-              href={href({ country: c })}
+              href={href({ country: "all" })}
               className={`rounded-full px-3 py-1 text-xs font-medium ${
-                country === c
+                country === "all"
                   ? "bg-neutral-800 text-white"
                   : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
               }`}
             >
-              {flag(c)} {countryName.of(c) ?? c}
+              🌍 {t("allCountries")}
             </a>
-          ))}
-        </div>
+            {countries.map(({ country: c, n }) => (
+              <a
+                key={c}
+                href={href({ country: c })}
+                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  country === c
+                    ? "bg-neutral-800 text-white"
+                    : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                }`}
+              >
+                {flag(c)} {countryName.of(c) ?? c}{" "}
+                <span className={country === c ? "text-neutral-300" : "text-neutral-400"}>
+                  {n}
+                </span>
+              </a>
+            ))}
+          </div>
+        </details>
       )}
 
       <div className="mt-2 flex flex-wrap gap-1.5">
@@ -157,28 +175,37 @@ export default async function TrailsPage({
           </a>
         ))}
       </div>
+      {/* Regio's kunnen er 16+ zijn (Bundesländer, départements) — zelfde
+          inklap-patroon als het land. */}
       {regions.length > 1 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          <a
-            href={href({ region: "all" })}
-            className={`rounded-full px-2.5 py-0.5 text-[11px] ${
-              region === "all" ? "bg-neutral-800 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-            }`}
-          >
-            {t("allRegions")}
-          </a>
-          {regions.map((r) => (
+        <details className="group mt-2">
+          <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-full bg-neutral-100 px-3 py-1 text-[11px] text-neutral-700 hover:bg-neutral-200">
+            <span>📍 {region === "all" ? t("allRegions") : region}</span>
+            <span className="text-neutral-400 group-open:hidden">▾</span>
+            <span className="hidden text-neutral-400 group-open:inline">▴</span>
+          </summary>
+          <div className="mt-2 flex flex-wrap gap-1.5">
             <a
-              key={r}
-              href={href({ region: r })}
+              href={href({ region: "all" })}
               className={`rounded-full px-2.5 py-0.5 text-[11px] ${
-                region === r ? "bg-neutral-800 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                region === "all" ? "bg-neutral-800 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
               }`}
             >
-              {r}
+              {t("allRegions")}
             </a>
-          ))}
-        </div>
+            {regions.map((r) => (
+              <a
+                key={r}
+                href={href({ region: r })}
+                className={`rounded-full px-2.5 py-0.5 text-[11px] ${
+                  region === r ? "bg-neutral-800 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                }`}
+              >
+                {r}
+              </a>
+            ))}
+          </div>
+        </details>
       )}
       <form className="mt-3">
         {sport !== "all" && <input type="hidden" name="sport" value={sport} />}
@@ -200,10 +227,16 @@ export default async function TrailsPage({
             <a
               key={tr.id}
               href={`/${locale}/trail/${tr.id}`}
-              className="rounded-xl border border-neutral-100 bg-white px-4 py-3 shadow-sm transition hover:border-emerald-200 hover:shadow"
+              // min-w-0 óók op de grid-cel zelf: grid-items hebben net als
+              // flex-items min-width:auto, dus een lange naam maakte de kaart
+              // breder dan zijn kolom (gemeten: 673px in een 358px-track).
+              className="min-w-0 rounded-xl border border-neutral-100 bg-white px-4 py-3 shadow-sm transition hover:border-emerald-200 hover:shadow"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-sm font-medium text-neutral-900">
+                {/* min-w-0: flex-items hebben min-width:auto, waardoor lange
+                    namen (Duitse HWW-etappes) truncate negeerden en de kaart
+                    buiten het scherm duwden. */}
+                <span className="min-w-0 truncate text-sm font-medium text-neutral-900">
                   {tr.name}
                 </span>
                 <span className="shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
