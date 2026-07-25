@@ -477,29 +477,37 @@ export default function PlannerApp() {
   useEffect(() => {
     if (!showHl || hlSegRows !== null) return;
     sb.from("highlights")
-      .select("id,name,category,description,geometry")
+      .select("id,name,category,description,lon,lat,geometry")
       .eq("kind", "segment")
       .limit(2000)
       .then(({ data }) => setHlSegRows((data as HighlightSegment[]) ?? []));
   }, [showHl, hlSegRows, sb]);
 
-  const hlFeatures = useMemo(
-    () =>
-      showHl && hlRows
-        ? toFeatureCollection(hlRows.filter((h) => !hiddenCats.has(h.category)))
-        : null,
-    [showHl, hlRows, hiddenCats],
-  );
+  // Komoot shows highlights — points AND segments — as bullets on the map;
+  // a segment's path is only drawn when its bullet is clicked (see hlSegLine).
+  const hlFeatures = useMemo(() => {
+    if (!showHl) return null;
+    const points = (hlRows ?? []).filter((h) => !hiddenCats.has(h.category));
+    const segBullets = (hlSegRows ?? [])
+      .filter((h) => !hiddenCats.has(h.category))
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        category: s.category,
+        lon: s.lon,
+        lat: s.lat,
+        description: s.description,
+      }));
+    return toFeatureCollection([...points, ...segBullets]);
+  }, [showHl, hlRows, hlSegRows, hiddenCats]);
 
-  const hlSegFeatures = useMemo(
-    () =>
-      showHl && hlSegRows
-        ? toSegmentFeatureCollection(
-            hlSegRows.filter((h) => !hiddenCats.has(h.category)),
-          )
-        : null,
-    [showHl, hlSegRows, hiddenCats],
-  );
+  // Only the selected segment's line is drawn (Komoot behaviour). Derived
+  // from the open balloon, so the path clears automatically when it closes.
+  const hlSegLine = useMemo(() => {
+    if (!selectedHl) return null;
+    const seg = (hlSegRows ?? []).find((s) => s.id === selectedHl.id);
+    return seg ? toSegmentFeatureCollection([seg]) : null;
+  }, [selectedHl, hlSegRows]);
 
   // Category counts for the map-content panel (GEN-137).
   const catCounts = useMemo(() => {
@@ -1177,7 +1185,7 @@ export default function PlannerApp() {
         onMarkerDragEnd={handleMarkerDragEnd}
         onRouteDrop={handleRouteDrop}
         highlights={hlFeatures}
-        highlightSegments={hlSegFeatures}
+        highlightSegments={hlSegLine}
         onHighlightClick={handleHighlightClick}
         savedPlaces={savedFeatures}
         onSavedPlaceClick={handleSavedPlaceClick}

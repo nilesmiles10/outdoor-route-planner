@@ -73,6 +73,8 @@ export type HighlightSegment = {
   name: string;
   category: string;
   description: string | null;
+  lon: number;
+  lat: number;
   geometry: GeoJSON.LineString;
 };
 
