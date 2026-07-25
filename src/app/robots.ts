@@ -7,11 +7,15 @@ import { SITE_URL } from "./sitemap";
 // supabaseServer/cookies() mag daar niet.
 export const revalidate = 3600;
 
-export default async function robots(): Promise<MetadataRoute.Robots> {
-  let segments = 1;
+// 1000 = PostgREST max-rows; moet gelijk blijven aan PER_SEGMENT in
+// trails-sitemap/ én highlights-sitemap/, anders mist of verzint robots
+// segmenten.
+const PER_SEGMENT = 1000;
+
+async function segmentCount(query: string): Promise<number> {
   try {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/trails?select=id&limit=1`,
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/${query}`,
       {
         headers: {
           apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -23,19 +27,28 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     );
     const count =
       parseInt((res.headers.get("content-range") ?? "0/0").split("/")[1] ?? "0", 10) || 0;
-    // 1000 = PostgREST max-rows; moet gelijk zijn aan PER_SEGMENT in
-    // trails-sitemap/sitemap.ts, anders mist of verzint robots segmenten.
-    segments = Math.max(1, Math.ceil(count / 1000));
+    return Math.max(1, Math.ceil(count / PER_SEGMENT));
   } catch {
-    // fallback: één segment
+    return 1; // fallback: één segment
   }
+}
+
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const [trailSegments, highlightSegments] = await Promise.all([
+    segmentCount("trails?select=id&limit=1"),
+    segmentCount("highlights?select=id&kind=eq.point&limit=1"),
+  ]);
   return {
     rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/embed"] },
     sitemap: [
       `${SITE_URL}/sitemap.xml`,
       ...Array.from(
-        { length: segments },
+        { length: trailSegments },
         (_, i) => `${SITE_URL}/trails-sitemap/sitemap/${i}.xml`,
+      ),
+      ...Array.from(
+        { length: highlightSegments },
+        (_, i) => `${SITE_URL}/highlights-sitemap/sitemap/${i}.xml`,
       ),
     ],
   };

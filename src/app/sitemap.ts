@@ -96,13 +96,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.8,
       });
     }
-    for (const h of highlightRows) {
-      entries.push({
-        url: `${SITE_URL}/${locale}/highlight/${h.id}`,
-        changeFrequency: "weekly",
-        priority: 0.6,
-      });
-    }
+    // Per-highlight URL's staan in /highlights-sitemap/sitemap/<n>.xml —
+    // met tienduizenden highlights × 2 locales past dat niet in één
+    // sitemap (Google's limiet is 50.000 URL's). De region×category-
+    // combo's hierboven blijven hier: dat zijn er weinig.
     for (const c of collections.data ?? []) {
       entries.push({
         url: `${SITE_URL}/${locale}/collection/${c.id}`,
