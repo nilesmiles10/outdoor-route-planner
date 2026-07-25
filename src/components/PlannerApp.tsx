@@ -398,6 +398,10 @@ export default function PlannerApp() {
   const [user, setUser] = useState<User | null>(null);
   const [showHl, setShowHl] = useState(true);
   const [hlRows, setHlRows] = useState<HighlightPoint[] | null>(null);
+  const [viewport, setViewport] = useState<{
+    b: { w: number; s: number; e: number; n: number };
+    zoom: number;
+  } | null>(null);
   const [hlSegRows, setHlSegRows] = useState<HighlightSegment[] | null>(null);
   // Map-content panel (GEN-137): per-category highlight toggles + km markers.
   const [mapContentOpen, setMapContentOpen] = useState(false);
@@ -463,15 +467,39 @@ export default function PlannerApp() {
     [showSaved, savedRows],
   );
 
-  // Load all point-highlights once when the layer is on (~700 rows, tiny).
+  // Highlights per kaartbeeld laden. "Alles in één keer" werkte met 680
+  // rijen, maar de OSM-seed maakt er honderdduizenden: PostgREST kapt stil
+  // af op max-rows (1000) — je kreeg dan een willekeurige 1000 (in de
+  // praktijk de oudste = NL/BE) en overal elders een lege kaart.
+  const HL_MIN_ZOOM = 8;
+  const HL_MAX_ROWS = 800; // onder PostgREST's 1000-cap
   useEffect(() => {
-    if (!showHl || hlRows !== null) return;
-    sb.from("highlights")
-      .select("id,name,category,lon,lat,description")
-      .eq("kind", "point")
-      .limit(2000)
-      .then(({ data }) => setHlRows((data as HighlightPoint[]) ?? []));
-  }, [showHl, hlRows, sb]);
+    if (!showHl || !viewport) return;
+    if (viewport.zoom < HL_MIN_ZOOM) {
+      setHlRows([]);
+      return;
+    }
+    let cancelled = false;
+    // Debounce: pannen/zoomen vuurt moveend vaak.
+    const t = setTimeout(() => {
+      const { w, s, e, n } = viewport.b;
+      sb.from("highlights")
+        .select("id,name,category,lon,lat,description")
+        .eq("kind", "point")
+        .gte("lon", w)
+        .lte("lon", e)
+        .gte("lat", s)
+        .lte("lat", n)
+        .limit(HL_MAX_ROWS)
+        .then(({ data }) => {
+          if (!cancelled) setHlRows((data as HighlightPoint[]) ?? []);
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [showHl, viewport, sb]);
 
   // Load segment-highlights (lines) once when the layer is on.
   useEffect(() => {
@@ -515,6 +543,27 @@ export default function PlannerApp() {
     for (const h of hlRows ?? []) m.set(h.category, (m.get(h.category) ?? 0) + 1);
     return m;
   }, [hlRows]);
+
+  // Alleen bijwerken bij een merkbare verschuiving, anders triggert elke
+  // micro-move (en het moveend na een fitBounds) een nieuwe fetch.
+  const handleViewportChange = useCallback(
+    (b: { w: number; s: number; e: number; n: number }, zoom: number) => {
+      setViewport((prev) => {
+        if (
+          prev &&
+          Math.abs(prev.zoom - zoom) < 0.5 &&
+          Math.abs(prev.b.w - b.w) < 0.01 &&
+          Math.abs(prev.b.s - b.s) < 0.01 &&
+          Math.abs(prev.b.e - b.e) < 0.01 &&
+          Math.abs(prev.b.n - b.n) < 0.01
+        ) {
+          return prev;
+        }
+        return { b, zoom };
+      });
+    },
+    [],
+  );
 
   const handleHighlightClick = useCallback(
     (h: HighlightClick) => {
@@ -1186,6 +1235,7 @@ export default function PlannerApp() {
         onRouteDrop={handleRouteDrop}
         highlights={hlFeatures}
         highlightSegments={hlSegLine}
+        onViewportChange={handleViewportChange}
         onHighlightClick={handleHighlightClick}
         savedPlaces={savedFeatures}
         onSavedPlaceClick={handleSavedPlaceClick}

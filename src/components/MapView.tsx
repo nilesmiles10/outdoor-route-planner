@@ -38,6 +38,12 @@ type Props = {
   highlights?: GeoJSON.FeatureCollection | null;
   highlightSegments?: GeoJSON.FeatureCollection | null;
   onHighlightClick?: (h: HighlightClick) => void;
+  // Viewport (na moveend) zodat de highlight-laag per kaartbeeld kan laden
+  // i.p.v. "alles in één keer" — met honderdduizenden punten kan dat niet.
+  onViewportChange?: (
+    bounds: { w: number; s: number; e: number; n: number },
+    zoom: number,
+  ) => void;
   savedPlaces?: GeoJSON.FeatureCollection | null;
   onSavedPlaceClick?: (p: { id: string; name: string; lon: number; lat: number }) => void;
   // Komoot-style click balloon: anchor position + React content, rendered
@@ -67,6 +73,7 @@ export default function MapView({
   highlights,
   highlightSegments,
   onHighlightClick,
+  onViewportChange,
   savedPlaces,
   onSavedPlaceClick,
   balloonAt,
@@ -94,6 +101,7 @@ export default function MapView({
     onHighlightClick,
     onSavedPlaceClick,
     onMarkerClick,
+    onViewportChange,
   });
   cbRef.current = {
     onMapClick,
@@ -102,6 +110,7 @@ export default function MapView({
     onHighlightClick,
     onSavedPlaceClick,
     onMarkerClick,
+    onViewportChange,
   };
 
   useEffect(() => {
@@ -459,6 +468,20 @@ export default function MapView({
     map.on("mouseleave", "via-handles", () => {
       map.getCanvas().style.cursor = "";
     });
+    // Viewport melden zodat de highlight-laag per kaartbeeld kan laden.
+    // Ook één keer meteen: zonder pan/zoom vuurt moveend nooit.
+    const emitViewport = () => {
+      const cb = cbRef.current.onViewportChange;
+      if (!cb) return;
+      const b = map.getBounds();
+      cb(
+        { w: b.getWest(), s: b.getSouth(), e: b.getEast(), n: b.getNorth() },
+        map.getZoom(),
+      );
+    };
+    map.on("moveend", emitViewport);
+    emitViewport();
+
     map.on("mouseenter", "highlights-dots", () => {
       map.getCanvas().style.cursor = "pointer";
     });
