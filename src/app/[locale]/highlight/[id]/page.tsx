@@ -99,6 +99,14 @@ export async function generateMetadata({
     description:
       hl.description?.slice(0, 160) ??
       `Ontdek ${hl.name}: community-highlight met tips, foto's en routes in de buurt.`,
+    // De OSM-seed maakt honderdduizenden highlight-pagina's terwijl tips en
+    // foto's user-generated zijn en er nog geen gebruikers zijn — de meeste
+    // pagina's zijn dus (nog) dun. Op die schaal kan Google het patroon als
+    // thin content wegen en dat raakt het hele domein, niet alleen deze
+    // URL's. Daarom voorlopig noindex; follow blijft aan zodat link-equity
+    // naar routes en trails blijft lopen. Herzien zodra highlights echte
+    // content hebben (tips/foto's) — dan per-pagina op rijkdom gaten.
+    robots: { index: false, follow: true },
   };
 }
 

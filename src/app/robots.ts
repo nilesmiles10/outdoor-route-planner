@@ -34,10 +34,10 @@ async function segmentCount(query: string): Promise<number> {
 }
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
-  const [trailSegments, highlightSegments] = await Promise.all([
-    segmentCount("trails?select=id&limit=1"),
-    segmentCount("highlights?select=id&kind=eq.point&limit=1"),
-  ]);
+  // Highlight-pagina's staan bewust NIET in een sitemap: ze zijn noindex
+  // zolang tips/foto's ontbreken (zie highlight/[id]/page.tsx). Een sitemap
+  // met noindex-URL's is een tegenstrijdig signaal en verspilt crawl-budget.
+  const trailSegments = await segmentCount("trails?select=id&limit=1");
   return {
     rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/embed"] },
     sitemap: [
@@ -45,10 +45,6 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       ...Array.from(
         { length: trailSegments },
         (_, i) => `${SITE_URL}/trails-sitemap/sitemap/${i}.xml`,
-      ),
-      ...Array.from(
-        { length: highlightSegments },
-        (_, i) => `${SITE_URL}/highlights-sitemap/sitemap/${i}.xml`,
       ),
     ],
   };
