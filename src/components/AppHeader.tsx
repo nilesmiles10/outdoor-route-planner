@@ -13,6 +13,16 @@ type Hit = {
   href: string;
 };
 
+// Eén bron voor desktop-nav en mobiel menu, zodat ze niet uit elkaar lopen.
+const NAV: { key: string; path: string; authOnly?: boolean }[] = [
+  { key: "planner", path: "" },
+  { key: "discover", path: "/discover" },
+  { key: "trails", path: "/trails" },
+  { key: "collections", path: "/collections" },
+  { key: "myRoutes", path: "/routes" },
+  { key: "feed", path: "/feed", authOnly: true },
+];
+
 export default function AppHeader() {
   const site = useSiteSettings();
   const t = useTranslations("nav");
@@ -24,7 +34,18 @@ export default function AppHeader() {
   const [hits, setHits] = useState<Hit[]>([]);
   const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
+
+  // Taalwissel: bewaart de HUIDIGE pagina (de oude link ging altijd naar de
+  // homepage) en zet NEXT_LOCALE, zodat next-intl bij een volgend bezoek de
+  // handmatige keuze respecteert i.p.v. opnieuw de browsertaal te volgen.
+  const other = locale === "nl" ? "en" : "nl";
+  const switchLocale = () => {
+    document.cookie = `NEXT_LOCALE=${other}; path=/; max-age=31536000; samesite=lax`;
+    const rest = window.location.pathname.replace(/^\/(nl|en)(?=\/|$)/, "");
+    window.location.href = `/${other}${rest}${window.location.search}`;
+  };
 
   useEffect(() => {
     sb.auth.getUser().then(({ data }) => {
@@ -154,49 +175,44 @@ export default function AppHeader() {
         )}
       </div>
 
-      <nav className="ml-auto flex items-center gap-2 whitespace-nowrap text-sm max-md:gap-2 max-md:overflow-x-auto max-md:text-xs md:gap-3">
-        <a href={`/${locale}`} className="text-neutral-700 hover:text-emerald-800">
-          {t("planner")}
-        </a>
-        <a href={`/${locale}/discover`} className="text-neutral-700 hover:text-emerald-800">
-          {t("discover")}
-        </a>
-        <a href={`/${locale}/trails`} className="text-neutral-700 hover:text-emerald-800">
-          {t("trails")}
-        </a>
-        {email && (
-          <a href={`/${locale}/feed`} className="text-neutral-700 hover:text-emerald-800">
-            {t("feed")}
-          </a>
-        )}
-        <a
-          href={`/${locale}/collections`}
-          className="hidden text-neutral-700 hover:text-emerald-800 sm:inline"
-        >
-          {t("collections")}
-        </a>
-        <a href={`/${locale}/routes`} className="text-neutral-700 hover:text-emerald-800">
-          {t("myRoutes")}
-        </a>
-        <a
-          href={`/${locale === "nl" ? "en" : "nl"}`}
-          className="text-xs uppercase text-neutral-400 hover:text-neutral-700"
-        >
-          {locale === "nl" ? "EN" : "NL"}
-        </a>
-        {email ? (
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setMenuOpen((v) => !v)}
-              onBlur={() => setTimeout(() => setMenuOpen(false), 150)}
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-700 text-xs font-bold text-white"
-              title={email}
+      {/* Desktop-navigatie: inline links. Mobiel kreeg dezelfde rij met
+          overflow-x-auto, wat een halve, wegschuivende balk opleverde —
+          daar staat nu één hamburger-menu. */}
+      <nav className="ml-auto hidden items-center gap-3 whitespace-nowrap text-sm md:flex">
+        {NAV.map(({ key, path, authOnly }) =>
+          authOnly && !email ? null : (
+            <a
+              key={key}
+              href={`/${locale}${path}`}
+              className="text-neutral-700 hover:text-emerald-800"
             >
-              {email[0]?.toUpperCase()}
-            </button>
-            {menuOpen && (
-              <div className="absolute right-0 z-40 mt-1 w-44 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
+              {t(key as never)}
+            </a>
+          ),
+        )}
+      </nav>
+
+      {/* Account-menu (avatar als ingelogd, anders een icoon): bevat óók de
+          taalkeuze — op desktop én mobiel dezelfde plek. */}
+      <div className="relative ml-auto md:ml-0">
+        <button
+          type="button"
+          onClick={() => { setMobileOpen(false); setMenuOpen((v) => !v); }}
+          onBlur={() => setTimeout(() => setMenuOpen(false), 150)}
+          className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
+            email
+              ? "bg-emerald-700 text-white"
+              : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+          }`}
+          title={email ?? t("account")}
+          aria-label={email ?? t("account")}
+        >
+          {email ? email[0]?.toUpperCase() : "👤"}
+        </button>
+        {menuOpen && (
+          <div className="absolute right-0 z-40 mt-1 w-52 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
+            {email ? (
+              <>
                 <div className="truncate px-3 py-1.5 text-[11px] text-neutral-400">
                   {email}
                 </div>
@@ -214,25 +230,67 @@ export default function AppHeader() {
                 >
                   {t("myRoutes")}
                 </a>
-                <button
-                  type="button"
-                  onMouseDown={() => sb.auth.signOut()}
-                  className="block w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-neutral-50"
-                >
-                  {t("logout")}
-                </button>
-              </div>
+              </>
+            ) : (
+              <a
+                href={`/${locale}/routes`}
+                className="block px-3 py-1.5 text-sm font-medium text-emerald-800 hover:bg-neutral-50"
+              >
+                {t("login")}
+              </a>
+            )}
+            <div className="my-1 border-t border-neutral-100" />
+            <button
+              type="button"
+              onMouseDown={switchLocale}
+              className="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+            >
+              <span>🌐 {t("language")}</span>
+              <span className="text-xs font-medium uppercase text-neutral-400">
+                {other}
+              </span>
+            </button>
+            {email && (
+              <button
+                type="button"
+                onMouseDown={() => sb.auth.signOut()}
+                className="block w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-neutral-50"
+              >
+                {t("logout")}
+              </button>
             )}
           </div>
-        ) : (
-          <a
-            href={`/${locale}/routes`}
-            className="rounded-full bg-emerald-700 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-800"
-          >
-            {t("login")}
-          </a>
         )}
-      </nav>
+      </div>
+
+      {/* Hamburger — alleen mobiel; opent een volledige sheet onder de balk */}
+      <button
+        type="button"
+        onClick={() => { setMenuOpen(false); setMobileOpen((v) => !v); }}
+        className="flex h-8 w-8 items-center justify-center rounded-lg text-lg text-neutral-700 hover:bg-neutral-100 md:hidden"
+        aria-label={t("menu")}
+        aria-expanded={mobileOpen}
+      >
+        {mobileOpen ? "✕" : "☰"}
+      </button>
+      {mobileOpen && (
+        <div className="absolute inset-x-0 top-12 z-40 border-b border-neutral-200 bg-white shadow-lg md:hidden">
+          <nav className="flex flex-col py-1">
+            {NAV.map(({ key, path, authOnly }) =>
+              authOnly && !email ? null : (
+                <a
+                  key={key}
+                  href={`/${locale}${path}`}
+                  onClick={() => setMobileOpen(false)}
+                  className="px-4 py-2.5 text-sm text-neutral-800 hover:bg-neutral-50"
+                >
+                  {t(key as never)}
+                </a>
+              ),
+            )}
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

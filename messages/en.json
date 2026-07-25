@@ -279,7 +279,10 @@
     "feed": "Feed",
     "people": "People",
     "myProfile": "My profile",
-    "trails": "Trails"
+    "trails": "Trails",
+    "menu": "Menu",
+    "account": "Account",
+    "language": "Language"
   },
   "collections": {
     "title": "Collections",
