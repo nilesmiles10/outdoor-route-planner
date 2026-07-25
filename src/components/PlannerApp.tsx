@@ -1517,7 +1517,7 @@ export default function PlannerApp() {
 
       {/* Selected highlight card */}
       {selectedHl && (
-        <div className="absolute right-4 top-16 w-72 rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur">
+        <div className="absolute top-16 z-20 rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur max-md:left-2 max-md:right-16 md:right-16 md:w-72">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <div className="font-medium text-neutral-900">
@@ -1629,7 +1629,7 @@ export default function PlannerApp() {
 
       {/* New-highlight mini form */}
       {pendingHl && (
-        <div className="absolute right-4 top-16 w-72 rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur">
+        <div className="absolute top-16 z-20 rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur max-md:left-2 max-md:right-16 md:right-16 md:w-72">
           <div className="text-sm font-medium text-neutral-900">
             {t("highlights.newTitle")}
           </div>
@@ -1676,7 +1676,7 @@ export default function PlannerApp() {
       )}
 
       {segOpen && (
-        <div className="absolute right-4 top-16 w-72 rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur">
+        <div className="absolute top-16 z-20 rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur max-md:left-2 max-md:right-16 md:right-16 md:w-72">
           <div className="text-sm font-medium text-neutral-900">
             {t("highlights.newSegmentTitle")}
           </div>
