@@ -52,8 +52,14 @@ const SELECTORS: Record<string, string[]> = {
     `nwr["historic"="monument"]["name"]`,
   ],
   nature: [
-    `nwr["natural"="cave_entrance"]["name"]`,
-    `nwr["leisure"="nature_reserve"]["name"]`,
+    // Kale cave_entrance levert in NL honderden genummerde mergelgroeve-
+    // ingangen op ("Gewandgroeve 1", "Mettenberg I") — geen highlight.
+    // wikidata/tourism als generieke notability-proxy houdt de echte over.
+    `nwr["natural"="cave_entrance"]["name"]["wikidata"]`,
+    `nwr["natural"="cave_entrance"]["name"]["tourism"]`,
+    // Kale nature_reserve = 1000+ snippers in NL én de query die de
+    // undici-timeout trok; wikidata houdt de bekende gebieden over.
+    `nwr["leisure"="nature_reserve"]["name"]["wikidata"]`,
     `nwr["natural"="tree"]["name"]["denotation"~"natural_monument|landmark"]`,
   ],
   // Cafés zijn er tienduizenden en zijn zelden een "highlight"; alleen op
@@ -71,6 +77,18 @@ const CATS = (() => {
 // stadscentrum de kaart volgooit met 40 identieke punten.
 const CELL_DEG = 0.02;
 const PER_CELL = 2;
+
+// Overzeese gebiedsdelen buiten sluiten. Overpass' area["ISO3166-1"="NL"]
+// bevat óók Caribisch Nederland (Bonaire deelt iso_a2 "NL"!) — de eerste
+// NL-run leverde daardoor Fontein Cave (Aruba) en Rif Fort (Curaçao) op.
+// Een expliciete Europa-bbox is de simpelste robuuste gate; bewuste
+// grens: Canarische Eilanden en Madeira vallen hier buiten, Azoren binnen.
+const EUROPE_BBOX = { minLon: -32, maxLon: 45, minLat: 34, maxLat: 72 };
+const inEurope = (lon: number, lat: number) =>
+  lon >= EUROPE_BBOX.minLon &&
+  lon <= EUROPE_BBOX.maxLon &&
+  lat >= EUROPE_BBOX.minLat &&
+  lat <= EUROPE_BBOX.maxLat;
 
 const OVERPASS_MIRRORS = [
   "https://overpass.kumi.systems/api/interpreter",
@@ -93,26 +111,40 @@ type Element = {
 async function overpass(body: string): Promise<Record<string, unknown>> {
   for (let attempt = 0; attempt < 10; attempt++) {
     const url = OVERPASS_MIRRORS[attempt % OVERPASS_MIRRORS.length];
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        // Zonder UA weigeren beide mirrors (kumi expliciet, .de met 406).
-        "User-Agent": "tarnoo-import/1.0 (highlights import; contact via repo)",
-      },
-      body: `data=${encodeURIComponent(body)}`,
-    });
-    const text = await res.text();
-    if (text.trimStart().startsWith("{")) return JSON.parse(text);
-    const snippet = text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 200);
-    console.log(`  overpass non-JSON van ${new URL(url).host} (poging ${attempt + 1}): ${snippet}`);
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          // Zonder UA weigeren beide mirrors (kumi expliciet, .de met 406).
+          "User-Agent": "tarnoo-import/1.0 (highlights import; contact via repo)",
+        },
+        body: `data=${encodeURIComponent(body)}`,
+      });
+      const text = await res.text();
+      if (text.trimStart().startsWith("{")) return JSON.parse(text);
+      const snippet = text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 200);
+      console.log(`  overpass non-JSON van ${new URL(url).host} (poging ${attempt + 1}): ${snippet}`);
+    } catch (e) {
+      // Netwerk-throw (undici headers-timeout op zware queries) moet net zo
+      // goed een retry krijgen als een non-JSON body — anders sterft de run.
+      console.log(
+        `  overpass fetch-fout van ${new URL(url).host} (poging ${attempt + 1}): ${(e as Error).message}`,
+      );
+    }
     await new Promise((r) => setTimeout(r, attempt < 2 ? 5_000 : 30_000));
   }
   throw new Error("overpass: retries exhausted");
 }
 
 // --- Natural-Earth admin-1 point-in-polygon (offline, alle landen) ---
-type NeFeature = { name: string; bbox: [number, number, number, number]; polys: LonLat[][][] };
+type NeFeature = {
+  name: string;
+  iso: string;
+  admin: string;
+  bbox: [number, number, number, number];
+  polys: LonLat[][][];
+};
 let neFeatures: NeFeature[] | null = null;
 
 async function loadNe(): Promise<NeFeature[]> {
@@ -125,7 +157,7 @@ async function loadNe(): Promise<NeFeature[]> {
   }
   const raw = JSON.parse(readFileSync(NE_FILE, "utf8")) as {
     features: {
-      properties: { name: string };
+      properties: { name: string; iso_a2?: string; admin?: string };
       geometry: { type: string; coordinates: unknown };
     }[];
   };
@@ -143,7 +175,13 @@ async function loadNe(): Promise<NeFeature[]> {
           if (y < minY) minY = y;
           if (y > maxY) maxY = y;
         }
-    return { name: f.properties.name, bbox: [minX, minY, maxX, maxY] as [number, number, number, number], polys };
+    return {
+      name: f.properties.name,
+      iso: (f.properties.iso_a2 ?? "").toUpperCase(),
+      admin: f.properties.admin ?? "",
+      bbox: [minX, minY, maxX, maxY] as [number, number, number, number],
+      polys,
+    };
   });
   return neFeatures;
 }
@@ -161,14 +199,19 @@ function inRing(pt: LonLat, ring: LonLat[]): boolean {
   return inside;
 }
 
-async function neRegion(lon: number, lat: number): Promise<string | null> {
+async function neLookup(
+  lon: number,
+  lat: number,
+): Promise<{ name: string; iso: string; admin: string } | null> {
   const feats = await loadNe();
   for (const f of feats) {
     const [minX, minY, maxX, maxY] = f.bbox;
     if (lon < minX || lon > maxX || lat < minY || lat > maxY) continue;
     for (const poly of f.polys) {
       const outer = poly[0];
-      if (outer && inRing([lon, lat], outer)) return f.name;
+      if (outer && inRing([lon, lat], outer)) {
+        return { name: f.name, iso: f.iso, admin: f.admin };
+      }
     }
   }
   return null;
@@ -189,17 +232,15 @@ async function main() {
   mkdirSync("scripts/out", { recursive: true });
 
   const rows: Row[] = [];
+  // Eén POI kan meerdere selectors matchen (cave_entrance met zowel wikidata
+  // als tourism). osm_id is UNIQUE, dus dubbelen moeten er hier al uit —
+  // anders raakt één upsert-batch dezelfde rij twee keer.
+  const seen = new Set<string>();
   const stats: Record<string, { raw: number; noCoord: number; cell: number; kept: number }> = {};
 
   for (const cat of CATS) {
     const selectors = SELECTORS[cat] ?? [];
     const union = selectors.map((s) => `  ${s}(area.c);`).join("\n");
-    const q = `[out:json][timeout:300];
-area["ISO3166-1"="${COUNTRY}"][admin_level=2]->.c;
-(
-${union}
-);
-out center;`;
 
     if (COUNT_ONLY) {
       const cq = `[out:json][timeout:300];
@@ -215,8 +256,18 @@ out count;`;
       continue;
     }
 
-    const data = (await overpass(q)) as { elements?: Element[] };
-    const els = data.elements ?? [];
+    // Eén query per selector i.p.v. een union: kleinere responses, minder
+    // kans op de undici headers-timeout die de NL-run op nature sloopte.
+    const els: Element[] = [];
+    for (const sel of selectors) {
+      const sq = `[out:json][timeout:300];
+area["ISO3166-1"="${COUNTRY}"][admin_level=2]->.c;
+${sel}(area.c);
+out center;`;
+      const d = (await overpass(sq)) as { elements?: Element[] };
+      els.push(...(d.elements ?? []));
+      await new Promise((r) => setTimeout(r, 2000));
+    }
     const st = { raw: els.length, noCoord: 0, cell: 0, kept: 0 };
     const cells = new Map<string, number>();
 
@@ -228,6 +279,8 @@ out count;`;
         st.noCoord++;
         continue;
       }
+      const osmId = `${el.type}/${el.id}`;
+      if (seen.has(osmId)) continue;
       const key = `${Math.round(lon / CELL_DEG)}:${Math.round(lat / CELL_DEG)}`;
       const used = cells.get(key) ?? 0;
       if (used >= PER_CELL) {
@@ -235,8 +288,9 @@ out count;`;
         continue;
       }
       cells.set(key, used + 1);
+      seen.add(osmId);
       rows.push({
-        osm_id: `${el.type}/${el.id}`,
+        osm_id: osmId,
         name: name.slice(0, 120),
         category: cat,
         lon: Math.round(lon * 1e6) / 1e6,
@@ -258,13 +312,33 @@ out count;`;
 
   if (COUNT_ONLY) return;
 
-  console.log(`  regio's bepalen voor ${rows.length} punten…`);
-  for (const r of rows) r.region = await neRegion(r.lon, r.lat);
-  const noRegion = rows.filter((r) => !r.region).length;
+  console.log(`  regio's bepalen + geo-gate voor ${rows.length} punten…`);
+  const kept: Row[] = [];
+  let offshore = 0;
+  let wrongCountry = 0;
+  for (const r of rows) {
+    if (!inEurope(r.lon, r.lat)) {
+      offshore++;
+      continue;
+    }
+    const ne = await neLookup(r.lon, r.lat);
+    // iso_a2 vangt Aruba/Curaçao/Sint Maarten (AW/CW/SX); de bbox hierboven
+    // vangt Bonaire, dat wél "NL" is.
+    if (ne && ne.iso && ne.iso !== COUNTRY) {
+      wrongCountry++;
+      continue;
+    }
+    r.region = ne?.name ?? null;
+    kept.push(r);
+  }
+  const noRegion = kept.filter((r) => !r.region).length;
 
   const file = `scripts/out/highlights-${COUNTRY}.ndjson`;
-  writeFileSync(file, rows.map((r) => JSON.stringify(r)).join("\n") + "\n");
-  console.log(`== klaar: ${rows.length} highlights → ${file} (zonder regio: ${noRegion}) ==`);
+  writeFileSync(file, kept.map((r) => JSON.stringify(r)).join("\n") + "\n");
+  console.log(
+    `== klaar: ${kept.length} highlights → ${file} ` +
+      `(buiten Europa: ${offshore}, ander land: ${wrongCountry}, zonder regio: ${noRegion}) ==`,
+  );
 }
 
 main().catch((e) => {
