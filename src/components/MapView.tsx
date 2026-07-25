@@ -369,7 +369,17 @@ export default function MapView({
         type: "circle",
         source: "highlights",
         paint: {
-          "circle-radius": ["interpolate", ["linear"], ["zoom"], 6, 3, 12, 7],
+          // Komoot-stijl: kleine, rustige punten op overzichtsniveau die
+          // pas groeien als je echt inzoomt. De tap-/klik-zone is los
+          // hiervan gepadded (zie hitsAt) zodat ze bruikbaar blijven.
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            6, 1.8,
+            12, 3,
+            16, 5.5,
+          ],
           "circle-color": [
             "match",
             ["get", "category"],
@@ -383,7 +393,14 @@ export default function MapView({
             "#dc2626",
           ],
           "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 1.5,
+          "circle-stroke-width": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            6, 0.75,
+            12, 1,
+            16, 1.5,
+          ],
         },
       });
 
@@ -502,10 +519,30 @@ export default function MapView({
     });
 
     // queryRenderedFeatures throws on a layer id that does not exist (yet).
-    const hitsAt = (pt: maplibregl.Point, layerId: string) =>
-      map.getLayer(layerId)
-        ? map.queryRenderedFeatures(pt, { layers: [layerId] })
-        : [];
+    // Klik-/tap-zone met padding: de highlight-punten zijn bewust klein
+    // (Komoot-stijl), dus een exacte pixel-hit zou ze op touch onbruikbaar
+    // maken. 10px marge ≈ vingervriendelijk zonder overlappende treffers.
+    const HIT_PAD = 10;
+    const hitsAt = (pt: maplibregl.Point, layerId: string) => {
+      if (!map.getLayer(layerId)) return [];
+      const box: [maplibregl.PointLike, maplibregl.PointLike] = [
+        [pt.x - HIT_PAD, pt.y - HIT_PAD],
+        [pt.x + HIT_PAD, pt.y + HIT_PAD],
+      ];
+      const hits = map.queryRenderedFeatures(box, { layers: [layerId] });
+      if (hits.length < 2) return hits;
+      // Meerdere treffers in de marge: de dichtstbijzijnde wint, anders
+      // opent een klik soms een punt dat verder weg ligt dan een ander.
+      return [...hits].sort((a, b) => {
+        const d = (f: typeof a) => {
+          const g = f.geometry;
+          if (g.type !== "Point") return Number.POSITIVE_INFINITY;
+          const p = map.project(g.coordinates as [number, number]);
+          return (p.x - pt.x) ** 2 + (p.y - pt.y) ** 2;
+        };
+        return d(a) - d(b);
+      });
+    };
 
     // Click on empty map = add waypoint. Suppressed right after a line-drag.
     let suppressClick = false;
