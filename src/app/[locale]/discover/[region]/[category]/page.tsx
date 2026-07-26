@@ -61,7 +61,13 @@ async function resolve(regionSlug: string, category: string) {
   const { data } = await q.order("name").limit(500);
   const items = (data as Hl[]) ?? [];
   if (items.length < MIN_ITEMS) return null;
-  return { region: match.region, items };
+  // Two countries share this region name -> qualify it, otherwise both pages
+  // would carry the identical <title> ("Monumenten in Limburg").
+  const label =
+    (perName.get(match.region) ?? 1) > 1 && match.country
+      ? `${match.region} (${match.country})`
+      : match.region;
+  return { region: match.region, label, items };
 }
 
 export async function generateMetadata({
@@ -74,11 +80,11 @@ export async function generateMetadata({
   const t = await getTranslations("regionPage");
   const cat = t(`catPlural.${params.category}` as never);
   return {
-    title: pageTitle(await getSiteSettings(), `${cat} in ${resolved.region}`),
+    title: pageTitle(await getSiteSettings(), `${cat} in ${resolved.label}`),
     description: t("metaDescription", {
       count: resolved.items.length,
       category: cat.toLowerCase(),
-      region: resolved.region,
+      region: resolved.label,
     }),
   };
 }
@@ -90,7 +96,7 @@ export default async function RegionCategoryPage({
 }) {
   const resolved = await resolve(params.region, params.category);
   if (!resolved) notFound();
-  const { region, items } = resolved;
+  const { label, items } = resolved;
   const { locale, category } = params;
   const t = await getTranslations("regionPage");
   const cat = t(`catPlural.${category}` as never);
@@ -103,7 +109,7 @@ export default async function RegionCategoryPage({
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "ItemList",
-            name: `${cat} in ${region}`,
+            name: `${cat} in ${label}`,
             numberOfItems: items.length,
             itemListElement: items.slice(0, 50).map((h, i) => ({
               "@type": "ListItem",
@@ -119,16 +125,16 @@ export default async function RegionCategoryPage({
           {t("breadcrumbDiscover")}
         </a>
         {" / "}
-        <span>{region}</span>
+        <span>{label}</span>
         {" / "}
         <span className="text-neutral-600">{cat}</span>
       </nav>
 
       <h1 className="mt-3 text-2xl font-semibold text-neutral-900">
-        {CATEGORY_EMOJI[category]} {cat} in {region}
+        {CATEGORY_EMOJI[category]} {cat} in {label}
       </h1>
       <p className="mt-1 text-sm text-neutral-500">
-        {t("intro", { count: items.length, category: cat.toLowerCase(), region })}
+        {t("intro", { count: items.length, category: cat.toLowerCase(), region: label })}
       </p>
 
       <ul className="mt-6 grid gap-2 sm:grid-cols-2">
