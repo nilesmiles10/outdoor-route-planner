@@ -22,29 +22,46 @@ type Hl = {
   description: string | null;
 };
 
+// Region names are not unique across countries: Limburg (NL/BE), Luxembourg
+// (BE/LU) and Jura (CH/FR) each exist twice, and merging them put Belgian
+// monuments on the Dutch-Limburg page. Those get a country-suffixed slug
+// ("limburg-nl"); unique regions keep the plain slug.
+function regionSlugFor(region: string, country: string | null, ambiguous: boolean) {
+  const base = slugify(region);
+  return ambiguous && country ? `${base}-${country.toLowerCase()}` : base;
+}
+
 async function resolve(regionSlug: string, category: string) {
   if (!(HIGHLIGHT_CATEGORIES as readonly string[]).includes(category)) return null;
   const sb = supabaseServer();
-  const { data: regions } = await sb
-    .from("highlights")
-    .select("region")
-    .not("region", "is", null)
-    .limit(2000);
-  const known = Array.from(
-    new Set(((regions ?? []) as { region: string }[]).map((r) => r.region)),
+  // highlight_regions is a grouped view (~1.2k rows). Reading distinct
+  // regions off `highlights` itself silently hit PostgREST's 1000-row cap
+  // once the OSM seed landed, so most regions 404'd.
+  const { data: regs } = await sb
+    .from("highlight_regions")
+    .select("region,country,n")
+    .eq("category", category)
+    .gte("n", MIN_ITEMS)
+    .limit(1000);
+  const rows = (regs ?? []) as { region: string; country: string | null; n: number }[];
+
+  const perName = new Map<string, number>();
+  for (const r of rows) perName.set(r.region, (perName.get(r.region) ?? 0) + 1);
+  const match = rows.find(
+    (r) => regionSlugFor(r.region, r.country, (perName.get(r.region) ?? 1) > 1) === regionSlug,
   );
-  const region = known.find((r) => slugify(r) === regionSlug);
-  if (!region) return null;
-  const { data } = await sb
+  if (!match) return null;
+
+  let q = sb
     .from("highlights")
     .select("id,name,category,region,description")
-    .eq("region", region)
-    .eq("category", category)
-    .order("name")
-    .limit(500);
+    .eq("region", match.region)
+    .eq("category", category);
+  if ((perName.get(match.region) ?? 1) > 1) q = q.eq("country", match.country);
+  const { data } = await q.order("name").limit(500);
   const items = (data as Hl[]) ?? [];
   if (items.length < MIN_ITEMS) return null;
-  return { region, items };
+  return { region: match.region, items };
 }
 
 export async function generateMetadata({

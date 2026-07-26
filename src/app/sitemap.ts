@@ -34,15 +34,18 @@ async function fetchAll<T>(
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const sb = supabaseServer();
   // Trail-URL's zitten in gesegmenteerde sitemaps: /trails-sitemap/sitemap/<n>.xml
-  const [tours, highlightRows, collections, pages] = await Promise.all([
+  const [tours, regionRows, collections, pages] = await Promise.all([
     sb.from("tours").select("id,updated_at").eq("visibility", "public").eq("kind", "planned").limit(1000),
-    fetchAll<{ id: string; region: string | null; category: string }>((from, to) =>
-      sb
-        .from("highlights")
-        .select("id,region,category")
-        .eq("kind", "point")
-        .order("id")
-        .range(from, to),
+    // Grouped view (~1.2k rows). Counting combos off `highlights` itself
+    // meant paginating 500k rows — 500 requests — for a few hundred URLs.
+    fetchAll<{ region: string; country: string | null; category: string; n: number }>(
+      (from, to) =>
+        sb
+          .from("highlight_regions")
+          .select("region,country,category,n")
+          .gte("n", 8)
+          .order("region")
+          .range(from, to),
     ),
     sb
       .from("collections")
@@ -58,15 +61,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]);
 
   // GEN-116: region × category pages that pass the thin-content gate (≥8).
-  const comboCounts = new Map<string, number>();
-  for (const h of highlightRows) {
-    if (!h.region) continue;
-    const k = `${slugify(h.region)}/${h.category}`;
-    comboCounts.set(k, (comboCounts.get(k) ?? 0) + 1);
+  // Slugs must match resolve() in the region page: a region name shared by
+  // two countries (Limburg NL/BE, Luxembourg BE/LU, Jura CH/FR) is
+  // disambiguated with a country suffix, per category.
+  const perNamePerCat = new Map<string, number>();
+  for (const r of regionRows) {
+    const k = `${r.region}|${r.category}`;
+    perNamePerCat.set(k, (perNamePerCat.get(k) ?? 0) + 1);
   }
-  const combos = Array.from(comboCounts.entries())
-    .filter(([, n]) => n >= 8)
-    .map(([k]) => k);
+  const combos = regionRows.map((r) => {
+    const ambiguous = (perNamePerCat.get(`${r.region}|${r.category}`) ?? 1) > 1;
+    const slug =
+      ambiguous && r.country
+        ? `${slugify(r.region)}-${r.country.toLowerCase()}`
+        : slugify(r.region);
+    return `${slug}/${r.category}`;
+  });
 
   const entries: MetadataRoute.Sitemap = [];
   for (const locale of LOCALES) {
