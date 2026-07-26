@@ -64,7 +64,7 @@ export default async function UsersPage({
               className="flex items-center gap-3 border-b border-neutral-100 px-4 py-2.5 last:border-0 hover:bg-neutral-50"
             >
               <Avatar name={p.display_name} url={p.avatar_url} size={32} />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 text-sm font-medium text-neutral-900">
                   {p.display_name ?? p.id.slice(0, 8)}
                   {info?.isAdmin && (
@@ -78,11 +78,11 @@ export default async function UsersPage({
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-neutral-500">
+                <div className="truncate text-xs text-neutral-500">
                   {info?.email ?? "–"} · {p.home_region ?? "–"}
                 </div>
               </div>
-              <div className="ml-auto text-right text-xs text-neutral-400">
+              <div className="ml-auto hidden shrink-0 text-right text-xs text-neutral-400 sm:block">
                 <div>joined {new Date(p.created_at).toLocaleDateString("nl-NL")}</div>
                 <div>
                   last seen{" "}

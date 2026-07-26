@@ -90,9 +90,9 @@ export default async function AdminHighlightsPage({
         className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2"
       >
         <span className="text-xs font-medium text-neutral-600">Merge duplicates:</span>
-        <input name="src" placeholder="source id (removed)" className="w-64 rounded border border-neutral-200 px-2 py-1 font-mono text-xs" />
+        <input name="src" placeholder="source id (removed)" className="w-full rounded border border-neutral-200 px-2 py-1 font-mono text-xs sm:w-64" />
         <span className="text-xs text-neutral-400">→</span>
-        <input name="dst" placeholder="destination id (kept)" className="w-64 rounded border border-neutral-200 px-2 py-1 font-mono text-xs" />
+        <input name="dst" placeholder="destination id (kept)" className="w-full rounded border border-neutral-200 px-2 py-1 font-mono text-xs sm:w-64" />
         <ConfirmButton
           label="Merge"
           message="Merge these highlights? Votes, tips and photos move to the destination; the source is deleted."
@@ -148,7 +148,7 @@ export default async function AdminHighlightsPage({
                     ))}
                   </select>
                   <input name="region" defaultValue={h.region ?? ""} placeholder="region" className="w-36 rounded border border-neutral-200 px-2 py-1 text-sm" />
-                  <input name="description" defaultValue={h.description ?? ""} placeholder="description" className="min-w-64 flex-1 rounded border border-neutral-200 px-2 py-1 text-sm" />
+                  <input name="description" defaultValue={h.description ?? ""} placeholder="description" className="w-full min-w-0 flex-1 rounded border border-neutral-200 px-2 py-1 text-sm sm:min-w-64" />
                   <button type="submit" className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800">
                     Save
                   </button>

@@ -64,7 +64,7 @@ export default async function UserDetailPage({
 
   return (
     <div>
-      <div className="flex items-start gap-4">
+      <div className="flex flex-col items-start gap-4 sm:flex-row">
         <Avatar name={p.display_name} url={p.avatar_url} size={56} />
         <div className="min-w-0 flex-1">
           <h1 className="flex items-center gap-2 text-xl font-semibold text-neutral-900">
@@ -99,7 +99,7 @@ export default async function UserDetailPage({
           </p>
         </div>
         {!isSelf && (
-          <div className="flex shrink-0 flex-col gap-2">
+          <div className="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto sm:flex-col">
             {admin && !isOwner && (
               <form action={setAdminRole}>
                 <input type="hidden" name="id" value={p.id} />
