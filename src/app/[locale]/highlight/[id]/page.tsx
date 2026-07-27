@@ -25,6 +25,8 @@ type Highlight = {
   lon: number;
   lat: number;
   description: string | null;
+  description_nl: string | null;
+  description_en: string | null;
   kind: string;
   geometry: GeoJSON.LineString | null;
 };
@@ -62,7 +64,7 @@ async function getHighlight(id: string): Promise<Highlight | null> {
   const sb = supabaseServer();
   const { data } = await sb
     .from("highlights")
-    .select("id,name,category,lon,lat,description,kind,geometry")
+    .select("id,name,category,lon,lat,description,description_nl,description_en,kind,geometry")
     .eq("id", id)
     .maybeSingle();
   return (data as Highlight) ?? null;
@@ -89,15 +91,18 @@ async function getPlace(lon: number, lat: number): Promise<string | null> {
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: { id: string; locale: string };
 }): Promise<Metadata> {
   const hl = await getHighlight(params.id);
   if (!hl) return { title: "Highlight not found" };
+  // Generated text wins over the raw OSM description tag; both may be null.
+  const blurb =
+    (params.locale === "en" ? hl.description_en : hl.description_nl) ?? hl.description;
   // Komoot's SEO title pattern: "<Name> – Wandel- & Fietsroutes"
   return {
     title: pageTitle(await getSiteSettings(), `${hl.name} – Wandel- & Fietsroutes`),
     description:
-      hl.description?.slice(0, 160) ??
+      blurb?.slice(0, 160) ??
       `Ontdek ${hl.name}: community-highlight met tips, foto's en routes in de buurt.`,
     // De OSM-seed maakt honderdduizenden highlight-pagina's terwijl tips en
     // foto's user-generated zijn en er nog geen gebruikers zijn — de meeste
@@ -118,6 +123,8 @@ export default async function HighlightPage({
   const hl = await getHighlight(params.id);
   if (!hl) notFound();
   const { locale } = params;
+  const blurb =
+    (locale === "en" ? hl.description_en : hl.description_nl) ?? hl.description;
   const t = await getTranslations("highlightPage");
   const ts = await getTranslations("planner.sports");
 
@@ -199,7 +206,7 @@ export default async function HighlightPage({
             "@context": "https://schema.org",
             "@type": "TouristAttraction",
             name: hl.name,
-            description: hl.description ?? undefined,
+            description: blurb ?? undefined,
             geo: { "@type": "GeoCoordinates", latitude: hl.lat, longitude: hl.lon },
             ...(place ? { address: place } : {}),
           }),
@@ -288,9 +295,9 @@ export default async function HighlightPage({
         </div>
       )}
 
-      {hl.description && (
+      {blurb && (
         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-neutral-700">
-          {hl.description}
+          {blurb}
         </p>
       )}
 
