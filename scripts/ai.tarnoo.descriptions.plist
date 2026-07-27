@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Dagelijkse highlight-beschrijvingen, 09:00 lokale tijd.
+
+  Installeren:
+    cp scripts/ai.tarnoo.descriptions.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/ai.tarnoo.descriptions.plist
+
+  Uitzetten:
+    launchctl unload ~/Library/LaunchAgents/ai.tarnoo.descriptions.plist
+
+  Vereist een ingelogde `claude` CLI (eenmalig `claude` draaien en inloggen).
+  RunAtLoad staat uit: anders draait hij meteen bij elke reboot.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ai.tarnoo.descriptions</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nielsmac/Documents/outdoor-route-planner/scripts/daily-descriptions.sh</string>
+        <string>25</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nielsmac/Documents/outdoor-route-planner</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>9</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nielsmac/Documents/outdoor-route-planner/scripts/out/launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nielsmac/Documents/outdoor-route-planner/scripts/out/launchd.log</string>
+</dict>
+</plist>

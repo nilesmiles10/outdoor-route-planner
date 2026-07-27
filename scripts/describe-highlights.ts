@@ -31,6 +31,13 @@ const ONLY = (() => {
   const i = process.argv.indexOf("--id");
   return i > 0 ? process.argv[i + 1] : null;
 })();
+// --write <bestand>: past geschreven teksten toe. Het bestand is
+// {"items":[{"id","nl","en"}|{"id","reason":"no_source"}]} — precies wat de
+// routine produceert na het lezen van de factsheet.
+const WRITE = (() => {
+  const i = process.argv.indexOf("--write");
+  return i > 0 ? process.argv[i + 1] : null;
+})();
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -160,8 +167,54 @@ const STRONG = [
   "inscription", "description", "species", "material",
 ];
 
+type WriteItem = { id: string; nl?: string; en?: string; reason?: string };
+
+// Terugschrijven vergt de service-role key: RLS blokkeert client-writes op
+// highlights. Alleen dit pad gebruikt hem; het ophalen van feiten niet.
+async function applyWrites(file: string) {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY ontbreekt");
+  const { readFileSync } = await import("node:fs");
+  const parsed = JSON.parse(readFileSync(file, "utf8")) as { items: WriteItem[] };
+  let done = 0;
+  let skipped = 0;
+  for (const it of parsed.items ?? []) {
+    const body =
+      it.reason === "no_source"
+        ? { describe_status: "no_source", described_at: new Date().toISOString() }
+        : {
+            description_nl: it.nl,
+            description_en: it.en,
+            describe_status: "done",
+            described_at: new Date().toISOString(),
+          };
+    if (it.reason !== "no_source" && (!it.nl || !it.en)) {
+      console.error(`  overgeslagen (nl/en ontbreekt): ${it.id}`);
+      continue;
+    }
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/highlights?id=eq.${it.id}`, {
+      method: "PATCH",
+      headers: {
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      console.error(`  FOUT ${it.id}: ${res.status} ${(await res.text()).slice(0, 120)}`);
+      continue;
+    }
+    if (it.reason === "no_source") skipped++;
+    else done++;
+  }
+  console.log(`weggeschreven: ${done} beschrijvingen, ${skipped} zonder bron`);
+}
+
 async function main() {
-  if (!SUPABASE_URL || !ANON_KEY) throw new Error("SUPABASE env ontbreekt");
+  if (!SUPABASE_URL) throw new Error("SUPABASE env ontbreekt");
+  if (WRITE) return applyWrites(WRITE);
+  if (!ANON_KEY) throw new Error("SUPABASE anon key ontbreekt");
   const rows = await readRows();
   if (rows.length === 0) {
     console.log(JSON.stringify({ items: [] }, null, 2));
