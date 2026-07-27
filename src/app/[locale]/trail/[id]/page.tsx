@@ -10,6 +10,15 @@ import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 
 export const revalidate = 86400;
 
+// A dynamic-segment route is only eligible for on-demand ISR caching if it
+// declares generateStaticParams; without it Next treats every request as
+// plain SSR and Vercel reports x-vercel-cache: MISS forever. We do NOT want
+// to prerender 30k trails x 2 locales at build time, so return nothing and
+// let each URL be rendered once and then cached for `revalidate`.
+export async function generateStaticParams() {
+  return [];
+}
+
 type Trail = {
   id: string;
   osm_id: number;
