@@ -55,6 +55,19 @@ export default function middleware(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith("/admin")) {
     return adminSession(req);
   }
+  // routing.localeCookie is off so that locale pages never set a cookie —
+  // a response with Set-Cookie can't be CDN-cached, which kept every trail
+  // URL at x-vercel-cache: MISS. next-intl therefore ignores a saved
+  // language preference, so honour it here instead. Only the bare "/"
+  // redirect is affected, and a redirect is not a cacheable content page.
+  if (req.nextUrl.pathname === "/") {
+    const saved = req.cookies.get("NEXT_LOCALE")?.value;
+    if (saved && (routing.locales as readonly string[]).includes(saved)) {
+      const url = req.nextUrl.clone();
+      url.pathname = `/${saved}`;
+      return NextResponse.redirect(url);
+    }
+  }
   return intl(req);
 }
 
