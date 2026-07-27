@@ -8,8 +8,9 @@
 import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { mapStyle } from "@/lib/mapStyle";
 
-const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+
 
 export default function EmbedView({
   coordinates,
@@ -37,7 +38,7 @@ export default function EmbedView({
     );
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: STYLE_URL,
+      style: mapStyle(),
       bounds: b,
       fitBoundsOptions: { padding: 28 },
       scrollZoom: false,

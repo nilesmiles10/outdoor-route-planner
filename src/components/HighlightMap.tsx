@@ -3,8 +3,9 @@
 import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { mapStyle } from "@/lib/mapStyle";
 
-const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+
 
 // Small static-ish map for the highlight page (GEN-138). A point highlight
 // gets a marker; a segment highlight draws its line and fits to it.
@@ -25,7 +26,7 @@ export default function HighlightMap({
     if (!ref.current) return;
     const map = new maplibregl.Map({
       container: ref.current,
-      style: STYLE_URL,
+      style: mapStyle(),
       center: [lon, lat],
       zoom: 12,
       attributionControl: { compact: true },
