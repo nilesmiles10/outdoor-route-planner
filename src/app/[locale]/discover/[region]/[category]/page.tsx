@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { supabaseServer } from "@/lib/supabase/server";
 import { CATEGORY_EMOJI, HIGHLIGHT_CATEGORIES } from "@/lib/highlights";
 import { slugify } from "@/lib/slug";
 import SiteFooter from "@/components/SiteFooter";
@@ -31,19 +30,30 @@ function regionSlugFor(region: string, country: string | null, ambiguous: boolea
   return ambiguous && country ? `${base}-${country.toLowerCase()}` : base;
 }
 
+// Public, session-free content. supabaseServer() calls cookies(), which opts
+// the route out of caching entirely — the same thing that kept trail pages
+// re-rendering on every crawler hit. Plain anon fetches keep it cacheable.
+const REST = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1`;
+const HEADERS = { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! };
+
+async function rest<T>(path: string): Promise<T[]> {
+  try {
+    const res = await fetch(`${REST}/${path}`, {
+      headers: HEADERS,
+      next: { revalidate: 3600, tags: ["highlights"] },
+    });
+    if (!res.ok) return [];
+    return (await res.json()) as T[];
+  } catch {
+    return [];
+  }
+}
+
 async function resolve(regionSlug: string, category: string) {
   if (!(HIGHLIGHT_CATEGORIES as readonly string[]).includes(category)) return null;
-  const sb = supabaseServer();
-  // highlight_regions is a grouped view (~1.2k rows). Reading distinct
-  // regions off `highlights` itself silently hit PostgREST's 1000-row cap
-  // once the OSM seed landed, so most regions 404'd.
-  const { data: regs } = await sb
-    .from("highlight_regions")
-    .select("region,country,n")
-    .eq("category", category)
-    .gte("n", MIN_ITEMS)
-    .limit(1000);
-  const rows = (regs ?? []) as { region: string; country: string | null; n: number }[];
+  const rows = await rest<{ region: string; country: string | null; n: number }>(
+    `highlight_regions?select=region,country,n&category=eq.${encodeURIComponent(category)}&n=gte.${MIN_ITEMS}&limit=1000`,
+  );
 
   const perName = new Map<string, number>();
   for (const r of rows) perName.set(r.region, (perName.get(r.region) ?? 0) + 1);
@@ -52,22 +62,22 @@ async function resolve(regionSlug: string, category: string) {
   );
   if (!match) return null;
 
-  let q = sb
-    .from("highlights")
-    .select("id,name,category,region,description")
-    .eq("region", match.region)
-    .eq("category", category);
-  if ((perName.get(match.region) ?? 1) > 1) q = q.eq("country", match.country);
-  const { data } = await q.order("name").limit(500);
-  const items = (data as Hl[]) ?? [];
+  const ambiguous = (perName.get(match.region) ?? 1) > 1;
+  const items = await rest<Hl>(
+    `highlights?select=id,name,category,region,description` +
+      `&region=eq.${encodeURIComponent(match.region)}&category=eq.${encodeURIComponent(category)}` +
+      (ambiguous && match.country ? `&country=eq.${encodeURIComponent(match.country)}` : "") +
+      `&order=name&limit=500`,
+  );
   if (items.length < MIN_ITEMS) return null;
-  // Two countries share this region name -> qualify it, otherwise both pages
-  // would carry the identical <title> ("Monumenten in Limburg").
-  const label =
-    (perName.get(match.region) ?? 1) > 1 && match.country
-      ? `${match.region} (${match.country})`
-      : match.region;
+  const label = ambiguous && match.country ? `${match.region} (${match.country})` : match.region;
   return { region: match.region, label, items };
+}
+
+// Empty list: do not prerender hundreds of pages at build time, but declaring
+// it makes the route ISR-eligible instead of plain SSR (x-vercel-cache: MISS).
+export async function generateStaticParams() {
+  return [];
 }
 
 export async function generateMetadata({
