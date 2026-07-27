@@ -150,8 +150,13 @@ const KEEP = [
 
 // Feiten die op zichzelf al een ware zin opleveren. Een kale tourism= of
 // building= telt niet mee: "een gebouw" is geen beschrijving.
+// `ele` staat er bewust NIET bij. Een naamloze heuvel met alleen een hoogte
+// levert "een heuvel van 40 meter" op — waar, maar de hoogte tonen we al als
+// gegeven op de pagina, dus de zin voegt niets toe. Met ele erin haalde 68%
+// van een steekproef de poort, vrijwel allemaal van dat soort; zonder ele
+// blijven de gevallen over waar echt iets te vertellen valt.
 const STRONG = [
-  "start_date", "historic", "heritage", "architect", "castle_type", "ele",
+  "start_date", "historic", "heritage", "architect", "castle_type",
   "inscription", "description", "species", "material",
 ];
 
