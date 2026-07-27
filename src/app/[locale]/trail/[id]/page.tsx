@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
-import { supabaseServer } from "@/lib/supabase/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getWeather } from "@/lib/weather";
 import TourView from "@/components/TourView";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 
 // GEN-145 — detailpagina voor officiële routes (OSM-import). Hergebruikt
 // TourView; auteursblok vervangen door bron-attributie (ODbL).
+
+export const revalidate = 86400;
 
 type Trail = {
   id: string;
@@ -25,16 +26,30 @@ type Trail = {
   source_url: string;
 };
 
+// Official trails are public, immutable-ish OSM content with no per-user
+// variation. supabaseServer() calls cookies(), which opts the whole route out
+// of caching: every one of ~30k trails x 2 locales then cost a fresh function
+// invocation plus a query on each crawler hit, which is what pushed the
+// Vercel account over its limit. A plain anon PostgREST fetch keeps the route
+// static so Next can cache it (same pattern as lib/siteSettings + sitemaps).
+const SELECT =
+  "id,osm_id,name,sport,region,operator,roundtrip,geometry,elevation,stats,surfaces,waytypes,source_url";
+
 async function getTrail(id: string): Promise<Trail | null> {
-  const sb = supabaseServer();
-  const { data } = await sb
-    .from("trails")
-    .select(
-      "id,osm_id,name,sport,region,operator,roundtrip,geometry,elevation,stats,surfaces,waytypes,source_url",
-    )
-    .eq("id", id)
-    .maybeSingle();
-  return (data as Trail) ?? null;
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/trails?id=eq.${encodeURIComponent(id)}&select=${SELECT}`,
+      {
+        headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! },
+        next: { revalidate: 86400, tags: ["trails"] },
+      },
+    );
+    if (!res.ok) return null;
+    const rows = (await res.json()) as Trail[];
+    return rows[0] ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function generateMetadata({
@@ -64,6 +79,7 @@ export default async function TrailPage({
 }: {
   params: { id: string; locale: string };
 }) {
+  setRequestLocale(params.locale);
   const trail = await getTrail(params.id);
   if (!trail) notFound();
   const { locale } = params;

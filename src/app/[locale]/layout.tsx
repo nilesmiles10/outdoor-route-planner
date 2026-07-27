@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
+import { setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import AppHeader from "@/components/AppHeader";
@@ -46,6 +47,9 @@ export default async function LocaleLayout({
 }) {
   const { locale } = params;
   if (!hasLocale(routing.locales, locale)) notFound();
+  // Without this next-intl reads headers and every locale route becomes
+  // dynamic — no output caching, so each crawler hit re-renders.
+  setRequestLocale(locale);
   const [settings, footerPages] = await Promise.all([
     getSiteSettings(),
     getFooterPages(),
