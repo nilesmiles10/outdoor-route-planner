@@ -480,7 +480,8 @@
     "searchPlaceholder": "Search by name…",
     "empty": "No trails match these filters.",
     "attribution": "Trail data © OpenStreetMap contributors (ODbL).",
-    "allCountries": "All countries"
+    "allCountries": "All countries",
+    "gravelMeta": "{km} km gravel"
   },
   "trailPage": {
     "official": "Official trail",
@@ -493,7 +494,9 @@
     "sportNoun": {
       "hike": "hiking trail",
       "touring": "cycling route",
-      "mtb": "MTB trail"
-    }
+      "mtb": "MTB trail",
+      "gravel": "gravel route"
+    },
+    "gravelBadge": "Gravel · {km} km unpaved"
   }
 }

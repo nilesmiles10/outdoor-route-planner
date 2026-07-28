@@ -33,6 +33,10 @@ type Trail = {
   surfaces: { buckets: { paved: number; unpaved: number; unknown: number } };
   waytypes: Record<string, number>;
   source_url: string;
+  // Afgeleid in de DB (trail_is_gravel): touring-route met genoeg gravel-ish
+  // ondergrond. De sport blijft 'touring' — dát is wat OSM zegt.
+  is_gravel: boolean;
+  gravel_m: number;
 };
 
 // Official trails are public, immutable-ish OSM content with no per-user
@@ -42,7 +46,7 @@ type Trail = {
 // Vercel account over its limit. A plain anon PostgREST fetch keeps the route
 // static so Next can cache it (same pattern as lib/siteSettings + sitemaps).
 const SELECT =
-  "id,osm_id,name,sport,region,operator,roundtrip,geometry,elevation,stats,surfaces,waytypes,source_url";
+  "id,osm_id,name,sport,region,operator,roundtrip,geometry,elevation,stats,surfaces,waytypes,source_url,is_gravel,gravel_m";
 
 async function getTrail(id: string): Promise<Trail | null> {
   try {
@@ -73,7 +77,9 @@ export async function generateMetadata({
   return {
     title: pageTitle(
       await getSiteSettings(),
-      `${trail.name} | ${km} km ${t(`sportNoun.${trail.sport}` as never)}`,
+      // Gravel is de term waar mensen op zoeken; voor die routes wint hij van
+      // het generieke "fietsroute" in de <title>.
+      `${trail.name} | ${km} km ${t(`sportNoun.${trail.is_gravel ? "gravel" : trail.sport}` as never)}`,
     ),
     description: t("metaDescription", {
       name: trail.name,
@@ -142,7 +148,15 @@ export default async function TrailPage({
         durationS={trail.stats.timeS}
         turns={null}
         source={{
-          badge: trail.roundtrip ? `${t("official")} · ${t("roundtrip")}` : t("official"),
+          badge: [
+            t("official"),
+            trail.roundtrip ? t("roundtrip") : null,
+            trail.is_gravel
+              ? t("gravelBadge", { km: (trail.gravel_m / 1000).toFixed(1) })
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · "),
           detail: trail.operator
             ? t("detailWithOperator", { operator: trail.operator })
             : t("detailNoOperator"),

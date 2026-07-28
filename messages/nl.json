@@ -480,7 +480,8 @@
     "searchPlaceholder": "Zoek op naam…",
     "empty": "Geen routes gevonden met deze filters.",
     "attribution": "Routegegevens © OpenStreetMap-bijdragers (ODbL).",
-    "allCountries": "Alle landen"
+    "allCountries": "Alle landen",
+    "gravelMeta": "{km} km gravel"
   },
   "trailPage": {
     "official": "Officiële route",
@@ -493,7 +494,9 @@
     "sportNoun": {
       "hike": "wandelroute",
       "touring": "fietsroute",
-      "mtb": "MTB-route"
-    }
+      "mtb": "MTB-route",
+      "gravel": "gravelroute"
+    },
+    "gravelBadge": "Gravel · {km} km onverhard"
   }
 }

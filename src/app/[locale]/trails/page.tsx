@@ -18,9 +18,14 @@ type TrailRow = {
   region: string | null;
   roundtrip: boolean;
   stats: { distanceM: number; timeS: number; ascendM: number };
+  is_gravel: boolean;
+  gravel_m: number;
 };
 
-const SPORTS = ["all", "hike", "touring", "mtb"] as const;
+// Gravel is géén eigen OSM-sport — route=gravel bestaat niet als relatie, dus
+// de import kan het niet ophalen. Het is een afgeleide vlag op touring-routes
+// (zie trail_is_gravel() in de DB), en deze chip filtert dus op is_gravel.
+const SPORTS = ["all", "hike", "touring", "gravel", "mtb"] as const;
 
 // ISO-landcode → vlag-emoji (regional indicators); naam via Intl.DisplayNames.
 function flag(iso: string): string {
@@ -64,10 +69,11 @@ export default async function TrailsPage({
   const sb = supabaseServer();
   let query = sb
     .from("trails")
-    .select("id,name,sport,region,roundtrip,stats")
+    .select("id,name,sport,region,roundtrip,stats,is_gravel,gravel_m")
     .order("name")
     .limit(200);
-  if (sport !== "all") query = query.eq("sport", sport);
+  if (sport === "gravel") query = query.eq("is_gravel", true);
+  else if (sport !== "all") query = query.eq("sport", sport);
   if (country !== "all") query = query.eq("country", country);
   if (region !== "all") query = query.eq("region", region);
   if (q) query = query.ilike("name", `%${q}%`);
@@ -246,6 +252,9 @@ export default async function TrailsPage({
               <div className="mt-0.5 text-xs text-neutral-500">
                 {(tr.stats.distanceM / 1000).toFixed(1)} km · ↗ {tr.stats.ascendM} m ·{" "}
                 {tp(`sports.${tr.sport}` as never)}
+                {tr.is_gravel
+                  ? ` · ${t("gravelMeta", { km: (tr.gravel_m / 1000).toFixed(1) })}`
+                  : ""}
                 {tr.roundtrip ? " · 🔁" : ""}
                 {tr.region ? ` · ${tr.region}` : ""}
               </div>
