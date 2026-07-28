@@ -168,6 +168,12 @@ const KEEP = [
 
 // Feiten die op zichzelf al een ware zin opleveren. Een kale tourism= of
 // building= telt niet mee: "een gebouw" is geen beschrijving.
+//
+// `historic` staat hier wel in maar kwalificeert NIET in zijn eentje — zie
+// SUPPORTING hieronder. historic=castle alleen levert "een kasteel in
+// Overijssel", en categorie en regio staan al op de pagina; dat is geen
+// beschrijving maar herhaling. Twickel is het pijnlijke voorbeeld: een
+// bekend landgoed waar OSM precies één tag over heeft.
 // `ele` staat er bewust NIET bij. Een naamloze heuvel met alleen een hoogte
 // levert "een heuvel van 40 meter" op — waar, maar de hoogte tonen we al als
 // gegeven op de pagina, dus de zin voegt niets toe. Met ele erin haalde 68%
@@ -177,6 +183,11 @@ const STRONG = [
   "start_date", "historic", "heritage", "architect", "castle_type",
   "inscription", "description", "species", "material",
 ];
+
+// Wat een highlight écht door de poort helpt: een feit dat meer zegt dan het
+// type. `historic` ontbreekt hier bewust — die telt alleen mee in combinatie
+// met een van deze.
+const SUPPORTING = STRONG.filter((k) => k !== "historic");
 
 type WriteItem = { id: string; nl?: string; en?: string; reason?: string };
 
@@ -258,7 +269,7 @@ async function main() {
     const tags = tagMap.get(row.osm_id) ?? {};
     const hasWikiTag =
       Boolean(tags.wikidata) || Object.keys(tags).some((k) => k.startsWith("wikipedia"));
-    const strong = STRONG.filter((k) => tags[k]);
+    const strong = SUPPORTING.filter((k) => tags[k]);
     if (!hasWikiTag && strong.length === 0) {
       items.push({ id: row.id, name: row.name, reason: "no_source" });
       continue;
