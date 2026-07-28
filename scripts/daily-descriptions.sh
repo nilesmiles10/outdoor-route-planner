@@ -43,8 +43,8 @@ COUNT=$(node -e "console.log((require('./$FACTS').items||[]).length)" 2>/dev/nul
 echo "kandidaten: $COUNT"
 [ "$COUNT" -eq 0 ] && { echo "niets te doen"; exit 0; }
 
-# 2. Claude schrijft de teksten. --print = headless, geen interactie.
-#    Alleen Read/Write/Bash nodig; het model raakt de database niet zelf aan.
+# 2. Claude schrijft de teksten naar een JSON-bestand. --print = headless.
+#    Alleen Read+Write: het model raakt de database niet aan, dat doet stap 3.
 PROMPT=$(cat <<PROMPTEOF
 Lees $FACTS. Voor elk item met "facts" en/of "wikipedia": schrijf een beschrijving van maximaal 2 zinnen in het Nederlands en in het Engels, voor iemand die een wandel- of fietsroute plant.
 
@@ -52,14 +52,25 @@ HARDE REGEL: gebruik uitsluitend wat in dat item staat. Geen jaartallen, namen, 
 
 Items die alleen "reason" hebben neem je over met diezelfde reason.
 
-Schrijf het resultaat naar $WRITE als {"items":[{"id":"...","nl":"...","en":"..."}]} - items zonder bron als {"id":"...","reason":"no_source"}. Draai daarna exact:
-npx tsx scripts/describe-highlights.ts --write $WRITE
-Antwoord daarna met een regel: hoeveel beschrijvingen je hebt geschreven.
+Schrijf het resultaat naar $WRITE als {"items":[{"id":"...","nl":"...","en":"..."}]} - items zonder bron als {"id":"...","reason":"no_source"}. Schrijf alleen dat bestand; het wegschrijven naar de database doet het script hierna zelf. Antwoord met een regel: hoeveel beschrijvingen je hebt geschreven.
 PROMPTEOF
 )
 
 printf '%s' "$PROMPT" | claude --print --permission-mode acceptEdits \
-  --allowedTools "Read" "Write" "Bash(npx tsx scripts/describe-highlights.ts --write*)" \
+  --allowedTools "Read" "Write" \
   || { echo "claude-run mislukt"; exit 1; }
+
+# Dat claude gedraaid heeft zegt niets over of er iets in de database staat:
+# de eerste echte run schreef 6 teksten en sloeg er nul op (401 op een
+# placeholder-key) en meldde alsnog succes. Daarom hier zelf verifiëren.
+if [ -f "$WRITE" ]; then
+  if ! npx tsx scripts/describe-highlights.ts --write "$WRITE"; then
+    echo "FOUT: wegschrijven mislukt — teksten staan nog in $WRITE"
+    exit 1
+  fi
+else
+  echo "FOUT: $WRITE ontbreekt — er is niets geschreven"
+  exit 1
+fi
 
 echo "=== klaar $(date '+%H:%M:%S') ==="

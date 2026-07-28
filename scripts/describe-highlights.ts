@@ -174,10 +174,20 @@ type WriteItem = { id: string; nl?: string; en?: string; reason?: string };
 async function applyWrites(file: string) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY ontbreekt");
+  // `vercel env pull` schrijft geheimen weg als de letterlijke tekst
+  // [SENSITIVE]. Die passeert elke "is hij gezet?"-check en levert daarna bij
+  // élke rij een 401 op. Hier hard stoppen, niet 25 keer falen.
+  if (serviceKey === "[SENSITIVE]" || serviceKey.length < 20) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY is een placeholder, geen sleutel. " +
+        "Zet de echte sb_secret_… key uit Supabase (Settings > API Keys) in .env.local.",
+    );
+  }
   const { readFileSync } = await import("node:fs");
   const parsed = JSON.parse(readFileSync(file, "utf8")) as { items: WriteItem[] };
   let done = 0;
   let skipped = 0;
+  let failed = 0;
   for (const it of parsed.items ?? []) {
     const body =
       it.reason === "no_source"
@@ -190,6 +200,7 @@ async function applyWrites(file: string) {
           };
     if (it.reason !== "no_source" && (!it.nl || !it.en)) {
       console.error(`  overgeslagen (nl/en ontbreekt): ${it.id}`);
+      failed++;
       continue;
     }
     const res = await fetch(`${SUPABASE_URL}/rest/v1/highlights?id=eq.${it.id}`, {
@@ -203,12 +214,21 @@ async function applyWrites(file: string) {
     });
     if (!res.ok) {
       console.error(`  FOUT ${it.id}: ${res.status} ${(await res.text()).slice(0, 120)}`);
+      failed++;
       continue;
     }
     if (it.reason === "no_source") skipped++;
     else done++;
   }
-  console.log(`weggeschreven: ${done} beschrijvingen, ${skipped} zonder bron`);
+  console.log(
+    `weggeschreven: ${done} beschrijvingen, ${skipped} zonder bron, ${failed} mislukt`,
+  );
+  // Exit non-zero zodra er iets misging, óf als er items waren maar niets
+  // is weggeschreven. Anders meldt de dagelijkse job succes terwijl er nul
+  // rijen zijn bijgewerkt — precies hoe dit de eerste keer misging.
+  if (failed > 0 || (parsed.items?.length > 0 && done + skipped === 0)) {
+    process.exitCode = 2;
+  }
 }
 
 async function main() {
