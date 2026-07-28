@@ -38,6 +38,15 @@ const WRITE = (() => {
   const i = process.argv.indexOf("--write");
   return i > 0 ? process.argv[i + 1] : null;
 })();
+// --cat <categorie>: alleen die categorie. Loont, want de trefkans verschilt
+// enorm: monument en nature halen de poort meestal (start_date, historic,
+// heritage), peak en viewpoint vrijwel nooit — die hebben zelden meer dan een
+// hoogte. Ongefilterd was 2 van 30 bruikbaar; dat zijn 28 Overpass-lookups
+// voor niets.
+const CAT = (() => {
+  const i = process.argv.indexOf("--cat");
+  return i > 0 ? process.argv[i + 1] : null;
+})();
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -59,7 +68,9 @@ type Row = {
 async function readRows(): Promise<Row[]> {
   const filter = ONLY
     ? `&id=eq.${ONLY}`
-    : `&describe_status=is.null&osm_id=not.is.null&kind=eq.point&limit=${LIMIT}`;
+    : `&describe_status=is.null&osm_id=not.is.null&kind=eq.point` +
+      (CAT ? `&category=eq.${CAT}` : "") +
+      `&limit=${LIMIT}`;
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/highlights?select=id,name,category,region,country,osm_id${filter}`,
     { headers: { apikey: ANON_KEY } },
