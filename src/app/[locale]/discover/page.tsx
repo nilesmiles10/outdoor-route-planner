@@ -5,7 +5,6 @@ import { useLocale, useTranslations } from "next-intl";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { CATEGORY_EMOJI } from "@/lib/highlights";
-import { slugify } from "@/lib/slug";
 import SiteFooter from "@/components/SiteFooter";
 
 type Row = {
@@ -17,6 +16,11 @@ type Row = {
 };
 
 const SPORTS = ["all", "hike", "run", "touring", "gravel", "mtb", "road", "ebike"];
+// Zoals /api/discover/combos ze levert: al gesorteerd op aantal, slug klaar.
+type Combo = { slug: string; label: string; category: string; n: number };
+// 3.614 combo's halen de ≥8-poort — als chiprij onbruikbaar. De rijkste eerst;
+// de rest blijft bereikbaar via de sitemap en de links op de regiopagina's.
+const MAX_CHIPS = 60;
 const BANDS: [string, number, number][] = [
   ["all", 0, Infinity],
   ["short", 0, 20000],
@@ -52,9 +56,7 @@ export default function DiscoverPage() {
   const [band, setBand] = useState("all");
   const [pos, setPos] = useState<[number, number] | null>(null);
   // GEN-116: region × category combos with enough content for a page.
-  const [combos, setCombos] = useState<
-    { region: string; category: string; count: number }[]
-  >([]);
+  const [combos, setCombos] = useState<Combo[]>([]);
 
   useEffect(() => {
     sb.from("tours")
@@ -75,26 +77,15 @@ export default function DiscoverPage() {
       .select("id,name,sport,region,stats")
       .limit(10)
       .then(({ data }) => setTrails((data as typeof trails) ?? []));
-    sb.from("highlights")
-      .select("region,category")
-      .not("region", "is", null)
-      .limit(2000)
-      .then(({ data }) => {
-        const m = new Map<string, number>();
-        for (const r of (data as { region: string; category: string }[]) ?? []) {
-          const k = `${r.region}|${r.category}`;
-          m.set(k, (m.get(k) ?? 0) + 1);
-        }
-        setCombos(
-          Array.from(m.entries())
-            .map(([k, count]) => {
-              const [region, category] = k.split("|");
-              return { region, category, count };
-            })
-            .filter((c) => c.count >= 8)
-            .sort((a, b) => b.count - a.count),
-        );
-      });
+    // Tellen over `highlights` zelf ging mis: .limit(2000) leverde door de
+    // PostgREST max-rows-cap 1000 willekeurige rijen van 500k, dus de counts
+    // klopten niet én het gros van Europa ontbrak (14 regio's van 1.150).
+    // De aggregatie zit nu achter een uur-gecachete route — zie de comment
+    // daar voor waarom dit niet rechtstreeks vanuit de browser kan.
+    fetch("/api/discover/combos")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((c: Combo[]) => setCombos(c))
+      .catch(() => {});
     navigator.geolocation?.getCurrentPosition(
       (p) => setPos([p.coords.longitude, p.coords.latitude]),
       () => {},
@@ -223,15 +214,15 @@ export default function DiscoverPage() {
             {t("browseRegions")}
           </h2>
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {combos.map((c) => (
+            {combos.slice(0, MAX_CHIPS).map((c) => (
               <a
-                key={`${c.region}|${c.category}`}
-                href={`/${locale}/discover/${slugify(c.region)}/${c.category}`}
+                key={`${c.slug}|${c.category}`}
+                href={`/${locale}/discover/${c.slug}/${c.category}`}
                 className="rounded-full border border-neutral-200 px-3 py-1 text-xs text-neutral-700 hover:border-emerald-400 hover:text-emerald-800"
               >
                 {CATEGORY_EMOJI[c.category]} {tr(`catPlural.${c.category}` as never)}{" "}
-                in {c.region}{" "}
-                <span className="text-neutral-400">({c.count})</span>
+                in {c.label}{" "}
+                <span className="text-neutral-400">({c.n})</span>
               </a>
             ))}
           </div>

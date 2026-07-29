@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { supabaseServer } from "@/lib/supabase/server";
-import { slugify } from "@/lib/slug";
+import { withRegionSlugs } from "@/lib/regionSlug";
 
 // Dynamic sitemap over all public content (tours, highlights, collections),
 // both locales. Canonical host comes from NEXT_PUBLIC_SITE_URL (tarnoo.com).
@@ -64,19 +64,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Slugs must match resolve() in the region page: a region name shared by
   // two countries (Limburg NL/BE, Luxembourg BE/LU, Jura CH/FR) is
   // disambiguated with a country suffix, per category.
-  const perNamePerCat = new Map<string, number>();
-  for (const r of regionRows) {
-    const k = `${r.region}|${r.category}`;
-    perNamePerCat.set(k, (perNamePerCat.get(k) ?? 0) + 1);
-  }
-  const combos = regionRows.map((r) => {
-    const ambiguous = (perNamePerCat.get(`${r.region}|${r.category}`) ?? 1) > 1;
-    const slug =
-      ambiguous && r.country
-        ? `${slugify(r.region)}-${r.country.toLowerCase()}`
-        : slugify(r.region);
-    return `${slug}/${r.category}`;
-  });
+  const combos = withRegionSlugs(regionRows).map((r) => `${r.slug}/${r.category}`);
 
   const entries: MetadataRoute.Sitemap = [];
   for (const locale of LOCALES) {

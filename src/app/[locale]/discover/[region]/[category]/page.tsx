@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { CATEGORY_EMOJI, HIGHLIGHT_CATEGORIES } from "@/lib/highlights";
-import { slugify } from "@/lib/slug";
+import { withRegionSlugs, type RegionCombo } from "@/lib/regionSlug";
 import SiteFooter from "@/components/SiteFooter";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 
@@ -20,15 +20,6 @@ type Hl = {
   region: string;
   description: string | null;
 };
-
-// Region names are not unique across countries: Limburg (NL/BE), Luxembourg
-// (BE/LU) and Jura (CH/FR) each exist twice, and merging them put Belgian
-// monuments on the Dutch-Limburg page. Those get a country-suffixed slug
-// ("limburg-nl"); unique regions keep the plain slug.
-function regionSlugFor(region: string, country: string | null, ambiguous: boolean) {
-  const base = slugify(region);
-  return ambiguous && country ? `${base}-${country.toLowerCase()}` : base;
-}
 
 // Public, session-free content. supabaseServer() calls cookies(), which opts
 // the route out of caching entirely — the same thing that kept trail pages
@@ -51,18 +42,23 @@ async function rest<T>(path: string): Promise<T[]> {
 
 async function resolve(regionSlug: string, category: string) {
   if (!(HIGHLIGHT_CATEGORIES as readonly string[]).includes(category)) return null;
-  const rows = await rest<{ region: string; country: string | null; n: number }>(
-    `highlight_regions?select=region,country,n&category=eq.${encodeURIComponent(category)}&n=gte.${MIN_ITEMS}&limit=1000`,
-  );
+  // Pagineren, niet &limit=1000: dat is exact de PostgREST max-rows-cap, en de
+  // grootste categorie (peak) zit al op 849 rijen — bij de volgende landen-
+  // import zou hij er stil overheen gaan en zouden regio's gaan 404'en.
+  const rows: RegionCombo[] = [];
+  for (let offset = 0; offset < 20_000; offset += 1000) {
+    const page = await rest<RegionCombo>(
+      `highlight_regions?select=region,country,category,n&category=eq.${encodeURIComponent(category)}` +
+        `&n=gte.${MIN_ITEMS}&order=region&limit=1000&offset=${offset}`,
+    );
+    rows.push(...page);
+    if (page.length < 1000) break;
+  }
 
-  const perName = new Map<string, number>();
-  for (const r of rows) perName.set(r.region, (perName.get(r.region) ?? 0) + 1);
-  const match = rows.find(
-    (r) => regionSlugFor(r.region, r.country, (perName.get(r.region) ?? 1) > 1) === regionSlug,
-  );
+  const match = withRegionSlugs(rows).find((r) => r.slug === regionSlug);
   if (!match) return null;
 
-  const ambiguous = (perName.get(match.region) ?? 1) > 1;
+  const { ambiguous, label } = match;
   const items = await rest<Hl>(
     `highlights?select=id,name,category,region,description` +
       `&region=eq.${encodeURIComponent(match.region)}&category=eq.${encodeURIComponent(category)}` +
@@ -70,7 +66,6 @@ async function resolve(regionSlug: string, category: string) {
       `&order=name&limit=500`,
   );
   if (items.length < MIN_ITEMS) return null;
-  const label = ambiguous && match.country ? `${match.region} (${match.country})` : match.region;
   return { region: match.region, label, items };
 }
 
