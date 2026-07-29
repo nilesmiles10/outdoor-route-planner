@@ -22,27 +22,42 @@ export const revalidate = 3600;
 const MIN_ITEMS = 8;
 const PAGE = 1000;
 
+// Eén hapering tijdens het genereren betekende een uur lang een lege chiprij
+// (precies wat er bij de eerste deploy gebeurde: de aggregatie duurde toen
+// 3,1s tegen een anon statement_timeout van 3s). Vandaar één herkansing per
+// pagina — de index maakt de query nu ~0,5s, dus dit is de vangnetlaag.
+async function fetchPage(offset: number): Promise<RegionCombo[] | null> {
+  const url =
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/highlight_regions` +
+    `?select=region,country,category,n&n=gte.${MIN_ITEMS}` +
+    `&order=region&limit=${PAGE}&offset=${offset}`;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(url, {
+        headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! },
+        next: { revalidate: 3600, tags: ["highlights"] },
+      });
+      if (res.ok) return (await res.json()) as RegionCombo[];
+      console.warn(`combos: page ${offset} gaf ${res.status} (poging ${attempt + 1})`);
+    } catch (e) {
+      console.warn(`combos: page ${offset} faalde (poging ${attempt + 1})`, e);
+    }
+  }
+  return null;
+}
+
 export async function GET() {
   const rows: RegionCombo[] = [];
-  try {
-    for (let offset = 0; offset < 20_000; offset += PAGE) {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/highlight_regions` +
-          `?select=region,country,category,n&n=gte.${MIN_ITEMS}` +
-          `&order=region&limit=${PAGE}&offset=${offset}`,
-        {
-          headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! },
-          next: { revalidate: 3600, tags: ["highlights"] },
-        },
-      );
-      if (!res.ok) break;
-      const page = (await res.json()) as RegionCombo[];
-      rows.push(...page);
-      if (page.length < PAGE) break;
-    }
-  } catch {
-    // Liever een lege chiprij dan een kapotte /discover.
-    return NextResponse.json([]);
+  for (let offset = 0; offset < 20_000; offset += PAGE) {
+    const page = await fetchPage(offset);
+    // Doorgaan met een gat zou stilletjes verkeerde slugs geven (een botsende
+    // regionaam kan in de ontbrekende pagina zitten), dus liever afbreken.
+    if (!page) break;
+    rows.push(...page);
+    if (page.length < PAGE) break;
+  }
+  if (rows.length === 0) {
+    return NextResponse.json([], { headers: { "cache-control": "no-store" } });
   }
 
   // Slugs worden over de VOLLEDIGE set bepaald (botsingen!), pas daarna kappen
