@@ -86,7 +86,8 @@
       "networks": "Routenetwerken",
       "net_hiking": "Wandelnetwerken",
       "net_cycling": "Fietsnetwerken (incl. knooppunten)",
-      "net_mtb": "MTB-routes"
+      "net_mtb": "MTB-routes",
+      "unpaved": "Onverharde stukken"
     },
     "rowActions": {
       "remove": "Waypoint verwijderen",

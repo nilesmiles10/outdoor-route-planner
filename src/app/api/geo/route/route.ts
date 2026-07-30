@@ -133,6 +133,12 @@ export async function GET(req: NextRequest) {
     const buckets = { paved: 0, unpaved: 0, unknown: 0 };
     type Alert = { kind: string; fromIdx: number; toIdx: number; distanceM: number };
     const alerts: Alert[] = [];
+    // Onverharde stukken als index-ranges op de geometrie: de kaart kan dan
+    // tonen wélk deel gravel is i.p.v. alleen hoeveel. Zelfde vorm als alerts.
+    // Aaneengesloten stukken worden samengevoegd, ook als het ene gravel is en
+    // het volgende compacted — voor de fietser is dat één onverhard stuk.
+    type Run = { fromIdx: number; toIdx: number; distanceM: number; surfaces: string[] };
+    const unpavedRuns: Run[] = [];
     let prevIdx = 0;
     for (const row of messages.slice(1)) {
       const distance = parseInt(row[3] ?? "0", 10);
@@ -160,8 +166,27 @@ export async function GET(req: NextRequest) {
           alerts.push({ kind, fromIdx: prevIdx, toIdx: endIdx, distanceM: distance });
         }
       }
+      if (surfaceBucket(surface) === "unpaved" && endIdx > prevIdx) {
+        const last = unpavedRuns[unpavedRuns.length - 1];
+        if (last && last.toIdx === prevIdx) {
+          last.toIdx = endIdx;
+          last.distanceM += distance;
+          if (surface && !last.surfaces.includes(surface)) last.surfaces.push(surface);
+        } else {
+          unpavedRuns.push({
+            fromIdx: prevIdx,
+            toIdx: endIdx,
+            distanceM: distance,
+            surfaces: surface ? [surface] : [],
+          });
+        }
+      }
       prevIdx = Math.max(prevIdx, endIdx);
     }
+    // Losse oprittetjes en oversteken zijn ruis op de kaart; pas na het mergen
+    // filteren, anders knipt een kort tussenstuk een lang stuk in tweeën.
+    const MIN_RUN_M = 150;
+    const runs = unpavedRuns.filter((r) => r.distanceM >= MIN_RUN_M);
 
     return NextResponse.json({
       geometry: {
@@ -179,6 +204,7 @@ export async function GET(req: NextRequest) {
       waytypes: waytypesKm,
       elevation,
       alerts,
+      unpavedRuns: runs,
       turns,
     });
   } catch {

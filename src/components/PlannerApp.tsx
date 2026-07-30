@@ -42,6 +42,14 @@ type RouteAlert = {
 // GEN-143: turn-instructie op geometry-index (uit BRouter voicehints).
 type RouteTurn = { i: number; t: string; exit?: number };
 
+// Aaneengesloten onverhard stuk op de route (uit /api/geo/route).
+type UnpavedRun = {
+  fromIdx: number;
+  toIdx: number;
+  distanceM: number;
+  surfaces: string[];
+};
+
 type RouteResult = {
   geometry: GeoJSON.Feature;
   stats: { distanceM: number; timeS: number; ascendM: number; descendM: number };
@@ -52,6 +60,7 @@ type RouteResult = {
   waytypes: Record<string, number>;
   elevation: number[];
   alerts?: RouteAlert[];
+  unpavedRuns?: UnpavedRun[];
   turns?: RouteTurn[];
 };
 
@@ -269,6 +278,7 @@ function straightLeg(from: Waypoint, to: Waypoint, sport: Sport): RouteResult {
     waytypes: {},
     elevation: [0, 0],
     alerts: [],
+    unpavedRuns: [],
     turns: [],
   };
 }
@@ -295,6 +305,7 @@ function mergeLegs(legs: RouteResult[]): RouteResult {
   const detailM: Record<string, number> = {};
   const waytypes: Record<string, number> = {};
   const alerts: RouteAlert[] = [];
+  const unpavedRuns: UnpavedRun[] = [];
   const turns: RouteTurn[] = [];
   legs.forEach((leg, i) => {
     const legCoords = (leg.geometry.geometry as GeoJSON.LineString).coordinates;
@@ -308,6 +319,18 @@ function mergeLegs(legs: RouteResult[]): RouteResult {
         fromIdx: globalIdx(a.fromIdx),
         toIdx: globalIdx(a.toIdx),
       });
+    }
+    for (const r of leg.unpavedRuns ?? []) {
+      const run = { ...r, fromIdx: globalIdx(r.fromIdx), toIdx: globalIdx(r.toIdx) };
+      // Een onverhard stuk dat precies op een via-punt doorloopt is één stuk.
+      const last = unpavedRuns[unpavedRuns.length - 1];
+      if (last && last.toIdx === run.fromIdx) {
+        last.toIdx = run.toIdx;
+        last.distanceM += run.distanceM;
+        for (const s of run.surfaces) if (!last.surfaces.includes(s)) last.surfaces.push(s);
+      } else {
+        unpavedRuns.push(run);
+      }
     }
     for (const tr of leg.turns ?? []) {
       turns.push({ ...tr, i: globalIdx(tr.i) });
@@ -339,6 +362,7 @@ function mergeLegs(legs: RouteResult[]): RouteResult {
     waytypes,
     elevation,
     alerts,
+    unpavedRuns,
     turns,
   };
 }
@@ -364,6 +388,9 @@ export default function PlannerApp() {
     () => (routeCoords ? cumulativeDistances(routeCoords) : null),
     [routeCoords],
   );
+  // Onverharde stukken op de lijn (amber). Default aan: het is precies wat
+  // je vóór een rit wilt weten, en op verharde routes is de laag toch leeg.
+  const [showUnpaved, setShowUnpaved] = useState(true);
   // GEN-129: restricted stretches as slices of the route line.
   const alertLines = useMemo<GeoJSON.FeatureCollection | null>(() => {
     if (!route?.alerts?.length || !routeCoords) return null;
@@ -379,6 +406,22 @@ export default function PlannerApp() {
       })),
     };
   }, [route, routeCoords]);
+  // Onverharde stukken als plakjes van de routelijn — zelfde patroon als
+  // alertLines. Achter een toggle: op een racefiets-route is dit alleen ruis.
+  const unpavedLines = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    if (!showUnpaved || !route?.unpavedRuns?.length || !routeCoords) return null;
+    return {
+      type: "FeatureCollection",
+      features: route.unpavedRuns.map((r) => ({
+        type: "Feature",
+        properties: { distanceM: r.distanceM, surfaces: r.surfaces.join(",") },
+        geometry: {
+          type: "LineString",
+          coordinates: routeCoords.slice(r.fromIdx, r.toIdx + 1),
+        },
+      })),
+    };
+  }, [route, routeCoords, showUnpaved]);
   const climbs = useMemo(
     () =>
       route && distances ? detectClimbs(route.elevation, distances) : [],
@@ -1245,6 +1288,7 @@ export default function PlannerApp() {
         alertLines={alertLines}
         networkOverlays={networks}
         kmMarkers={kmMarkers}
+        unpavedLines={unpavedLines}
         emphasisSlot={emphasisSlot}
         balloonAt={balloon}
         balloonContent={
@@ -1441,6 +1485,17 @@ export default function PlannerApp() {
                 className="accent-emerald-700"
               />
               📏 {t("mapContent.kmMarkers")}
+            </label>
+
+            <label className="mt-1 flex items-center gap-2 text-xs text-neutral-800">
+              <input
+                type="checkbox"
+                checked={showUnpaved}
+                onChange={() => setShowUnpaved((v) => !v)}
+                className="accent-amber-600"
+              />
+              <span className="inline-block h-1 w-4 rounded bg-amber-600" />
+              {t("mapContent.unpaved")}
             </label>
 
             <div className="mt-2 border-t border-neutral-100 pt-2">

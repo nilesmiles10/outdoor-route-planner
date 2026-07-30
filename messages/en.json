@@ -86,7 +86,8 @@
       "networks": "Route networks",
       "net_hiking": "Hiking networks",
       "net_cycling": "Cycling networks (incl. node networks)",
-      "net_mtb": "MTB trails"
+      "net_mtb": "MTB trails",
+      "unpaved": "Unpaved stretches"
     },
     "rowActions": {
       "remove": "Remove waypoint",

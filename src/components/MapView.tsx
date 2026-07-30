@@ -55,6 +55,7 @@ type Props = {
   viaHandles?: GeoJSON.FeatureCollection | null;
   offGridLines?: GeoJSON.FeatureCollection | null;
   alertLines?: GeoJSON.FeatureCollection | null;
+  unpavedLines?: GeoJSON.FeatureCollection | null;
   networkOverlays?: { hiking: boolean; cycling: boolean; mtb: boolean };
   // GEN-137: distance markers along the route (every 5/10 km).
   kmMarkers?: GeoJSON.FeatureCollection | null;
@@ -80,6 +81,7 @@ export default function MapView({
   viaHandles,
   offGridLines,
   alertLines,
+  unpavedLines,
   networkOverlays,
   kmMarkers,
   emphasisSlot,
@@ -306,6 +308,20 @@ export default function MapView({
           "line-width": 3,
           "line-dasharray": [1, 2],
         },
+      });
+      // Onverharde stukken in amber op de route. Bewust vóór de alerts-laag
+      // toegevoegd: een verbodsstuk moet altijd bovenop liggen, ook als het
+      // toevallig ook onverhard is.
+      ensureSource("unpaved", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+      ensureLayer({
+        id: "unpaved-line",
+        type: "line",
+        source: "unpaved",
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": "#d97706", "line-width": 5 },
       });
       // GEN-129: restricted-access stretches painted red on top of the route.
       ensureSource("alerts", {
@@ -754,6 +770,13 @@ export default function MapView({
       alertLines ?? { type: "FeatureCollection", features: [] },
     );
   }, [alertLines, ready]);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    (map.getSource("unpaved") as maplibregl.GeoJSONSource | undefined)?.setData(
+      unpavedLines ?? { type: "FeatureCollection", features: [] },
+    );
+  }, [unpavedLines, ready]);
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
