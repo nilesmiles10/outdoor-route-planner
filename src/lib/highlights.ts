@@ -11,6 +11,9 @@ export const HIGHLIGHT_CATEGORIES = [
   "monument",
   "nature",
   "other",
+  // Afgeleide gravelsegmenten (kind='segment') uit OSM-ondergrondtags —
+  // geen POI-categorie zoals de rest, maar wel een eigen /discover-surface.
+  "gravel",
 ] as const;
 export type HighlightCategory = (typeof HIGHLIGHT_CATEGORIES)[number];
 
@@ -23,6 +26,7 @@ export const CATEGORY_EMOJI: Record<string, string> = {
   monument: "🏛️",
   nature: "🌳",
   other: "📍",
+  gravel: "🚵",
 };
 
 // Marker dot colors per category (MapLibre match expression uses these too).
@@ -35,6 +39,7 @@ export const CATEGORY_COLOR: Record<string, string> = {
   monument: "#7c3aed",
   nature: "#16a34a",
   other: "#dc2626",
+  gravel: "#a16207",
 };
 
 export type HighlightPoint = {

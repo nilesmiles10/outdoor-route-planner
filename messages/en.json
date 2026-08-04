@@ -264,7 +264,8 @@
       "cafe": "Café",
       "monument": "Monument",
       "nature": "Nature",
-      "other": "Other"
+      "other": "Other",
+      "gravel": "Gravel segment"
     }
   },
   "nav": {
@@ -374,7 +375,8 @@
       "cafe": "Cafés",
       "monument": "Monuments",
       "nature": "Nature spots",
-      "other": "Places"
+      "other": "Places",
+      "gravel": "Gravel segments"
     }
   },
   "profile": {

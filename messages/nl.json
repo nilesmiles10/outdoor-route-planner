@@ -264,7 +264,8 @@
       "cafe": "Café",
       "monument": "Monument",
       "nature": "Natuur",
-      "other": "Overig"
+      "other": "Overig",
+      "gravel": "Gravelsegment"
     }
   },
   "nav": {
@@ -374,7 +375,8 @@
       "cafe": "Cafés",
       "monument": "Monumenten",
       "nature": "Natuurplekken",
-      "other": "Plekken"
+      "other": "Plekken",
+      "gravel": "Gravelsegmenten"
     }
   },
   "profile": {
