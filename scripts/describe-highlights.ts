@@ -189,6 +189,21 @@ const STRONG = [
 // met een van deze.
 const SUPPORTING = STRONG.filter((k) => k !== "historic");
 
+// Zelfde probleem als bij historic, ontdekt bij een --cat nature batch: een
+// natuurgebied met alleen leisure=nature_reserve + start_date levert "een
+// natuurgebied, beschermd sinds 1990" — een aanwijsdatum, geen beschrijving
+// van wat er te zien is. 30/30 van die batch was exact dit geval, vaak met
+// een Wikipedia-stub die niet meer zegt dan "ligt in stad X". start_date
+// telt daarom niet mee vóór een reservaat zonder andere feiten (species,
+// natural=, description) — net als historic moet hij gezelschap hebben.
+function strongFacts(tags: Record<string, string>): string[] {
+  const strong = SUPPORTING.filter((k) => tags[k]);
+  if (tags.leisure === "nature_reserve" && strong.length === 1 && strong[0] === "start_date") {
+    return [];
+  }
+  return strong;
+}
+
 type WriteItem = { id: string; nl?: string; en?: string; reason?: string };
 
 // Terugschrijven vergt de service-role key: RLS blokkeert client-writes op
@@ -269,7 +284,7 @@ async function main() {
     const tags = tagMap.get(row.osm_id) ?? {};
     const hasWikiTag =
       Boolean(tags.wikidata) || Object.keys(tags).some((k) => k.startsWith("wikipedia"));
-    const strong = SUPPORTING.filter((k) => tags[k]);
+    const strong = strongFacts(tags);
     if (!hasWikiTag && strong.length === 0) {
       items.push({ id: row.id, name: row.name, reason: "no_source" });
       continue;
