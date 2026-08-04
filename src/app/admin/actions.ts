@@ -171,6 +171,10 @@ export async function updateHighlight(formData: FormData) {
   await sb.from("highlights").update(patch).eq("id", id);
   await audit(sb, user, "highlight_update", "highlight", id, patch);
   revalidatePath("/admin/highlights");
+  // De publieke pagina's lezen highlights via getagde fetches met
+  // revalidate 3600. Zonder deze regel blijft een wijziging tot een uur
+  // onzichtbaar op /discover, de regiopagina's en /highlight/[id].
+  revalidateTag("highlights");
 }
 
 export async function deleteHighlight(formData: FormData) {
@@ -179,6 +183,10 @@ export async function deleteHighlight(formData: FormData) {
   await sb.from("highlights").delete().eq("id", id);
   await audit(sb, user, "highlight_delete", "highlight", id);
   revalidatePath("/admin/highlights");
+  // De publieke pagina's lezen highlights via getagde fetches met
+  // revalidate 3600. Zonder deze regel blijft een wijziging tot een uur
+  // onzichtbaar op /discover, de regiopagina's en /highlight/[id].
+  revalidateTag("highlights");
 }
 
 export async function mergeHighlights(formData: FormData) {
@@ -190,6 +198,10 @@ export async function mergeHighlights(formData: FormData) {
   // audit is written inside the RPC (same transaction)
   void user;
   revalidatePath("/admin/highlights");
+  // De publieke pagina's lezen highlights via getagde fetches met
+  // revalidate 3600. Zonder deze regel blijft een wijziging tot een uur
+  // onzichtbaar op /discover, de regiopagina's en /highlight/[id].
+  revalidateTag("highlights");
 }
 
 // Photo moderation: RLS row delete (admin policy) + best-effort storage
@@ -205,6 +217,10 @@ export async function deleteHighlightPhoto(formData: FormData) {
   }
   await audit(sb, user, "highlight_photo_delete", "highlight_photo", id, { path });
   revalidatePath("/admin/highlights");
+  // De publieke pagina's lezen highlights via getagde fetches met
+  // revalidate 3600. Zonder deze regel blijft een wijziging tot een uur
+  // onzichtbaar op /discover, de regiopagina's en /highlight/[id].
+  revalidateTag("highlights");
 }
 
 // ---- Site settings ----
