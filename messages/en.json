@@ -155,7 +155,9 @@
     "grade": {
       "label": "Steepness",
       "tooltip": "The colour of the elevation line shows how steep each part of the route is."
-    }
+    },
+    "loop": "Loop",
+    "oneWay": "One-way"
   },
   "account": {
     "login": "Log in to save routes",

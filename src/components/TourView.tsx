@@ -8,7 +8,7 @@ import GradeLegend from "./GradeLegend";
 import SpeedChart from "./SpeedChart";
 import TourSocial from "./TourSocial";
 import Avatar from "./Avatar";
-import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
+import { cumulativeDistances, detectClimbs, haversineM } from "@/lib/elevation";
 import { difficulty } from "@/lib/difficulty";
 import { groupWaytypes } from "@/lib/waytypes";
 import { buildKmMarkers } from "@/lib/kmMarkers";
@@ -171,6 +171,14 @@ export default function TourView({
     turns,
   });
 
+  // Rondje vs enkele richting: start ≈ eind (< 100 m) = rondje. Uit de geometry
+  // afgeleid (niet een veld) zodat het voor tours én trails klopt. Route-info
+  // die de detailpagina miste (de map toont het impliciet via groen/rood).
+  const isLoop = useMemo(() => {
+    const c = geometry.coordinates;
+    return c.length >= 2 && haversineM(c[0], c[c.length - 1]) < 100;
+  }, [geometry]);
+
   return (
     <>
       <MapView
@@ -325,6 +333,10 @@ export default function TourView({
                 {t("climbsCount", { count: climbs.length })}
               </span>
             )}
+            {/* Rondje/enkele richting — Komoot-signaal dat de detailpagina miste */}
+            <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-600">
+              {isLoop ? `🔁 ${t("loop")}` : `→ ${t("oneWay")}`}
+            </span>
           </div>
         </div>
         <div className="grid grid-cols-4 gap-2 text-center">

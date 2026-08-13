@@ -32,7 +32,7 @@ export function cumulativeDistances(coords: GeoJSON.Position[]): number[] {
   return out;
 }
 
-function haversineM(a: GeoJSON.Position, b: GeoJSON.Position): number {
+export function haversineM(a: GeoJSON.Position, b: GeoJSON.Position): number {
   const R = 6371000;
   const dLat = ((b[1] - a[1]) * Math.PI) / 180;
   const dLon = ((b[0] - a[0]) * Math.PI) / 180;

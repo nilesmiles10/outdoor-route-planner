@@ -155,7 +155,9 @@
     "grade": {
       "label": "Steilheid",
       "tooltip": "De kleur van de hoogtelijn laat zien hoe steil elk deel van de route is."
-    }
+    },
+    "loop": "Rondje",
+    "oneWay": "Enkele richting"
   },
   "account": {
     "login": "Log in om routes op te slaan",
