@@ -5,6 +5,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { fmtDuration } from "@/lib/activity";
 import Avatar from "@/components/Avatar";
 import ProfileActions from "@/components/ProfileActions";
+import ShareButton from "@/components/ShareButton";
 import ProfileTimeline, { type TimelineItem } from "@/components/ProfileTimeline";
 import ProfileOwnerPanels from "@/components/ProfileOwnerPanels";
 import AccountSections from "@/components/AccountSections";
@@ -255,8 +256,9 @@ export default async function UserPage({
               ))}
             </div>
           )}
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <ProfileActions profile={p} />
+            <ShareButton title={name} />
           </div>
 
           {!locked && (
