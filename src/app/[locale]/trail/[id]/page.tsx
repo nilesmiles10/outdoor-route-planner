@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getWeather } from "@/lib/weather";
 import TourView from "@/components/TourView";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
+import { passedHighlightPins } from "@/lib/passedHighlights";
 
 // GEN-145 — detailpagina voor officiële routes (OSM-import). Hergebruikt
 // TourView; auteursblok vervangen door bron-attributie (ODbL).
@@ -112,6 +113,10 @@ export default async function TrailPage({
     ? [{ name: t("start"), lon: start[0], lat: start[1] }]
     : [];
 
+  // Highlights langs de route als kaart-pins (plain fetch → route blijft
+  // statisch cachebaar, zie getTrail).
+  const highlightPins = await passedHighlightPins(trail.geometry.coordinates);
+
   return (
     <main className="relative h-dvh w-full">
       <script
@@ -134,6 +139,7 @@ export default async function TrailPage({
         geometry={trail.geometry}
         elevation={trail.elevation}
         waypoints={startWaypoint}
+        highlightPins={highlightPins}
         header={{
           name: trail.name,
           sport: trail.sport,
