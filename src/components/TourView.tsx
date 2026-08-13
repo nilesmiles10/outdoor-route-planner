@@ -111,6 +111,7 @@ export default function TourView({
 }: Props) {
   const t = useTranslations("planner");
   const [embedCopied, setEmbedCopied] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   // Mobiel: info-paneel inklapbaar zodat de kaart-first-flow de route vrij
   // laat verkennen i.p.v. permanent 45dvh aan het paneel kwijt te zijn.
@@ -337,7 +338,7 @@ export default function TourView({
             />
           </div>
         )}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <ExportMenu getData={exportData} />
           <a
             href={plannerHref}
@@ -345,6 +346,32 @@ export default function TourView({
           >
             {header.planLabel}
           </a>
+          {/* Route delen — kernfunctie die ontbrak. Mobiel: native share-sheet
+              (navigator.share). Desktop/fallback: link naar het klembord +
+              "Copied!"-bevestiging. */}
+          <button
+            type="button"
+            onClick={async () => {
+              const url = window.location.href;
+              if (navigator.share) {
+                try {
+                  await navigator.share({ title: header.name, url });
+                  return;
+                } catch {
+                  // gebruiker annuleerde of share faalde → val terug op kopiëren
+                }
+              }
+              // Optimistisch (zelfde patroon als de embed-knop): niet awaiten,
+              // meteen feedback tonen — writeText faalt alleen bij ontbrekende
+              // user-activation, wat bij een echte klik niet gebeurt.
+              navigator.clipboard?.writeText(url).catch(() => {});
+              setShareCopied(true);
+              setTimeout(() => setShareCopied(false), 1500);
+            }}
+            className="rounded-lg bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-200"
+          >
+            {shareCopied ? t("copied") : `↗ ${t("share")}`}
+          </button>
           {embedId && header.embedLabel && (
             <button
               type="button"
