@@ -61,6 +61,9 @@ export default function RoutesPage() {
   const sb: SupabaseClient = useMemo(() => supabaseBrowser(), []);
   const [user, setUser] = useState<User | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
+  // Tot de eerste routes-fetch klaar is: anders toonde de nog-lege lijst de
+  // "geen routes"-tekst terwijl ze nog laadden.
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
   const [sport, setSport] = useState("all");
   const [band, setBand] = useState("all");
@@ -84,6 +87,7 @@ export default function RoutesPage() {
       .order("updated_at", { ascending: false })
       .limit(100);
     setRows((data as Row[]) ?? []);
+    setLoading(false);
   }, [sb]);
 
   useEffect(() => {
@@ -204,7 +208,17 @@ export default function RoutesPage() {
           </div>
 
           <div className="mt-4 flex flex-col gap-2">
-            {filtered.length === 0 && (
+            {loading &&
+              Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={`sk${i}`}
+                  className="animate-pulse rounded-xl border border-neutral-100 bg-white p-4"
+                >
+                  <div className="h-4 w-1/2 rounded bg-neutral-200" />
+                  <div className="mt-2 h-3 w-1/4 rounded bg-neutral-100" />
+                </div>
+              ))}
+            {!loading && filtered.length === 0 && (
               <p className="text-sm text-neutral-400">{t("empty")}</p>
             )}
             {filtered.map((row) => {
