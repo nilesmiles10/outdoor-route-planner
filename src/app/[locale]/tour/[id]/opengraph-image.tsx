@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { getTranslations } from "next-intl/server";
 import { supabaseServer } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -10,7 +11,7 @@ export const contentType = "image/png";
 export default async function OgImage({
   params,
 }: {
-  params: { id: string };
+  params: { id: string; locale: string };
 }) {
   const sb = supabaseServer();
   const { data: tour } = await sb
@@ -63,6 +64,14 @@ export default async function OgImage({
 
   const km = ((tour.stats as { distanceM: number }).distanceM / 1000).toFixed(1);
   const ascend = (tour.stats as { ascendM: number }).ascendM;
+  // Nette, gelokaliseerde sport-label i.p.v. de ruwe sleutel: de share-card
+  // toonde "Road"/"Mtb"/"Ebike" i.p.v. "Road bike"/"MTB"/"E-bike" (NL:
+  // "Racefiets"). Expliciete locale zodat het niet op request-context leunt.
+  const tsport = await getTranslations({
+    locale: params.locale,
+    namespace: "planner.sports",
+  });
+  const sportLabel = tsport(tour.sport as never);
 
   return new ImageResponse(
     (
@@ -110,7 +119,7 @@ export default async function OgImage({
           <div style={{ display: "flex", gap: 28, marginTop: 28, fontSize: 34, color: "#374151" }}>
             <span>{km} km</span>
             <span>↗ {ascend} m</span>
-            <span style={{ textTransform: "capitalize" }}>{tour.sport as string}</span>
+            <span>{sportLabel}</span>
           </div>
         </div>
         <svg width={W} height={630} viewBox={`0 0 ${W} 630`}>
