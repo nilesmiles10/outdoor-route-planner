@@ -261,6 +261,14 @@ export default async function TourPage({
         geometry={tour.geometry}
         elevation={tour.elevation}
         waypoints={tour.waypoints}
+        highlightPins={{
+          type: "FeatureCollection",
+          features: passed.map((hl) => ({
+            type: "Feature",
+            properties: { id: hl.id, name: hl.name, category: hl.category },
+            geometry: { type: "Point", coordinates: [hl.lon, hl.lat] },
+          })),
+        }}
         header={{
           name: tour.name,
           sport: tour.sport,

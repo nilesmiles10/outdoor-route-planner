@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import MapView, { type Waypoint } from "./MapView";
 import ElevationChart from "./ElevationChart";
 import SpeedChart from "./SpeedChart";
@@ -16,6 +16,9 @@ type Props = {
   geometry: GeoJSON.LineString;
   elevation: number[];
   waypoints: Waypoint[];
+  // GEN-117: highlights die de route passeert, als kaart-pins (naast de
+  // panel-lijst). Optioneel — komt uit de server-query met coords.
+  highlightPins?: GeoJSON.FeatureCollection | null;
   header: {
     name: string;
     sport: string;
@@ -97,6 +100,7 @@ export default function TourView({
   geometry,
   elevation,
   waypoints,
+  highlightPins,
   header,
   author,
   autoDesc,
@@ -110,6 +114,7 @@ export default function TourView({
   source,
 }: Props) {
   const t = useTranslations("planner");
+  const locale = useLocale();
   const [embedCopied, setEmbedCopied] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -181,6 +186,10 @@ export default function TourView({
         route={feature}
         waypoints={waypoints}
         kmMarkers={kmMarkers}
+        highlights={highlightPins}
+        onHighlightClick={(h) => {
+          window.location.href = `/${locale}/highlight/${h.id}`;
+        }}
         hoverPoint={hoverIdx !== null ? geometry.coordinates[hoverIdx] ?? null : null}
         onMapClick={noop}
         onMarkerDragEnd={noop}
