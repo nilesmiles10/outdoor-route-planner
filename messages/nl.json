@@ -139,7 +139,9 @@
       "access_private": "Privéterrein op dit deel",
       "bicycle_no": "Fietsen verboden op dit deel",
       "foot_no": "Wandelen verboden op dit deel"
-    }
+    },
+    "collapsePanel": "Paneel inklappen",
+    "expandPanel": "Paneel uitklappen"
   },
   "account": {
     "login": "Log in om routes op te slaan",

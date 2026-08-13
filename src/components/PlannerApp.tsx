@@ -450,6 +450,10 @@ export default function PlannerApp() {
   const [mapContentOpen, setMapContentOpen] = useState(false);
   const [hiddenCats, setHiddenCats] = useState<Set<string>>(new Set());
   const [showKmMarkers, setShowKmMarkers] = useState(true);
+  // Mobiel: bottom-sheet inklapbaar zodat de kaart-first-flow niet permanent
+  // 45dvh kwijt is aan het paneel. Alleen relevant onder md (grab-handle is
+  // md:hidden); op desktop is het paneel een vaste zijbalk.
+  const [sheetCollapsed, setSheetCollapsed] = useState(false);
   // Sport-netwerk-overlays (Waymarked Trails) — opt-in, sport-bewuste default
   // zou stille tile-load betekenen; bewust handmatig.
   const [networks, setNetworks] = useState({ hiking: false, cycling: false, mtb: false });
@@ -1778,7 +1782,24 @@ export default function PlannerApp() {
       )}
 
       {/* Desktop: floating left panel. Mobile: bottom sheet so the map stays visible. */}
-      <div className="absolute flex flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur max-md:inset-x-2 max-md:bottom-2 max-md:max-h-[45dvh] md:left-4 md:top-16 md:max-h-[calc(100dvh-5rem)] md:w-[340px]">
+      <div
+        className={`absolute flex flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur max-md:inset-x-2 max-md:bottom-2 md:left-4 md:top-16 md:max-h-[calc(100dvh-5rem)] md:w-[340px] ${
+          sheetCollapsed
+            ? "max-md:max-h-[3.75rem] max-md:overflow-hidden"
+            : "max-md:max-h-[45dvh]"
+        }`}
+      >
+        {/* Mobile grab-handle: tap to collapse/expand the sheet and reclaim the
+            map. Hidden on desktop where the panel is a fixed sidebar. */}
+        <button
+          type="button"
+          onClick={() => setSheetCollapsed((v) => !v)}
+          aria-expanded={!sheetCollapsed}
+          aria-label={sheetCollapsed ? t("expandPanel") : t("collapsePanel")}
+          className="mx-auto -mt-1 mb-1 flex h-5 w-full items-center justify-center md:hidden"
+        >
+          <span className="h-1.5 w-10 rounded-full bg-neutral-300" />
+        </button>
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-lg font-semibold text-neutral-900">

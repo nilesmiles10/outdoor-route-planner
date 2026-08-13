@@ -139,7 +139,9 @@
       "access_private": "Private ground on this stretch",
       "bicycle_no": "Cycling prohibited on this stretch",
       "foot_no": "Walking prohibited on this stretch"
-    }
+    },
+    "collapsePanel": "Collapse panel",
+    "expandPanel": "Expand panel"
   },
   "account": {
     "login": "Log in to save routes",
