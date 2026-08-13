@@ -289,7 +289,8 @@
     "trails": "Trails",
     "menu": "Menu",
     "account": "Account",
-    "language": "Taal"
+    "language": "Taal",
+    "noResults": "Geen resultaten"
   },
   "collections": {
     "title": "Collecties",

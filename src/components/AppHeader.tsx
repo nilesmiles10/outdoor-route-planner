@@ -153,8 +153,16 @@ export default function AppHeader() {
           placeholder={t("searchPlaceholder")}
           className="w-full rounded-full border border-neutral-200 bg-neutral-50 px-4 py-1.5 text-sm outline-none focus:border-emerald-600"
         />
-        {open && hits.length > 0 && (
+        {open && q.trim().length >= 2 && (
           <div className="absolute z-40 mt-1 w-full overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg">
+            {/* Geen-resultaten-feedback: open wordt pas true ná de fetch, dus
+                lege hits + query = zoekopdracht zonder treffers (geen flikker
+                tijdens het typen). */}
+            {hits.length === 0 && (
+              <div className="px-3 py-3 text-sm text-neutral-400">
+                {t("noResults")}
+              </div>
+            )}
             {routeHits.length > 0 && (
               <div className="px-3 pt-2 text-[10px] font-semibold uppercase text-neutral-400">
                 {t("routes")}
@@ -302,6 +310,11 @@ export default function AppHeader() {
               placeholder={t("searchPlaceholder")}
               className="w-full rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm outline-none focus:border-emerald-600"
             />
+            {open && q.trim().length >= 2 && hits.length === 0 && (
+              <div className="mt-1 px-3 py-2 text-sm text-neutral-400">
+                {t("noResults")}
+              </div>
+            )}
             {hits.length > 0 && (
               <div className="mt-1 overflow-hidden rounded-xl border border-neutral-200 bg-white">
                 {routeHits.length > 0 && (

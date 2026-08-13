@@ -289,7 +289,8 @@
     "trails": "Trails",
     "menu": "Menu",
     "account": "Account",
-    "language": "Language"
+    "language": "Language",
+    "noResults": "No results"
   },
   "collections": {
     "title": "Collections",
