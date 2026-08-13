@@ -280,7 +280,8 @@ export default function TourView({
               );
               return (
                 <span
-                  className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                  title={t("difficultyTooltip")}
+                  className={`cursor-help rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                     d === "easy"
                       ? "bg-emerald-100 text-emerald-800"
                       : d === "moderate"
