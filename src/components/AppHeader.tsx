@@ -291,7 +291,70 @@ export default function AppHeader() {
         {mobileOpen ? "✕" : "☰"}
       </button>
       {mobileOpen && (
-        <div className="absolute inset-x-0 top-12 z-40 border-b border-neutral-200 bg-white shadow-lg md:hidden">
+        <div className="absolute inset-x-0 top-12 z-40 max-h-[calc(100dvh-3rem)] overflow-y-auto border-b border-neutral-200 bg-white shadow-lg md:hidden">
+          {/* Mobiel zoeken: de header-zoekbalk is md-only, dus mobiele
+              gebruikers konden routes/mensen/plaatsen niet zoeken. Hier in het
+              menu wél — hergebruikt dezelfde zoek-state en resultaat-groepen. */}
+          <div className="border-b border-neutral-100 p-2">
+            <input
+              value={q}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={t("searchPlaceholder")}
+              className="w-full rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm outline-none focus:border-emerald-600"
+            />
+            {hits.length > 0 && (
+              <div className="mt-1 overflow-hidden rounded-xl border border-neutral-200 bg-white">
+                {routeHits.length > 0 && (
+                  <div className="px-3 pt-2 text-[10px] font-semibold uppercase text-neutral-400">
+                    {t("routes")}
+                  </div>
+                )}
+                {routeHits.map((h, i) => (
+                  <a
+                    key={`mr${i}`}
+                    href={h.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="block px-3 py-2 text-sm hover:bg-neutral-50"
+                  >
+                    <span className="font-medium">{h.label}</span>
+                    <span className="ml-2 text-xs text-neutral-500">{h.sub}</span>
+                  </a>
+                ))}
+                {personHits.length > 0 && (
+                  <div className="px-3 pt-2 text-[10px] font-semibold uppercase text-neutral-400">
+                    {t("people")}
+                  </div>
+                )}
+                {personHits.map((h, i) => (
+                  <a
+                    key={`mu${i}`}
+                    href={h.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="block px-3 py-2 text-sm hover:bg-neutral-50"
+                  >
+                    <span className="font-medium">{h.label}</span>
+                    <span className="ml-2 text-xs text-neutral-500">{h.sub}</span>
+                  </a>
+                ))}
+                {placeHits.length > 0 && (
+                  <div className="px-3 pt-2 text-[10px] font-semibold uppercase text-neutral-400">
+                    {t("places")}
+                  </div>
+                )}
+                {placeHits.map((h, i) => (
+                  <a
+                    key={`mp${i}`}
+                    href={h.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="block px-3 py-2 text-sm hover:bg-neutral-50"
+                  >
+                    <span className="font-medium">{h.label}</span>
+                    <span className="ml-2 text-xs text-neutral-500">{h.sub}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
           <nav className="flex flex-col py-1">
             {NAV.map(({ key, path, authOnly }) =>
               authOnly && !email ? null : (
