@@ -2042,7 +2042,7 @@ export default function PlannerApp() {
               <div className="flex items-center gap-2">
                 {climbs.length > 0 && (
                   <span className="text-[11px] text-neutral-500">
-                    {climbs.length} {t("climbs")}
+                    {t("climbsCount", { count: climbs.length })}
                   </span>
                 )}
                 <ExportMenu
