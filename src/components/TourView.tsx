@@ -473,7 +473,9 @@ export default function TourView({
                   <div className="text-[9px] text-neutral-500">{d.label}</div>
                   <div className="text-xs font-medium">{d.tMax}°</div>
                   <div className="text-[10px] text-neutral-500">{d.tMin}°</div>
-                  <div className="text-[9px] text-sky-600">{d.rain}%</div>
+                  {/* 💧 verduidelijkt dat het % de neerslagkans is (kale "0%"
+                      was dubbelzinnig). */}
+                  <div className="text-[9px] text-sky-600">💧{d.rain}%</div>
                 </div>
               ))}
             </div>
