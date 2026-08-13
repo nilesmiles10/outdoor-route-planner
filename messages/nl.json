@@ -25,11 +25,12 @@
       "ebike": "E-bike"
     },
     "errors": {
-      "no_route": "Geen route gevonden tussen deze punten.",
+      "no_route": "Geen route gevonden — verplaats je punten dichter naar een weg of pad.",
       "router_unavailable": "Route-service is tijdelijk niet beschikbaar.",
       "generic": "Er ging iets mis. Probeer opnieuw.",
       "gpx_invalid": "Kon dit GPX-bestand niet lezen.",
-      "roundtrip_needs_start": "Kies eerst een startpunt (A)."
+      "roundtrip_needs_start": "Kies eerst een startpunt (A).",
+      "rate_limited": "Te veel route-aanvragen — wacht even en probeer opnieuw."
     },
     "via": "Tussenpunt",
     "addWaypoint": "Waypoint toevoegen",

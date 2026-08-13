@@ -2009,6 +2009,7 @@ export default function PlannerApp() {
             {[
               "no_route",
               "router_unavailable",
+              "rate_limited",
               "gpx_invalid",
               "roundtrip_needs_start",
             ].includes(error)

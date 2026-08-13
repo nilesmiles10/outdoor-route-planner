@@ -25,11 +25,12 @@
       "ebike": "E-bike"
     },
     "errors": {
-      "no_route": "No route found between these points.",
+      "no_route": "No route found — try moving your points closer to a road or path.",
       "router_unavailable": "Route service is temporarily unavailable.",
       "generic": "Something went wrong. Try again.",
       "gpx_invalid": "Could not read that GPX file.",
-      "roundtrip_needs_start": "Set a starting point (A) first."
+      "roundtrip_needs_start": "Set a starting point (A) first.",
+      "rate_limited": "Too many route requests — wait a moment and try again."
     },
     "via": "Via point",
     "addWaypoint": "Add waypoint",
