@@ -3,7 +3,7 @@
 // GEN-143 — export-menu (GPX · TCX · FIT) op tourpagina, /routes en in
 // de planner. TCX/FIT zijn course-bestanden met turn-instructies waar
 // beschikbaar; de FIT-encoder (@garmin/fitsdk) laadt lazy bij gebruik.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { buildGpx, type GpxWaypoint } from "@/lib/gpx";
 import { buildCourse, type CourseTurn } from "@/lib/course";
@@ -37,6 +37,26 @@ export default function ExportMenu({
   const t = useTranslations("export");
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Sluit het menu bij een klik erbuiten of Escape. Robuuster dan alleen
+  // onBlur (dat een klik op niet-focusbare ruimte mist) en toetsenbord-
+  // vriendelijk — samen met de onClick-items i.p.v. onMouseDown.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   async function run(fmt: "gpx" | "tcx" | "fit") {
     setBusy(true);
@@ -78,11 +98,10 @@ export default function ExportMenu({
     "block w-full px-3 py-1.5 text-left text-xs text-neutral-700 hover:bg-neutral-50 disabled:opacity-50";
 
   return (
-    <div className="relative">
+    <div ref={wrapRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
         className={
           compact
             ? "rounded-lg bg-neutral-100 px-2 py-1 text-[11px] font-medium text-neutral-700 hover:bg-neutral-200"
@@ -93,13 +112,13 @@ export default function ExportMenu({
       </button>
       {open && (
         <div className="absolute bottom-full left-0 z-40 mb-1 w-52 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
-          <button type="button" disabled={busy} onMouseDown={() => run("gpx")} className={itemCls}>
+          <button type="button" disabled={busy} onClick={() => run("gpx")} className={itemCls}>
             GPX <span className="text-neutral-400">· {t("gpxHint")}</span>
           </button>
-          <button type="button" disabled={busy} onMouseDown={() => run("tcx")} className={itemCls}>
+          <button type="button" disabled={busy} onClick={() => run("tcx")} className={itemCls}>
             TCX <span className="text-neutral-400">· {t("courseHint")}</span>
           </button>
-          <button type="button" disabled={busy} onMouseDown={() => run("fit")} className={itemCls}>
+          <button type="button" disabled={busy} onClick={() => run("fit")} className={itemCls}>
             FIT <span className="text-neutral-400">· {t("courseHint")}</span>
           </button>
           <p className="border-t border-neutral-100 px-3 py-1.5 text-[10px] text-neutral-400">
