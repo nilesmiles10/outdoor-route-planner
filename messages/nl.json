@@ -390,7 +390,8 @@
       "shortest": "Kortst",
       "longest": "Langst",
       "climbing": "Meeste klim"
-    }
+    },
+    "loopsOnly": "Alleen rondjes"
   },
   "regionPage": {
     "breadcrumbDiscover": "Ontdekken",

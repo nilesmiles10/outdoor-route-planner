@@ -390,7 +390,8 @@
       "shortest": "Shortest",
       "longest": "Longest",
       "climbing": "Most climbing"
-    }
+    },
+    "loopsOnly": "Loops only"
   },
   "regionPage": {
     "breadcrumbDiscover": "Discover",

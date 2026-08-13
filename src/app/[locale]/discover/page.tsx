@@ -47,6 +47,13 @@ function haversineKm(a: [number, number], b: [number, number]) {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+// Rondje = start ≈ eind (< 100 m). Uit de geometry (al opgehaald voor de
+// thumbnails), zelfde regel als de loop-badge op de detailpagina.
+function isLoopRoute(geometry: { coordinates: [number, number][] } | null) {
+  const c = geometry?.coordinates;
+  return !!c && c.length >= 2 && haversineKm(c[0], c[c.length - 1]) < 0.1;
+}
+
 export default function DiscoverPage() {
   const t = useTranslations("discover");
   const ts = useTranslations("planner.sports");
@@ -66,6 +73,7 @@ export default function DiscoverPage() {
   const [sport, setSport] = useState("all");
   const [band, setBand] = useState("all");
   const [sortBy, setSortBy] = useState<(typeof SORTS)[number]>("nearest");
+  const [loopOnly, setLoopOnly] = useState(false);
   const [pos, setPos] = useState<[number, number] | null>(null);
   // GEN-116: region × category combos with enough content for a page.
   const [combos, setCombos] = useState<Combo[]>([]);
@@ -122,18 +130,32 @@ export default function DiscoverPage() {
     const so = p.get("sort");
     if (so && (SORTS as readonly string[]).includes(so))
       setSortBy(so as (typeof SORTS)[number]);
+    if (p.get("loop") === "1") setLoopOnly(true);
   }, []);
 
-  // Defaults ("all" / "nearest") → géén param (schone URL). replaceState i.p.v.
-  // push zodat filteren/sorteren geen history-entries stapelt.
-  function syncUrl(nextSport: string, nextBand: string, nextSort: string) {
+  // Defaults ("all" / "nearest" / geen loop) → géén param (schone URL).
+  // Override-object: alleen de zojuist gewijzigde waarde geef je mee, de rest
+  // wordt uit de huidige state gelezen (pre-setState, dus nog de oude — precies
+  // de waarden die niet veranderen). replaceState stapelt geen history.
+  function syncUrl(next: {
+    sport?: string;
+    band?: string;
+    sort?: string;
+    loop?: boolean;
+  }) {
+    const sp = next.sport ?? sport;
+    const bd = next.band ?? band;
+    const so = next.sort ?? sortBy;
+    const lp = next.loop ?? loopOnly;
     const url = new URL(window.location.href);
-    if (nextSport && nextSport !== "all") url.searchParams.set("sport", nextSport);
+    if (sp !== "all") url.searchParams.set("sport", sp);
     else url.searchParams.delete("sport");
-    if (nextBand && nextBand !== "all") url.searchParams.set("band", nextBand);
+    if (bd !== "all") url.searchParams.set("band", bd);
     else url.searchParams.delete("band");
-    if (nextSort && nextSort !== "nearest") url.searchParams.set("sort", nextSort);
+    if (so !== "nearest") url.searchParams.set("sort", so);
     else url.searchParams.delete("sort");
+    if (lp) url.searchParams.set("loop", "1");
+    else url.searchParams.delete("loop");
     window.history.replaceState(null, "", url);
   }
 
@@ -141,6 +163,7 @@ export default function DiscoverPage() {
   const filtered = rows
     .filter((r) => sport === "all" || r.sport === sport)
     .filter((r) => r.stats.distanceM >= lo && r.stats.distanceM < hi)
+    .filter((r) => !loopOnly || isLoopRoute(r.geometry))
     .map((r) => ({
       ...r,
       distKm: pos && r.waypoints[0] ? haversineKm(pos, [r.waypoints[0].lon, r.waypoints[0].lat]) : null,
@@ -223,7 +246,7 @@ export default function DiscoverPage() {
             type="button"
             onClick={() => {
               setSport(s);
-              syncUrl(s, band, sortBy);
+              syncUrl({ sport: s });
             }}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
               sport === s ? "bg-emerald-700 text-white" : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
@@ -240,7 +263,7 @@ export default function DiscoverPage() {
             type="button"
             onClick={() => {
               setBand(k);
-              syncUrl(sport, k, sortBy);
+              syncUrl({ band: k });
             }}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
               band === k ? "bg-neutral-800 text-white" : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
@@ -249,6 +272,23 @@ export default function DiscoverPage() {
             {t(`bands.${k}` as never)}
           </button>
         ))}
+        {/* Rondje-filter: veel wandelaars/fietsers willen terug naar de start.
+            isLoop uit de geometry (al opgehaald voor de thumbnails). */}
+        <button
+          type="button"
+          onClick={() => {
+            const next = !loopOnly;
+            setLoopOnly(next);
+            syncUrl({ loop: next });
+          }}
+          className={`rounded-full px-3 py-1 text-xs font-medium ${
+            loopOnly
+              ? "bg-emerald-700 text-white"
+              : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+          }`}
+        >
+          🔁 {t("loopsOnly")}
+        </button>
       </div>
       {/* Sorteren: label vóór de chips zodat het niet als extra filter leest.
           "nearest" (default) = het oude proximity-gedrag. */}
@@ -262,7 +302,7 @@ export default function DiscoverPage() {
             type="button"
             onClick={() => {
               setSortBy(s);
-              syncUrl(sport, band, s);
+              syncUrl({ sort: s });
             }}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
               sortBy === s
@@ -291,13 +331,14 @@ export default function DiscoverPage() {
             <p className="text-sm text-neutral-400">{t("empty")}</p>
             {/* Reset-knop alleen tonen als er daadwerkelijk een filter actief
                 is — anders helpt wissen niet en is de knop misleidend. */}
-            {(sport !== "all" || band !== "all") && (
+            {(sport !== "all" || band !== "all" || loopOnly) && (
               <button
                 type="button"
                 onClick={() => {
                   setSport("all");
                   setBand("all");
-                  syncUrl("all", "all", sortBy);
+                  setLoopOnly(false);
+                  syncUrl({ sport: "all", band: "all", loop: false });
                 }}
                 className="text-sm font-medium text-emerald-700 hover:underline"
               >
