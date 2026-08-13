@@ -68,6 +68,9 @@ export default function CollectionsPage() {
   const sb: SupabaseClient = useMemo(() => supabaseBrowser(), []);
   const [user, setUser] = useState<User | null>(null);
   const [publicColls, setPublicColls] = useState<Coll[]>([]);
+  // Tot de eerste fetch klaar is: anders toonde de lege lijst de "geen
+  // collecties"-tekst terwijl ze nog laadden.
+  const [loading, setLoading] = useState(true);
   const [mine, setMine] = useState<Coll[]>([]);
   const [bookmarked, setBookmarked] = useState<Coll[]>([]);
   const [creating, setCreating] = useState(false);
@@ -89,6 +92,7 @@ export default function CollectionsPage() {
       .order("updated_at", { ascending: false })
       .limit(60);
     setPublicColls((pub.data as unknown as Coll[]) ?? []);
+    setLoading(false);
     if (user) {
       const own = await sb
         .from("collections")
@@ -180,7 +184,22 @@ export default function CollectionsPage() {
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-400">
           {t("explore")}
         </h2>
-        {publicColls.length === 0 ? (
+        {loading ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={`sk${i}`}
+                className="animate-pulse overflow-hidden rounded-xl border border-neutral-100 bg-white"
+              >
+                <div className="h-24 bg-neutral-200" />
+                <div className="space-y-2 p-3">
+                  <div className="h-4 w-2/3 rounded bg-neutral-200" />
+                  <div className="h-3 w-1/3 rounded bg-neutral-100" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : publicColls.length === 0 ? (
           <p className="text-sm text-neutral-400">{t("empty")}</p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
