@@ -124,6 +124,32 @@ export default function TourView({
     () => cumulativeDistances(geometry.coordinates),
     [geometry],
   );
+  // Afstandsmarkers langs de route (GEN-137-patroon uit de planner): elke
+  // 5 km, of 10 km op lange routes. De tour-kaart toonde ze nog niet terwijl
+  // de planner ze wél heeft — zelfde route-informatie hoort er ook hier te
+  // staan. Afgeleid uit de al berekende coords + distances, geen extra data.
+  const kmMarkers = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    const coords = geometry.coordinates;
+    if (!coords.length || distances.length === 0) return null;
+    const total = distances[distances.length - 1] ?? 0;
+    const stepM = (total > 100_000 ? 10 : 5) * 1000;
+    const features: GeoJSON.Feature[] = [];
+    let next = stepM;
+    for (let i = 0; i < distances.length && next < total; i++) {
+      if ((distances[i] ?? 0) >= next) {
+        const c = coords[i];
+        if (c) {
+          features.push({
+            type: "Feature",
+            properties: { label: String(Math.round(next / 1000)) },
+            geometry: { type: "Point", coordinates: [c[0], c[1]] },
+          });
+        }
+        next += stepM;
+      }
+    }
+    return features.length ? { type: "FeatureCollection", features } : null;
+  }, [geometry, distances]);
   const climbs = useMemo(
     () => detectClimbs(elevation, distances),
     [elevation, distances],
@@ -153,6 +179,7 @@ export default function TourView({
       <MapView
         route={feature}
         waypoints={waypoints}
+        kmMarkers={kmMarkers}
         hoverPoint={hoverIdx !== null ? geometry.coordinates[hoverIdx] ?? null : null}
         onMapClick={noop}
         onMarkerDragEnd={noop}
