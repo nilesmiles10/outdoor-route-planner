@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { CATEGORY_EMOJI } from "@/lib/highlights";
+import { difficulty } from "@/lib/difficulty";
 import SiteFooter from "@/components/SiteFooter";
 
 type Row = {
@@ -44,6 +45,7 @@ export default function DiscoverPage() {
   const t = useTranslations("discover");
   const ts = useTranslations("planner.sports");
   const tr = useTranslations("regionPage");
+  const tdiff = useTranslations("planner.difficultyLabels");
   const locale = useLocale();
   const sb: SupabaseClient = useMemo(() => supabaseBrowser(), []);
   const [rows, setRows] = useState<Row[]>([]);
@@ -227,7 +229,27 @@ export default function DiscoverPage() {
             href={`/${locale}/tour/${r.id}`}
             className="rounded-xl border border-neutral-100 bg-white p-4 shadow-sm transition hover:shadow-md"
           >
-            <div className="font-medium text-neutral-900">{r.name}</div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="font-medium text-neutral-900">{r.name}</div>
+              {/* Moeilijkheidsbadge zodat je op de browse-lijst kunt scannen
+                  op easy/hard (zelfde formule + kleuren als tour/planner). */}
+              {(() => {
+                const d = difficulty(r.sport, r.stats.distanceM, r.stats.ascendM);
+                return (
+                  <span
+                    className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                      d === "easy"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : d === "moderate"
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {tdiff(d)}
+                  </span>
+                );
+              })()}
+            </div>
             <div className="mt-1 text-xs text-neutral-500">
               {(r.stats.distanceM / 1000).toFixed(1)} km · ↗ {r.stats.ascendM} m ·{" "}
               <span className="capitalize">{ts(r.sport as never)}</span>
