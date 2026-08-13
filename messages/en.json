@@ -397,7 +397,8 @@
       "nature": "Nature spots",
       "other": "Places",
       "gravel": "Gravel segments"
-    }
+    },
+    "capHint": "Showing {shown} of {total, number} — sorted alphabetically."
   },
   "profile": {
     "anonymous": "Adventurer",

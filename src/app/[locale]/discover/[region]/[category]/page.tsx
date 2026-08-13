@@ -12,6 +12,9 @@ import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 
 export const revalidate = 3600;
 const MIN_ITEMS = 8;
+// Cap op de getoonde lijst; als 'ie geraakt wordt tonen we een eerlijke
+// "X van Y"-hint i.p.v. stil de rest (Bayern/peak = 6.724) weg te laten.
+const ITEM_LIMIT = 500;
 
 type Hl = {
   id: string;
@@ -63,10 +66,10 @@ async function resolve(regionSlug: string, category: string) {
     `highlights?select=id,name,category,region,description` +
       `&region=eq.${encodeURIComponent(match.region)}&category=eq.${encodeURIComponent(category)}` +
       (ambiguous && match.country ? `&country=eq.${encodeURIComponent(match.country)}` : "") +
-      `&order=name&limit=500`,
+      `&order=name&limit=${ITEM_LIMIT}`,
   );
   if (items.length < MIN_ITEMS) return null;
-  return { region: match.region, label, items };
+  return { region: match.region, label, items, total: match.n };
 }
 
 // Empty list: do not prerender hundreds of pages at build time, but declaring
@@ -101,7 +104,7 @@ export default async function RegionCategoryPage({
 }) {
   const resolved = await resolve(params.region, params.category);
   if (!resolved) notFound();
-  const { label, items } = resolved;
+  const { label, items, total } = resolved;
   const { locale, category } = params;
   const t = await getTranslations("regionPage");
   const cat = t(`catPlural.${category}` as never);
@@ -161,6 +164,12 @@ export default async function RegionCategoryPage({
           </li>
         ))}
       </ul>
+
+      {items.length >= ITEM_LIMIT && total > items.length && (
+        <p className="mt-4 rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-500">
+          {t("capHint", { shown: items.length, total })}
+        </p>
+      )}
 
       <SiteFooter />
     </main>

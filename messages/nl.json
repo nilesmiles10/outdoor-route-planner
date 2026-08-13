@@ -397,7 +397,8 @@
       "nature": "Natuurplekken",
       "other": "Plekken",
       "gravel": "Gravelsegmenten"
-    }
+    },
+    "capHint": "{shown} van {total, number} getoond — alfabetisch gesorteerd."
   },
   "profile": {
     "anonymous": "Avonturier",
