@@ -48,11 +48,17 @@ export async function generateMetadata({
   if (!c) return { title: "Collection not found" };
   const tours = c.collection_items.map((i) => i.tours).filter(Boolean) as TourLite[];
   const agg = aggregateStats(tours.map((t) => t.stats));
+  // Entity-specifieke OG: zonder deze erven gedeelde collectie-links de
+  // generieke layout-OG ("Tarnoo" / tagline).
+  const ogTitle = `${c.title} · ${tours.length} routes · ${(agg.distanceM / 1000).toFixed(0)} km`;
+  const ogDesc =
+    c.intro?.slice(0, 160) ||
+    `A collection of ${tours.length} outdoor routes — planned with ${(await getSiteSettings()).site_name}.`;
   return {
     title: `${c.title} | ${tours.length} routes · ${(agg.distanceM / 1000).toFixed(0)} km`,
-    description:
-      c.intro?.slice(0, 160) ||
-      `A collection of ${tours.length} outdoor routes — planned with ${(await getSiteSettings()).site_name}.`,
+    description: ogDesc,
+    openGraph: { title: ogTitle, description: ogDesc },
+    twitter: { title: ogTitle, description: ogDesc },
   };
 }
 

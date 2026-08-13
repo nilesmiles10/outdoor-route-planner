@@ -100,11 +100,15 @@ export async function generateMetadata({
   const blurb =
     (params.locale === "en" ? hl.description_en : hl.description_nl) ?? hl.description;
   // Komoot's SEO title pattern: "<Name> – Wandel- & Fietsroutes"
+  const hlDesc =
+    blurb?.slice(0, 160) ??
+    `Ontdek ${hl.name}: community-highlight met tips, foto's en routes in de buurt.`;
   return {
     title: pageTitle(await getSiteSettings(), `${hl.name} – Wandel- & Fietsroutes`),
-    description:
-      blurb?.slice(0, 160) ??
-      `Ontdek ${hl.name}: community-highlight met tips, foto's en routes in de buurt.`,
+    description: hlDesc,
+    // Entity-specifieke OG i.p.v. de generieke layout-OG bij gedeelde links.
+    openGraph: { title: hl.name, description: hlDesc },
+    twitter: { title: hl.name, description: hlDesc },
     // De OSM-seed maakt honderdduizenden highlight-pagina's terwijl tips en
     // foto's user-generated zijn en er nog geen gebruikers zijn — de meeste
     // pagina's zijn dus (nog) dun. Op die schaal kan Google het patroon als

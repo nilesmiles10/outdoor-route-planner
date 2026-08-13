@@ -50,9 +50,14 @@ export async function generateMetadata({
   const p = await getProfile(params.id);
   if (!p) return { title: "Profile not found" };
   const t = await getTranslations("profile");
+  const name = p.display_name ?? t("anonymous");
+  const bio = p.bio ?? undefined;
   return {
-    title: pageTitle(await getSiteSettings(), p.display_name ?? t("anonymous")),
-    description: p.bio ?? undefined,
+    title: pageTitle(await getSiteSettings(), name),
+    description: bio,
+    // Entity-specifieke OG i.p.v. de generieke layout-OG bij gedeelde links.
+    openGraph: { title: name, description: bio },
+    twitter: { title: name, description: bio },
   };
 }
 
