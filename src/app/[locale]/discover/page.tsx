@@ -7,6 +7,7 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import { CATEGORY_EMOJI } from "@/lib/highlights";
 import { difficulty } from "@/lib/difficulty";
 import SiteFooter from "@/components/SiteFooter";
+import MiniMap from "@/components/MiniMap";
 
 type Row = {
   id: string;
@@ -14,6 +15,8 @@ type Row = {
   sport: string;
   stats: { distanceM: number; ascendM: number };
   waypoints: { lon: number; lat: number }[];
+  // Route-vorm-thumbnail (Komoot-stijl): geometry-coords voor de MiniMap.
+  geometry: { coordinates: [number, number][] } | null;
 };
 
 const SPORTS = ["all", "hike", "run", "touring", "gravel", "mtb", "road", "ebike"];
@@ -65,7 +68,7 @@ export default function DiscoverPage() {
 
   useEffect(() => {
     sb.from("tours")
-      .select("id,name,sport,stats,waypoints")
+      .select("id,name,sport,stats,waypoints,geometry")
       .eq("visibility", "public")
       .eq("kind", "planned")
       .limit(100)
@@ -75,7 +78,7 @@ export default function DiscoverPage() {
       });
     // Fase C admin-curatie: uitgelichte routes bovenaan als aparte rail.
     sb.from("tours")
-      .select("id,name,sport,stats,waypoints")
+      .select("id,name,sport,stats,waypoints,geometry")
       .eq("visibility", "public")
       .not("featured_at", "is", null)
       .order("featured_at", { ascending: false })
@@ -150,11 +153,16 @@ export default function DiscoverPage() {
               <a
                 key={r.id}
                 href={`/${locale}/tour/${r.id}`}
-                className="w-56 shrink-0 rounded-xl border border-amber-200 bg-amber-50/50 px-4 py-3 hover:border-amber-300"
+                className="w-56 shrink-0 overflow-hidden rounded-xl border border-amber-200 bg-amber-50/50 hover:border-amber-300"
               >
-                <div className="truncate text-sm font-medium text-neutral-900">{r.name}</div>
-                <div className="mt-0.5 text-xs text-neutral-500">
-                  {(r.stats.distanceM / 1000).toFixed(1)} km · ↗ {r.stats.ascendM} m · {ts(r.sport as never)}
+                <div className="flex h-20 items-center justify-center border-b border-amber-100 bg-white/60 p-2">
+                  <MiniMap coords={r.geometry?.coordinates} className="h-full w-full" />
+                </div>
+                <div className="px-4 py-3">
+                  <div className="truncate text-sm font-medium text-neutral-900">{r.name}</div>
+                  <div className="mt-0.5 text-xs text-neutral-500">
+                    {(r.stats.distanceM / 1000).toFixed(1)} km · ↗ {r.stats.ascendM} m · {ts(r.sport as never)}
+                  </div>
                 </div>
               </a>
             ))}
@@ -258,8 +266,14 @@ export default function DiscoverPage() {
           <a
             key={r.id}
             href={`/${locale}/tour/${r.id}`}
-            className="rounded-xl border border-neutral-100 bg-white p-4 shadow-sm transition hover:shadow-md"
+            className="overflow-hidden rounded-xl border border-neutral-100 bg-white shadow-sm transition hover:shadow-md"
           >
+            {/* Route-vorm-thumbnail: scan de lijst op vorm/rondje zoals bij
+                Komoot i.p.v. alleen tekst. Lichte SVG-polyline, geen kaart. */}
+            <div className="flex h-24 items-center justify-center border-b border-neutral-100 bg-neutral-50 p-2">
+              <MiniMap coords={r.geometry?.coordinates} className="h-full w-full" />
+            </div>
+            <div className="p-4">
             <div className="flex items-start justify-between gap-2">
               <div className="font-medium text-neutral-900">{r.name}</div>
               {/* Moeilijkheidsbadge zodat je op de browse-lijst kunt scannen
@@ -287,6 +301,7 @@ export default function DiscoverPage() {
               {r.distKm !== null && (
                 <span> · {Math.round(r.distKm)} km {t("away")}</span>
               )}
+            </div>
             </div>
           </a>
         ))}
