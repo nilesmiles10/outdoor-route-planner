@@ -1881,7 +1881,11 @@ export default function PlannerApp() {
       <div
         className={`absolute flex flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur max-md:inset-x-2 max-md:bottom-2 md:left-4 md:top-16 md:max-h-[calc(100dvh-5rem)] md:w-[340px] ${
           sheetCollapsed
-            ? "max-md:max-h-[3.75rem] max-md:overflow-hidden"
+            ? route
+              ? // ingeklapt mét route: hoger, zodat de mini-samenvatting bóven
+                // de MapLibre-attributiestrook valt (zelfde reden als TourView)
+                "max-md:max-h-[7rem] max-md:overflow-hidden"
+              : "max-md:max-h-[3.75rem] max-md:overflow-hidden"
             : "max-md:max-h-[45dvh]"
         }`}
       >
@@ -1896,6 +1900,42 @@ export default function PlannerApp() {
         >
           <span className="h-1.5 w-10 rounded-full bg-neutral-300" />
         </button>
+        {/* Ingeklapte peek: toon de kerncijfers van de berekende route, zodat je
+            de kaart kunt verkennen zónder afstand/tijd/klim/moeilijkheid kwijt te
+            raken. Alleen mobiel + alleen ingeklapt + alleen met route. */}
+        {sheetCollapsed && route && (
+          <div className="flex items-center gap-2 text-xs md:hidden">
+            <span className="shrink-0 font-semibold text-neutral-900">
+              {fmtKm(route.stats.distanceM)} km
+            </span>
+            <span className="shrink-0 text-neutral-500">
+              {fmtTime(route.stats.timeS)}
+            </span>
+            <span className="shrink-0 text-neutral-500">
+              ↗ {route.stats.ascendM} m
+            </span>
+            {(() => {
+              const d = difficulty(
+                sport,
+                route.stats.distanceM,
+                route.stats.ascendM,
+              );
+              return (
+                <span
+                  className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                    d === "easy"
+                      ? "bg-emerald-100 text-emerald-800"
+                      : d === "moderate"
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {t(`difficultyLabels.${d}`)}
+                </span>
+              );
+            })()}
+          </div>
+        )}
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-lg font-semibold text-neutral-900">
