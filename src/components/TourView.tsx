@@ -367,6 +367,32 @@ export default function TourView({
           onHover={setHoverIdx}
         />
         <GradeLegend />
+        {/* Klim-uitsplitsing: het profiel toont wáár het klimt, deze lijst
+            zegt hoevéél — lengte/hoogtewinst/gemiddelde grade per klim. Zweven
+            licht de klim op kaart + profiel op (zelfde setHoverIdx-contract als
+            de planner, waar deze lijst al bestond). */}
+        {climbs.length > 0 && (
+          <div className="flex flex-col gap-1">
+            {climbs.map((c, i) => (
+              <button
+                key={i}
+                type="button"
+                onMouseEnter={() => setHoverIdx(c.startIdx)}
+                onMouseLeave={() => setHoverIdx(null)}
+                className="flex items-center justify-between rounded-lg bg-orange-50 px-2 py-1 text-left text-[11px] text-orange-900 hover:bg-orange-100"
+              >
+                <span>
+                  ⛰ {t("climb")} {i + 1} · {t("atKm")}{" "}
+                  {(c.startM / 1000).toFixed(1)}
+                </span>
+                <span className="font-medium">
+                  {(c.lengthM / 1000).toFixed(1)} km · ↗{Math.round(c.gainM)} m ·{" "}
+                  {c.avgPct.toFixed(1)}%
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
         {total > 0 && (
           <div className="space-y-1.5">
             <div className="flex h-2 w-full overflow-hidden rounded-full">
