@@ -187,7 +187,23 @@ export default function DiscoverPage() {
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {filtered.length === 0 && (
-          <p className="text-sm text-neutral-400">{t("empty")}</p>
+          <div className="col-span-full flex flex-col items-start gap-2">
+            <p className="text-sm text-neutral-400">{t("empty")}</p>
+            {/* Reset-knop alleen tonen als er daadwerkelijk een filter actief
+                is — anders helpt wissen niet en is de knop misleidend. */}
+            {(sport !== "all" || band !== "all") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSport("all");
+                  setBand("all");
+                }}
+                className="text-sm font-medium text-emerald-700 hover:underline"
+              >
+                {t("clearFilters")}
+              </button>
+            )}
+          </div>
         )}
         {filtered.map((r) => (
           <a

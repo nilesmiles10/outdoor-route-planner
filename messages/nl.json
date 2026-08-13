@@ -365,7 +365,8 @@
     },
     "featured": "Uitgelicht",
     "trailsTitle": "Officiële routes",
-    "trailsMore": "Alle officiële routes →"
+    "trailsMore": "Alle officiële routes →",
+    "clearFilters": "Filters wissen"
   },
   "regionPage": {
     "breadcrumbDiscover": "Ontdekken",

@@ -365,7 +365,8 @@
     },
     "featured": "Featured",
     "trailsTitle": "Official trails",
-    "trailsMore": "All official trails →"
+    "trailsMore": "All official trails →",
+    "clearFilters": "Clear filters"
   },
   "regionPage": {
     "breadcrumbDiscover": "Discover",
