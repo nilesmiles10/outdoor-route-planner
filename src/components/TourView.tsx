@@ -8,6 +8,7 @@ import SpeedChart from "./SpeedChart";
 import TourSocial from "./TourSocial";
 import Avatar from "./Avatar";
 import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
+import { difficulty } from "@/lib/difficulty";
 import { speedSeries, fmtDuration } from "@/lib/activity";
 import ExportMenu from "./ExportMenu";
 import type { CourseTurn } from "@/lib/course";
@@ -261,12 +262,37 @@ export default function TourView({
             </div>
           )}
           <h1 className="text-lg font-semibold text-neutral-900">{header.name}</h1>
-          <p className="text-xs capitalize text-neutral-500">
-            {header.sport}
-            {activity && (
-              <span className="normal-case"> · 🏁 {activity.recordedLabel}</span>
-            )}
-          </p>
+          <div className="mt-0.5 flex flex-wrap items-center gap-2">
+            <p className="text-xs capitalize text-neutral-500">
+              {header.sport}
+              {activity && (
+                <span className="normal-case"> · 🏁 {activity.recordedLabel}</span>
+              )}
+            </p>
+            {/* Moeilijkheidsgraad-badge (zelfde formule + kleuren als de
+                planner). Route-info die op tour/trail eerder alleen in de
+                auto-omschrijving zat, nu als visuele badge. */}
+            {(() => {
+              const d = difficulty(
+                header.sport,
+                parseFloat(header.km) * 1000,
+                header.ascend,
+              );
+              return (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                    d === "easy"
+                      ? "bg-emerald-100 text-emerald-800"
+                      : d === "moderate"
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {t(`difficultyLabels.${d}` as never)}
+                </span>
+              );
+            })()}
+          </div>
         </div>
         <div className="grid grid-cols-4 gap-2 text-center">
           <div>
