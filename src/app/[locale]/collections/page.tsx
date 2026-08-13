@@ -136,6 +136,14 @@ export default function CollectionsPage() {
 
   const ownedIds = new Set(mine.map((c) => c.id));
   const bookmarkedNotOwn = bookmarked.filter((c) => !ownedIds.has(c.id));
+  // Publieke EXPLORE alleen collecties met ≥1 zichtbare route: een curatie die
+  // "0 routes · 0 km" toont is een teleurstelling in discovery (je klikt op een
+  // mooie titel en vindt niets). De eigenaar ziet zijn lege collecties nog wél
+  // onder "Mine", en de directe URL werkt (detailpagina vangt leeg netjes af).
+  // tours zijn RLS-gefilterd op zichtbaarheid, dus dit telt per kijker correct.
+  const exploreColls = publicColls.filter((c) =>
+    c.collection_items.some((i) => i.tours != null),
+  );
 
   return (
     <main className="mx-auto min-h-dvh max-w-4xl px-4 pb-16 pt-20">
@@ -199,11 +207,11 @@ export default function CollectionsPage() {
               </div>
             ))}
           </div>
-        ) : publicColls.length === 0 ? (
+        ) : exploreColls.length === 0 ? (
           <p className="text-sm text-neutral-400">{t("empty")}</p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {publicColls.map((c) => (
+            {exploreColls.map((c) => (
               <CollectionCard key={c.id} c={c} locale={locale} />
             ))}
           </div>
