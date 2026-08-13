@@ -332,19 +332,44 @@ export default function TourView({
           onHover={setHoverIdx}
         />
         {total > 0 && (
-          <div className="flex h-2 w-full overflow-hidden rounded-full">
-            <div
-              className="bg-blue-600"
-              style={{ width: `${(header.buckets.paved / total) * 100}%` }}
-            />
-            <div
-              className="bg-amber-500"
-              style={{ width: `${(header.buckets.unpaved / total) * 100}%` }}
-            />
-            <div
-              className="bg-neutral-300"
-              style={{ width: `${(header.buckets.unknown / total) * 100}%` }}
-            />
+          <div className="space-y-1.5">
+            <div className="flex h-2 w-full overflow-hidden rounded-full">
+              <div
+                className="bg-blue-600"
+                style={{ width: `${(header.buckets.paved / total) * 100}%` }}
+              />
+              <div
+                className="bg-amber-500"
+                style={{ width: `${(header.buckets.unpaved / total) * 100}%` }}
+              />
+              <div
+                className="bg-neutral-300"
+                style={{ width: `${(header.buckets.unknown / total) * 100}%` }}
+              />
+            </div>
+            {/* Legenda: zonder labels was de blauw/amber-balk betekenisloos —
+                juist voor gravel-rijders telt verhard vs onverhard. km uit de
+                buckets (meters). Alleen aanwezige categorieën tonen. */}
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-neutral-500">
+              {header.buckets.paved > 0 && (
+                <span className="flex items-center gap-1">
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-blue-600" />
+                  {t("paved")} {(header.buckets.paved / 1000).toFixed(1)} km
+                </span>
+              )}
+              {header.buckets.unpaved > 0 && (
+                <span className="flex items-center gap-1">
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+                  {t("unpaved")} {(header.buckets.unpaved / 1000).toFixed(1)} km
+                </span>
+              )}
+              {header.buckets.unknown > 0 && (
+                <span className="flex items-center gap-1">
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-neutral-300" />
+                  {t("unknown")} {(header.buckets.unknown / 1000).toFixed(1)} km
+                </span>
+              )}
+            </div>
           </div>
         )}
         <div className="flex flex-wrap gap-2">
