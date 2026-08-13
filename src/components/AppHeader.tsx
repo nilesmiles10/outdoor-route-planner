@@ -7,7 +7,7 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import { useSiteSettings } from "./SiteSettingsProvider";
 
 type Hit = {
-  type: "route" | "place" | "person";
+  type: "route" | "trail" | "place" | "person";
   label: string;
   sub: string;
   href: string;
@@ -79,9 +79,16 @@ export default function AppHeader() {
     setSearching(true);
     setOpen(true);
     timer.current = setTimeout(async () => {
-      const [tours, people, places] = await Promise.all([
+      const [tours, trails, people, places] = await Promise.all([
         sb
           .from("tours")
+          .select("id,name,sport,stats")
+          .ilike("name", `%${v}%`)
+          .limit(4),
+        // Officiële trails (30k) waren onvindbaar via de globale zoekbalk —
+        // die zocht alleen tours/mensen/plaatsen.
+        sb
+          .from("trails")
           .select("id,name,sport,stats")
           .ilike("name", `%${v}%`)
           .limit(4),
@@ -100,6 +107,14 @@ export default function AppHeader() {
           href: `/${locale}/tour/${r.id}`,
         }),
       );
+      const trailHits: Hit[] = (trails.data ?? []).map(
+        (r: { id: string; name: string; sport: string; stats: { distanceM: number } }) => ({
+          type: "trail",
+          label: r.name,
+          sub: `${(r.stats.distanceM / 1000).toFixed(0)} km · ${tsport(r.sport as never)}`,
+          href: `/${locale}/trail/${r.id}`,
+        }),
+      );
       const personHits: Hit[] = (people.data ?? []).map(
         (u: { id: string; display_name: string | null; home_region: string | null }) => ({
           type: "person",
@@ -116,13 +131,14 @@ export default function AppHeader() {
           sub: p.label,
           href: `/${locale}?at=${p.lon.toFixed(5)},${p.lat.toFixed(5)}&atn=${encodeURIComponent(p.name)}`,
         }));
-      setHits([...routeHits, ...personHits, ...placeHits]);
+      setHits([...routeHits, ...trailHits, ...personHits, ...placeHits]);
       setSearching(false);
       setOpen(true);
     }, 250);
   }
 
   const routeHits = hits.filter((h) => h.type === "route");
+  const trailHits = hits.filter((h) => h.type === "trail");
   const personHits = hits.filter((h) => h.type === "person");
   const placeHits = hits.filter((h) => h.type === "place");
 
@@ -198,6 +214,17 @@ export default function AppHeader() {
             )}
             {routeHits.map((h, i) => (
               <a key={`r${i}`} href={h.href} className="block px-3 py-2 text-sm hover:bg-neutral-50">
+                <span className="font-medium">{h.label}</span>
+                <span className="ml-2 text-xs text-neutral-500">{h.sub}</span>
+              </a>
+            ))}
+            {trailHits.length > 0 && (
+              <div className="px-3 pt-2 text-[10px] font-semibold uppercase text-neutral-400">
+                {t("trails")}
+              </div>
+            )}
+            {trailHits.map((h, i) => (
+              <a key={`t${i}`} href={h.href} className="block px-3 py-2 text-sm hover:bg-neutral-50">
                 <span className="font-medium">{h.label}</span>
                 <span className="ml-2 text-xs text-neutral-500">{h.sub}</span>
               </a>
@@ -364,6 +391,22 @@ export default function AppHeader() {
                 {routeHits.map((h, i) => (
                   <a
                     key={`mr${i}`}
+                    href={h.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="block px-3 py-2 text-sm hover:bg-neutral-50"
+                  >
+                    <span className="font-medium">{h.label}</span>
+                    <span className="ml-2 text-xs text-neutral-500">{h.sub}</span>
+                  </a>
+                ))}
+                {trailHits.length > 0 && (
+                  <div className="px-3 pt-2 text-[10px] font-semibold uppercase text-neutral-400">
+                    {t("trails")}
+                  </div>
+                )}
+                {trailHits.map((h, i) => (
+                  <a
+                    key={`mt${i}`}
                     href={h.href}
                     onClick={() => setMobileOpen(false)}
                     className="block px-3 py-2 text-sm hover:bg-neutral-50"
