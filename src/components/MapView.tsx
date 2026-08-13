@@ -696,7 +696,30 @@ export default function MapView({
       // Debug handle for browser-console inspection only.
       (window as unknown as { __map?: maplibregl.Map }).__map = map;
     }
+
+    // Canvas-sizing guard. MapLibre sizes the GL canvas from the container's
+    // measured dimensions at construction time; when the container is still
+    // unmeasured (0-height during hydration, a late-resolving `h-dvh`/flex
+    // parent), the canvas falls back to its 400×300 default and MapLibre's
+    // internal trackResize observer does not always correct it. That left the
+    // map rendering in a 400×300 corner while the rest of the viewport was
+    // dead space — and clicks outside that corner never reached the map, so
+    // adding route points failed everywhere but the top-left. We own a
+    // ResizeObserver on the container so every dimension change (initial
+    // layout, orientation flip, mobile browser-chrome show/hide) forces a
+    // resize, and we nudge once after the first paint to catch the init race.
+    const forceResize = () => map.resize();
+    const raf = requestAnimationFrame(forceResize);
+    map.once("load", forceResize);
+    const resizeObs =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(forceResize)
+        : null;
+    if (resizeObs && containerRef.current) resizeObs.observe(containerRef.current);
+
     return () => {
+      cancelAnimationFrame(raf);
+      resizeObs?.disconnect();
       map.remove();
       mapRef.current = null;
       setReady(false);
