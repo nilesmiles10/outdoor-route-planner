@@ -6,6 +6,7 @@ import BookmarkButton from "@/components/BookmarkButton";
 import ShareButton from "@/components/ShareButton";
 import MiniMap from "@/components/MiniMap";
 import { aggregateStats, gradientFor, SPORT_EMOJI } from "@/lib/collections";
+import { difficulty } from "@/lib/difficulty";
 import SiteFooter from "@/components/SiteFooter";
 import { getSiteSettings } from "@/lib/siteSettings";
 
@@ -70,6 +71,7 @@ export default async function CollectionPage({
   const c = await getCollection(params.id);
   if (!c) notFound();
   const t = await getTranslations("collections");
+  const tdiff = await getTranslations("planner.difficultyLabels");
   const { locale } = params;
 
   const sb = supabaseServer();
@@ -161,13 +163,35 @@ export default async function CollectionPage({
                 />
               </div>
               <div className="min-w-0 flex-1">
-                <a
-                  href={`/${locale}/tour/${tr.id}`}
-                  className="font-medium text-neutral-900 hover:text-emerald-800"
-                >
-                  <span className="mr-1 text-neutral-400">{i + 1}.</span>
-                  {tr.name}
-                </a>
+                <div className="flex items-start justify-between gap-2">
+                  <a
+                    href={`/${locale}/tour/${tr.id}`}
+                    className="font-medium text-neutral-900 hover:text-emerald-800"
+                  >
+                    <span className="mr-1 text-neutral-400">{i + 1}.</span>
+                    {tr.name}
+                  </a>
+                  {(() => {
+                    const d = difficulty(
+                      tr.sport,
+                      tr.stats.distanceM,
+                      tr.stats.ascendM,
+                    );
+                    return (
+                      <span
+                        className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          d === "easy"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : d === "moderate"
+                              ? "bg-amber-100 text-amber-800"
+                              : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {tdiff(d)}
+                      </span>
+                    );
+                  })()}
+                </div>
                 <div className="text-xs text-neutral-500">
                   {(tr.stats.distanceM / 1000).toFixed(1)} km · ↗ {tr.stats.ascendM} m ·{" "}
                   <span className="capitalize">
