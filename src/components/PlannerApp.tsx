@@ -156,6 +156,16 @@ function isSportClient(v: string): v is Sport {
   return (SPORTS as readonly string[]).includes(v);
 }
 
+// Vang de ORIGINELE URL-query één keer op modulescope, vóór React mount. Onder
+// React StrictMode mount de planner tweemaal, en tussen die mounts wist het
+// URL-schrijf-effect `?w` (filled < 2 op de eerste render). Een effect dat de
+// live URL leest ziet bij de tweede mount dus geen `?w` meer en zou dan de
+// localStorage-sport over de gedeelde `?sport` heen restoren. Een module-
+// singleton overleeft de remount en blijft de echte begin-URL weerspiegelen.
+const INITIAL_HAD_ROUTE =
+  typeof window !== "undefined" &&
+  !!new URLSearchParams(window.location.search).get("w");
+
 function fmtKm(m: number) {
   return (m / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
@@ -508,6 +518,40 @@ export default function PlannerApp() {
       /* storage vol/geblokkeerd — negeer */
     }
   }, [showHl, showKmMarkers, showUnpaved, hiddenCats, networks]);
+  // Onthoud de laatst gekozen sport, zodat de planner niet elke sessie op
+  // "touring" terugvalt. Restore is bewust GEGATE op de afwezigheid van `?w`:
+  // een gedeelde route-link (`?w=...&sport=...`) bevat zijn eigen sport en die
+  // wint — de restore hieronder vuurt alleen voor een verse planner (geen
+  // waypoints in de URL) en concurreert dus nooit met de deel-URL-afhandeling
+  // (de `?sport`-regel in de URL-leeseffect). Run-once (`[]`), dus geen
+  // her-run op een door de schrijf-effect opgeschoonde URL.
+  const SPORT_KEY = "tarnoo:sport";
+  useEffect(() => {
+    // Gate op de bij-modulelaad opgevangen begin-URL, NIET op de live URL:
+    // die is onder StrictMode al gewist tegen de tweede mount (zie comment bij
+    // INITIAL_HAD_ROUTE). Een gedeelde route-link wint zo altijd van localStorage.
+    if (INITIAL_HAD_ROUTE) return;
+    try {
+      const saved = localStorage.getItem(SPORT_KEY);
+      if (saved && isSportClient(saved)) setSport(saved);
+    } catch {
+      // storage geblokkeerd — gebruik default
+    }
+  }, []);
+  // Zelfde eerste-render-skip als map-prefs: anders schrijft dit effect de
+  // default "touring" over de zojuist gerestorede waarde heen.
+  const sportPrimed = useRef(false);
+  useEffect(() => {
+    if (!sportPrimed.current) {
+      sportPrimed.current = true;
+      return;
+    }
+    try {
+      localStorage.setItem(SPORT_KEY, sport);
+    } catch {
+      /* storage vol/geblokkeerd — negeer */
+    }
+  }, [sport]);
   // Saved places (GEN-137): owner-only star layer, balloon save/unsave.
   const [savedRows, setSavedRows] = useState<
     { id: string; name: string; lon: number; lat: number }[] | null
