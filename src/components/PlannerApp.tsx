@@ -457,6 +457,57 @@ export default function PlannerApp() {
   // Sport-netwerk-overlays (Waymarked Trails) — opt-in, sport-bewuste default
   // zou stille tile-load betekenen; bewust handmatig.
   const [networks, setNetworks] = useState({ hiking: false, cycling: false, mtb: false });
+
+  // Map-content-voorkeuren onthouden tussen bezoeken (localStorage). Voorheen
+  // resette elke reload de highlights/km-markers/onverhard/categorieën/netwerk-
+  // toggles naar default — wie de kaart opschoonde, moest dat elke keer opnieuw.
+  // Restore ná mount (niet in de state-init) om hydration-mismatch te vermijden.
+  const MAP_PREFS_KEY = "tarnoo:mapContent";
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(MAP_PREFS_KEY);
+      if (!raw) return;
+      const p = JSON.parse(raw);
+      if (typeof p.showHl === "boolean") setShowHl(p.showHl);
+      if (typeof p.showKmMarkers === "boolean") setShowKmMarkers(p.showKmMarkers);
+      if (typeof p.showUnpaved === "boolean") setShowUnpaved(p.showUnpaved);
+      if (Array.isArray(p.hiddenCats)) setHiddenCats(new Set(p.hiddenCats));
+      if (p.networks && typeof p.networks === "object") {
+        setNetworks({
+          hiking: !!p.networks.hiking,
+          cycling: !!p.networks.cycling,
+          mtb: !!p.networks.mtb,
+        });
+      }
+    } catch {
+      // corrupte/geblokkeerde storage — negeer, gebruik defaults
+    }
+  }, []);
+  // Sla de eerste render over: dan draait dit effect nog met de DEFAULT-state
+  // (de restore-setState is wel gepland maar nog niet toegepast), waardoor het
+  // de zojuist gelezen voorkeuren met defaults zou overschrijven. Pas persist
+  // vanaf de tweede render (= restore toegepast, of een echte gebruikers-wijziging).
+  const mapPrefsPrimed = useRef(false);
+  useEffect(() => {
+    if (!mapPrefsPrimed.current) {
+      mapPrefsPrimed.current = true;
+      return;
+    }
+    try {
+      localStorage.setItem(
+        MAP_PREFS_KEY,
+        JSON.stringify({
+          showHl,
+          showKmMarkers,
+          showUnpaved,
+          hiddenCats: Array.from(hiddenCats),
+          networks,
+        }),
+      );
+    } catch {
+      /* storage vol/geblokkeerd — negeer */
+    }
+  }, [showHl, showKmMarkers, showUnpaved, hiddenCats, networks]);
   // Saved places (GEN-137): owner-only star layer, balloon save/unsave.
   const [savedRows, setSavedRows] = useState<
     { id: string; name: string; lon: number; lat: number }[] | null
