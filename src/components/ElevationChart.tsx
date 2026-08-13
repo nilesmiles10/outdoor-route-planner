@@ -38,6 +38,26 @@ function gradeColor(absPct: number): string {
 // wild zou flikkeren. 50 m dempt dat zonder echte hellingen glad te strijken.
 const GRADE_WINDOW_M = 50;
 
+// Getekende grade (%) op index i, over het GRADE_WINDOW_M-venster. Positief =
+// omhoog, negatief = omlaag. Gedeeld door de lijnkleuring (abs) én de hover-
+// aflezing (met teken). Robuust voor i = laatste index.
+function gradeAtIndex(
+  elevation: number[],
+  distances: number[],
+  i: number,
+): number {
+  const n = elevation.length;
+  if (n < 2) return 0;
+  const fwd = Math.min(i + 1, n - 1);
+  let lo = i;
+  while (lo > 0 && distances[i] - distances[lo] < GRADE_WINDOW_M / 2) lo--;
+  let hi = fwd;
+  while (hi < n - 1 && distances[hi] - distances[fwd] < GRADE_WINDOW_M / 2) hi++;
+  const dd = distances[hi] - distances[lo];
+  if (dd <= 0) return 0;
+  return ((elevation[hi] - elevation[lo]) / dd) * 100;
+}
+
 export default function ElevationChart({
   elevation,
   distances,
@@ -68,16 +88,8 @@ export default function ElevationChart({
   const segments = useMemo(() => {
     const n = elevation.length;
     if (n < 2) return [] as { points: string; color: string }[];
-    const gradeAt = (i: number) => {
-      // Meet de hoogteverandering over ≥ GRADE_WINDOW_M rond segment i→i+1.
-      let lo = i;
-      while (lo > 0 && distances[i] - distances[lo] < GRADE_WINDOW_M / 2) lo--;
-      let hi = i + 1;
-      while (hi < n - 1 && distances[hi] - distances[i + 1] < GRADE_WINDOW_M / 2) hi++;
-      const dd = distances[hi] - distances[lo];
-      if (dd <= 0) return 0;
-      return (Math.abs(elevation[hi] - elevation[lo]) / dd) * 100;
-    };
+    const gradeAt = (i: number) =>
+      Math.abs(gradeAtIndex(elevation, distances, i));
     const runs: { points: string; color: string }[] = [];
     let cur: string[] = [`${x(0).toFixed(1)},${y(elevation[0]).toFixed(1)}`];
     let curColor = gradeColor(gradeAt(0));
@@ -204,14 +216,19 @@ export default function ElevationChart({
             strokeWidth="1.5"
           />
           <text
-            x={x(hoverIdx) > W - 70 ? x(hoverIdx) - 4 : x(hoverIdx) + 4}
+            x={x(hoverIdx) > W - 95 ? x(hoverIdx) - 4 : x(hoverIdx) + 4}
             y={PAD_TOP + 8}
-            textAnchor={x(hoverIdx) > W - 70 ? "end" : "start"}
+            textAnchor={x(hoverIdx) > W - 95 ? "end" : "start"}
             fontSize="9"
             className="fill-neutral-700"
           >
             {(distances[hoverIdx] / 1000).toFixed(1)} km ·{" "}
             {Math.round(elevation[hoverIdx])} m
+            {(() => {
+              // Grade bij de cursor (Komoot toont dit): met teken, +omhoog.
+              const g = gradeAtIndex(elevation, distances, hoverIdx);
+              return ` · ${g >= 0 ? "+" : ""}${g.toFixed(1)}%`;
+            })()}
           </text>
         </g>
       )}
