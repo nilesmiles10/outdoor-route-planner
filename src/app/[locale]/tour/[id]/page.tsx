@@ -87,15 +87,21 @@ export async function generateMetadata({
   if (!tour) return { title: "Tour not found" };
   const km = (tour.stats.distanceM / 1000).toFixed(1);
   const t = await getTranslations("tourPage");
+  const ts = await getTranslations("planner.sports");
+  // Gelabelde + gelokaliseerde sport i.p.v. de ruwe sleutel: titel/OG toonden
+  // "road"/"touring"/"ebike" i.p.v. "Road bike"/"Bike touring"/"E-bike" (NL:
+  // "Racefiets"/"Fietsen"). Zichtbaar in zoekresultaten, browsertab en share-
+  // cards van de geïndexeerde tourpagina's.
+  const sportLabel = ts(tour.sport as never);
   const authorName = tour.profile?.display_name ?? t("anonymous");
   // Route-specifieke OG/Twitter: zonder deze erfden gedeelde tour-links de
   // generieke layout-OG ("Tarnoo" / "Plan your next adventure") — elke
   // gedeelde route zag er identiek uit. De OG-afbeelding komt al per tour uit
   // de opengraph-image-route; alleen titel/omschrijving + large-image-card.
-  const ogTitle = `${tour.name} · ${km} km ${tour.sport}`;
+  const ogTitle = `${tour.name} · ${km} km ${sportLabel}`;
   const ogDesc = `${km} km · ↗ ${tour.stats.ascendM} m — ${buildAutoDesc(t, tour)}`;
   return {
-    title: `${tour.name} | ${km} km ${tour.sport}`,
+    title: `${tour.name} | ${km} km ${sportLabel}`,
     description: `${ogDesc} · ${t("byline", { name: authorName })}`,
     openGraph: { title: ogTitle, description: ogDesc },
     twitter: { card: "summary_large_image", title: ogTitle, description: ogDesc },
@@ -255,7 +261,7 @@ export default async function TourPage({
             "@context": "https://schema.org",
             "@type": "Trip",
             name: tour.name,
-            description: `${km} km ${tour.sport} route — ${autoDesc}`,
+            description: `${km} km ${ts(tour.sport as never)} route — ${autoDesc}`,
             author: { "@type": "Person", name: authorName },
             itinerary: tour.waypoints.map((w) => ({
               "@type": "Place",
