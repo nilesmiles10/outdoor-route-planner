@@ -27,6 +27,17 @@ type TrailRow = {
 // (zie trail_is_gravel() in de DB), en deze chip filtert dus op is_gravel.
 const SPORTS = ["all", "hike", "touring", "gravel", "mtb"] as const;
 
+// Server-side sortering. JSONB-numeriek sorteren kán via PostgREST met `->`
+// (niet `->>`): `stats->distanceM` ordent numeriek, geverifieerd. "name" =
+// de bestaande alfabetische default.
+const TRAIL_SORTS = {
+  name: { col: "name", asc: true },
+  shortest: { col: "stats->distanceM", asc: true },
+  longest: { col: "stats->distanceM", asc: false },
+  climbing: { col: "stats->ascendM", asc: false },
+} as const;
+type TrailSort = keyof typeof TRAIL_SORTS;
+
 // ISO-landcode → vlag-emoji (regional indicators); naam via Intl.DisplayNames.
 function flag(iso: string): string {
   return String.fromCodePoint(
@@ -57,6 +68,7 @@ export default async function TrailsPage({
     region?: string;
     q?: string;
     loop?: string;
+    sort?: string;
   };
 }) {
   const { locale } = params;
@@ -72,6 +84,10 @@ export default async function TrailsPage({
   const region = searchParams.region ?? "all";
   const q = searchParams.q?.trim() ?? "";
   const loopOnly = searchParams.loop === "1";
+  const sort: TrailSort =
+    searchParams.sort && searchParams.sort in TRAIL_SORTS
+      ? (searchParams.sort as TrailSort)
+      : "name";
 
   const sb = supabaseServer();
   // Cap op de lijst; als 'ie geraakt wordt tonen we een verfijn-hint i.p.v.
@@ -80,7 +96,7 @@ export default async function TrailsPage({
   let query = sb
     .from("trails")
     .select("id,name,sport,region,roundtrip,stats,is_gravel,gravel_m")
-    .order("name")
+    .order(TRAIL_SORTS[sort].col, { ascending: TRAIL_SORTS[sort].asc })
     .limit(TRAIL_LIMIT);
   if (sport === "gravel") query = query.eq("is_gravel", true);
   else if (sport !== "all") query = query.eq("sport", sport);
@@ -124,6 +140,7 @@ export default async function TrailsPage({
       region,
       q,
       loop: loopOnly ? "1" : "",
+      sort,
       ...("country" in patch ? { region: "all" } : {}),
       ...patch,
     };
@@ -132,6 +149,7 @@ export default async function TrailsPage({
     if (merged.region !== "all") p.set("region", merged.region);
     if (merged.q) p.set("q", merged.q);
     if (merged.loop === "1") p.set("loop", "1");
+    if (merged.sort && merged.sort !== "name") p.set("sort", merged.sort);
     const s = p.toString();
     return `/${locale}/trails${s ? `?${s}` : ""}`;
   };
@@ -249,6 +267,9 @@ export default async function TrailsPage({
         {sport !== "all" && <input type="hidden" name="sport" value={sport} />}
         {country !== "all" && <input type="hidden" name="country" value={country} />}
         {region !== "all" && <input type="hidden" name="region" value={region} />}
+        {/* Óók loop/sort meesturen, anders dropt de naam-zoek die filters. */}
+        {loopOnly && <input type="hidden" name="loop" value="1" />}
+        {sort !== "name" && <input type="hidden" name="sort" value={sort} />}
         <input
           name="q"
           defaultValue={q}
@@ -256,6 +277,26 @@ export default async function TrailsPage({
           className="w-full max-w-sm rounded-lg border border-neutral-200 px-3 py-1.5 text-sm"
         />
       </form>
+
+      {/* Server-side sortering (JSONB-numeriek via PostgREST). "A–Z" = default. */}
+      <div className="mt-3 flex flex-wrap items-center gap-1">
+        <span className="mr-1 text-xs font-medium text-neutral-400">
+          {t("sortBy")}
+        </span>
+        {(Object.keys(TRAIL_SORTS) as TrailSort[]).map((s) => (
+          <a
+            key={s}
+            href={href({ sort: s })}
+            className={`rounded-full px-3 py-1 text-xs font-medium ${
+              sort === s
+                ? "bg-emerald-700 text-white"
+                : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+            }`}
+          >
+            {t(`sort.${s}` as never)}
+          </a>
+        ))}
+      </div>
 
       {trails.length === 0 ? (
         <div className="mt-8 flex flex-col items-start gap-2">

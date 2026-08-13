@@ -518,7 +518,14 @@
     "gravelMeta": "{km} km gravel",
     "clearFilters": "Clear filters",
     "capHint": "Showing the first {count} trails. Refine by country, sport, or search by name to see more.",
-    "loopsOnly": "Loops only"
+    "loopsOnly": "Loops only",
+    "sortBy": "Sort",
+    "sort": {
+      "name": "A–Z",
+      "shortest": "Shortest",
+      "longest": "Longest",
+      "climbing": "Most climbing"
+    }
   },
   "trailPage": {
     "official": "Official trail",
