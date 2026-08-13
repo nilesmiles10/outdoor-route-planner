@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import MapView, { type Waypoint } from "./MapView";
 import ElevationChart from "./ElevationChart";
+import GradeLegend from "./GradeLegend";
 import SpeedChart from "./SpeedChart";
 import TourSocial from "./TourSocial";
 import Avatar from "./Avatar";
@@ -365,6 +366,7 @@ export default function TourView({
           climbs={climbs}
           onHover={setHoverIdx}
         />
+        <GradeLegend />
         {total > 0 && (
           <div className="space-y-1.5">
             <div className="flex h-2 w-full overflow-hidden rounded-full">

@@ -151,6 +151,10 @@
       "rateLimited": "Te veel zoekopdrachten — wacht heel even",
       "unavailable": "Zoeken is nu niet beschikbaar",
       "errorHint": "Tip: klik op de kaart om zelf een punt te plaatsen"
+    },
+    "grade": {
+      "label": "Steilheid",
+      "tooltip": "De kleur van de hoogtelijn laat zien hoe steil elk deel van de route is."
     }
   },
   "account": {

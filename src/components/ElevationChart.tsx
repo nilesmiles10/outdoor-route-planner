@@ -19,12 +19,19 @@ const PAD_BOTTOM = 14;
 // wáár een route zwaar wordt, niet alleen hoeveel totale klim. Absolute grade
 // (klim én afdaling tellen), sequentieel koel→warm zodat "warmer = steiler"
 // vanzelf leest. Grenzen ~ gangbare fiets/wandel-steilheidsschaal.
+// Eén bron voor de lijnkleuring én de legenda (GradeLegend), zodat ze nooit
+// uit elkaar lopen. Labels zijn numeriek/locale-neutraal.
+export const GRADE_BANDS: { max: number; color: string; label: string }[] = [
+  { max: 3, color: "#3b82f6", label: "<3%" }, // vlak — blauw (oude lijnkleur)
+  { max: 6, color: "#eab308", label: "3–6%" }, // geel
+  { max: 9, color: "#f97316", label: "6–9%" }, // oranje
+  { max: 12, color: "#ef4444", label: "9–12%" }, // rood
+  { max: Infinity, color: "#b91c1c", label: "≥12%" }, // donkerrood
+];
+
 function gradeColor(absPct: number): string {
-  if (absPct < 3) return "#3b82f6"; // vlak — blauw (matcht de oude lijnkleur)
-  if (absPct < 6) return "#eab308"; // 3-6% — geel
-  if (absPct < 9) return "#f97316"; // 6-9% — oranje
-  if (absPct < 12) return "#ef4444"; // 9-12% — rood
-  return "#b91c1c"; // ≥12% — donkerrood
+  for (const b of GRADE_BANDS) if (absPct < b.max) return b.color;
+  return GRADE_BANDS[GRADE_BANDS.length - 1].color;
 }
 // Grade wordt over een afstand-venster gemeten i.p.v. tussen twee naburige
 // samples: routing-hoogte is ruizig (±1-2 m), waardoor per-segment-grade anders

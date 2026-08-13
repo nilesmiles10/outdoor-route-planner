@@ -151,6 +151,10 @@
       "rateLimited": "Too many searches — please wait a moment",
       "unavailable": "Search is unavailable right now",
       "errorHint": "Tip: click the map to drop a point instead"
+    },
+    "grade": {
+      "label": "Steepness",
+      "tooltip": "The colour of the elevation line shows how steep each part of the route is."
     }
   },
   "account": {

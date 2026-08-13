@@ -13,6 +13,7 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import MapView, { type HighlightClick, type Waypoint } from "./MapView";
 import SearchField from "./SearchField";
 import ElevationChart from "./ElevationChart";
+import GradeLegend from "./GradeLegend";
 import AccountPanel, { type TourPayload } from "./AccountPanel";
 import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
 import { parseGpx, sampleAnchors } from "@/lib/gpx";
@@ -2236,6 +2237,7 @@ export default function PlannerApp() {
                 onHover={setHoverIdx}
               />
             )}
+            {distances && <GradeLegend />}
 
             {climbs.length > 0 && distances && (
               <div className="flex flex-col gap-1">
