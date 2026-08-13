@@ -381,7 +381,14 @@
     "featured": "Uitgelicht",
     "trailsTitle": "Officiële routes",
     "trailsMore": "Alle officiële routes →",
-    "clearFilters": "Filters wissen"
+    "clearFilters": "Filters wissen",
+    "sortBy": "Sorteren",
+    "sort": {
+      "nearest": "Dichtstbij",
+      "shortest": "Kortst",
+      "longest": "Langst",
+      "climbing": "Meeste klim"
+    }
   },
   "regionPage": {
     "breadcrumbDiscover": "Ontdekken",

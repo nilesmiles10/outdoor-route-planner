@@ -31,6 +31,9 @@ const BANDS: [string, number, number][] = [
   ["mid", 20000, 50000],
   ["long", 50000, Infinity],
 ];
+// Sorteeropties voor de browse-lijst. "nearest" = het bestaande gedrag
+// (proximity via geolocatie; zonder locatie een stabiele volgorde).
+const SORTS = ["nearest", "shortest", "longest", "climbing"] as const;
 
 function haversineKm(a: [number, number], b: [number, number]) {
   const R = 6371;
@@ -62,6 +65,7 @@ export default function DiscoverPage() {
   >([]);
   const [sport, setSport] = useState("all");
   const [band, setBand] = useState("all");
+  const [sortBy, setSortBy] = useState<(typeof SORTS)[number]>("nearest");
   const [pos, setPos] = useState<[number, number] | null>(null);
   // GEN-116: region × category combos with enough content for a page.
   const [combos, setCombos] = useState<Combo[]>([]);
@@ -136,7 +140,18 @@ export default function DiscoverPage() {
       ...r,
       distKm: pos && r.waypoints[0] ? haversineKm(pos, [r.waypoints[0].lon, r.waypoints[0].lat]) : null,
     }))
-    .sort((a, b) => (a.distKm ?? 1e9) - (b.distKm ?? 1e9));
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "shortest":
+          return a.stats.distanceM - b.stats.distanceM;
+        case "longest":
+          return b.stats.distanceM - a.stats.distanceM;
+        case "climbing":
+          return b.stats.ascendM - a.stats.ascendM;
+        default: // nearest
+          return (a.distKm ?? 1e9) - (b.distKm ?? 1e9);
+      }
+    });
 
   return (
     <main className="mx-auto min-h-dvh max-w-4xl px-4 pb-16 pt-20">
@@ -227,6 +242,27 @@ export default function DiscoverPage() {
             }`}
           >
             {t(`bands.${k}` as never)}
+          </button>
+        ))}
+      </div>
+      {/* Sorteren: label vóór de chips zodat het niet als extra filter leest.
+          "nearest" (default) = het oude proximity-gedrag. */}
+      <div className="mt-2 flex flex-wrap items-center gap-1">
+        <span className="mr-1 text-xs font-medium text-neutral-400">
+          {t("sortBy")}
+        </span>
+        {SORTS.map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setSortBy(s)}
+            className={`rounded-full px-3 py-1 text-xs font-medium ${
+              sortBy === s
+                ? "bg-emerald-700 text-white"
+                : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+            }`}
+          >
+            {t(`sort.${s}` as never)}
           </button>
         ))}
       </div>

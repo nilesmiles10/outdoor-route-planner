@@ -381,7 +381,14 @@
     "featured": "Featured",
     "trailsTitle": "Official trails",
     "trailsMore": "All official trails →",
-    "clearFilters": "Clear filters"
+    "clearFilters": "Clear filters",
+    "sortBy": "Sort",
+    "sort": {
+      "nearest": "Nearest",
+      "shortest": "Shortest",
+      "longest": "Longest",
+      "climbing": "Most climbing"
+    }
   },
   "regionPage": {
     "breadcrumbDiscover": "Discover",
