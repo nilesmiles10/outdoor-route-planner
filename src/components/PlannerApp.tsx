@@ -14,6 +14,7 @@ import MapView, { type HighlightClick, type Waypoint } from "./MapView";
 import SearchField from "./SearchField";
 import ElevationChart from "./ElevationChart";
 import GradeLegend from "./GradeLegend";
+import { groupWaytypes } from "@/lib/waytypes";
 import AccountPanel, { type TourPayload } from "./AccountPanel";
 import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
 import { parseGpx, sampleAnchors } from "@/lib/gpx";
@@ -172,37 +173,6 @@ function fmtKm(m: number) {
 }
 
 // Difficulty formula lives in @/lib/difficulty (shared with the tour page).
-
-// Group raw OSM highway values into Komoot-style waytype buckets.
-const WAYTYPE_GROUPS: Record<string, string> = {
-  cycleway: "cycleway",
-  path: "path",
-  footway: "path",
-  bridleway: "path",
-  steps: "steps",
-  track: "track",
-  residential: "street",
-  living_street: "street",
-  pedestrian: "street",
-  service: "access",
-  unclassified: "road",
-  tertiary: "road",
-  tertiary_link: "road",
-  secondary: "road",
-  secondary_link: "road",
-  primary: "road",
-  primary_link: "road",
-  trunk: "road",
-  trunk_link: "road",
-};
-function groupWaytypes(waytypes: Record<string, number>) {
-  const out: Record<string, number> = {};
-  for (const [k, v] of Object.entries(waytypes)) {
-    const g = WAYTYPE_GROUPS[k] ?? "other";
-    out[g] = (out[g] ?? 0) + v;
-  }
-  return Object.entries(out).sort((a, b) => b[1] - a[1]);
-}
 
 // Group raw OSM surface values for the detail list.
 const SURFACE_GROUPS: Record<string, string> = {

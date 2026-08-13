@@ -161,6 +161,7 @@ export default async function TrailPage({
         }}
         durationS={trail.stats.timeS}
         turns={null}
+        waytypes={trail.waytypes}
         source={{
           badge: [
             t("official"),

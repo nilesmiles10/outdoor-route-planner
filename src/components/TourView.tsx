@@ -10,6 +10,7 @@ import TourSocial from "./TourSocial";
 import Avatar from "./Avatar";
 import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
 import { difficulty } from "@/lib/difficulty";
+import { groupWaytypes } from "@/lib/waytypes";
 import { speedSeries, fmtDuration } from "@/lib/activity";
 import ExportMenu from "./ExportMenu";
 import type { CourseTurn } from "@/lib/course";
@@ -40,6 +41,10 @@ type Props = {
   // turn-instructies (null bij oude tours/uploads).
   durationS?: number;
   turns?: CourseTurn[] | null;
+  // GEN: Komoot-stijl waytype-uitsplitsing (cycleway/path/road/street km).
+  // Opgeslagen op tour én trail; zonder dit toonde de detailpagina alleen de
+  // verhard/onverhard-balk, niet wélke wegtypes de route gebruikt.
+  waytypes?: Record<string, number> | null;
   // Auteur-attributie (Komoot teardown): breadcrumb + avatar-blok boven de
   // titel; alle strings server-side vertaald.
   author?: {
@@ -113,6 +118,7 @@ export default function TourView({
   embedId,
   durationS,
   turns,
+  waytypes,
   source,
 }: Props) {
   const t = useTranslations("planner");
@@ -468,6 +474,28 @@ export default function TourView({
               )}
             </div>
           </div>
+        )}
+        {/* Wegtype-uitsplitsing (Komoot "Way types"): wélke wegen/paden de
+            route gebruikt — de verhard/onverhard-balk zegt dat niet. Ingeklapt
+            (dense sheet); zelfde groepering + labels als de planner. */}
+        {waytypes && Object.keys(waytypes).length > 0 && (
+          <details className="text-xs">
+            <summary className="cursor-pointer font-medium text-neutral-700">
+              {t("waytypes")}
+            </summary>
+            <div className="mt-2 flex flex-col gap-0.5">
+              {/* Groepen < 50 m weglaten: die zouden als "0.0 km" tonen (bv.
+                  een paar meter trap) en zijn ruis in de uitsplitsing. */}
+              {groupWaytypes(waytypes)
+                .filter(([, v]) => v >= 50)
+                .map(([k, v]) => (
+                  <div key={k} className="flex justify-between text-neutral-600">
+                    <span>{t(`wt.${k}` as never)}</span>
+                    <span>{(v / 1000).toFixed(1)} km</span>
+                  </div>
+                ))}
+            </div>
+          </details>
         )}
         <div className="flex flex-wrap gap-2">
           <ExportMenu getData={exportData} />

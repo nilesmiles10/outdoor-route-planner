@@ -30,6 +30,7 @@ type TourRow = {
   profile: { display_name: string | null; avatar_url: string | null } | null;
   // GEN-143: turn-instructies (null bij oude tours/uploads).
   turns: { i: number; t: string; exit?: number }[] | null;
+  waytypes: Record<string, number> | null;
 };
 
 function haversineKm(aLon: number, aLat: number, bLon: number, bLat: number) {
@@ -51,7 +52,7 @@ async function getTour(id: string): Promise<TourRow | null> {
   const { data } = await sb
     .from("tours")
     .select(
-      "id,owner,name,visibility,sport,waypoints,geometry,elevation,stats,surfaces,updated_at,kind,recorded_at,duration_s,moving_s,max_speed_kmh,time_offsets,turns,profile:profiles!tours_owner_profiles_fkey(display_name,avatar_url)",
+      "id,owner,name,visibility,sport,waypoints,geometry,elevation,stats,surfaces,waytypes,updated_at,kind,recorded_at,duration_s,moving_s,max_speed_kmh,time_offsets,turns,profile:profiles!tours_owner_profiles_fkey(display_name,avatar_url)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -299,6 +300,7 @@ export default async function TourPage({
         embedId={tour.visibility === "public" ? tour.id : null}
         durationS={tour.stats.timeS}
         turns={tour.turns}
+        waytypes={tour.waytypes}
         author={{
           href: `/${locale}/user/${tour.owner}`,
           name: authorName,
