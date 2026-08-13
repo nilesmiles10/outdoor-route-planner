@@ -115,7 +115,24 @@ export default function AppHeader() {
   const placeHits = hits.filter((h) => h.type === "place");
 
   return (
-    <header className="fixed inset-x-0 top-0 z-30 flex h-12 items-center gap-4 bg-white/95 px-4 shadow-sm backdrop-blur">
+    <>
+      {/* Scrim: dimt de pagina onder de balk en sluit het menu bij een tik
+          ernaast. MOET buiten de <header> staan: die heeft backdrop-blur en
+          wordt daardoor het containing block voor fixed-descendants, waardoor
+          een scrim binnenin tot de 48px-hoge balk gekrompen werd (hoogte 0).
+          Buiten de header is de scrim viewport-fixed. z-30 = boven alle
+          pagina-inhoud (≤ z-20); de header (ook z-30) staat er ná in de DOM
+          en het menu-paneel (z-40) blijft er dus bovenop. Start op top-12
+          zodat de balk niet gedimd wordt. De ✕-knop blijft de toegankelijke
+          sluit-control; de scrim is aria-hidden. */}
+      {mobileOpen && (
+        <div
+          aria-hidden="true"
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-x-0 bottom-0 top-12 z-30 bg-black/30 md:hidden"
+        />
+      )}
+      <header className="fixed inset-x-0 top-0 z-30 flex h-12 items-center gap-4 bg-white/95 px-4 shadow-sm backdrop-blur">
       <a href={`/${locale}`} aria-label={site.site_name} className="flex items-center gap-2 font-semibold text-emerald-800">
         {site.logo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -291,6 +308,7 @@ export default function AppHeader() {
           </nav>
         </div>
       )}
-    </header>
+      </header>
+    </>
   );
 }
