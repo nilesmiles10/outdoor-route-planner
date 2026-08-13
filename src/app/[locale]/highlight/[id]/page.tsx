@@ -97,14 +97,18 @@ export async function generateMetadata({
   const hl = await getHighlight(params.id);
   if (!hl) return { title: "Highlight not found" };
   // Generated text wins over the raw OSM description tag; both may be null.
-  const blurb =
-    (params.locale === "en" ? hl.description_en : hl.description_nl) ?? hl.description;
-  // Komoot's SEO title pattern: "<Name> – Wandel- & Fietsroutes"
+  const isEn = params.locale === "en";
+  const blurb = (isEn ? hl.description_en : hl.description_nl) ?? hl.description;
+  // Komoot's SEO-titelpatroon "<Naam> – <sport-routes>", gelokaliseerd: op EN-
+  // pagina's stond hier het NL-suffix ("Wandel- & Fietsroutes") + NL-fallback.
+  const titleSuffix = isEn ? "Hiking & Cycling routes" : "Wandel- & Fietsroutes";
   const hlDesc =
     blurb?.slice(0, 160) ??
-    `Ontdek ${hl.name}: community-highlight met tips, foto's en routes in de buurt.`;
+    (isEn
+      ? `Discover ${hl.name}: a community highlight with tips, photos and nearby routes.`
+      : `Ontdek ${hl.name}: community-highlight met tips, foto's en routes in de buurt.`);
   return {
-    title: pageTitle(await getSiteSettings(), `${hl.name} – Wandel- & Fietsroutes`),
+    title: pageTitle(await getSiteSettings(), `${hl.name} – ${titleSuffix}`),
     description: hlDesc,
     // Entity-specifieke OG i.p.v. de generieke layout-OG bij gedeelde links.
     openGraph: { title: hl.name, description: hlDesc },
