@@ -41,10 +41,10 @@ export default function ElevationChart({
 
   if (elevation.length < 2 || totalM <= 0) return null;
 
-  function idxFromEvent(evt: React.MouseEvent) {
+  function idxAt(clientX: number) {
     const rect = svgRef.current?.getBoundingClientRect();
     if (!rect) return null;
-    const frac = Math.min(Math.max((evt.clientX - rect.left) / rect.width, 0), 1);
+    const frac = Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1);
     const targetM = frac * totalM;
     // binary search nearest distance
     let lo = 0;
@@ -71,11 +71,24 @@ export default function ElevationChart({
       // hoogteprofiel (geen expliciete hoogte + intrinsieke viewBox-hoogte
       // niet afgeleid). shrink-0 + vaste hoogte (= viewBox-H) garanderen de
       // hoogte; box-aspect ≈ viewBox-aspect dus vrijwel geen letterboxing.
-      className="h-24 w-full shrink-0 cursor-crosshair select-none"
+      className="h-24 w-full shrink-0 cursor-crosshair touch-none select-none"
       role="img"
       aria-label="Elevation profile"
-      onMouseMove={(e) => hover(idxFromEvent(e))}
-      onMouseLeave={() => hover(null)}
+      // Pointer-events i.p.v. mouse-only: op desktop scrubben bij hover (muis-
+      // pointermove vuurt zonder ingedrukte knop), op mobiel scrubben tijdens
+      // een sleep (touch-pointermove vuurt alleen met vinger neer). touch-none
+      // voorkomt page-scroll tijdens het slepen over de grafiek.
+      onPointerDown={(e) => {
+        (e.target as Element).setPointerCapture?.(e.pointerId);
+        hover(idxAt(e.clientX));
+      }}
+      onPointerMove={(e) => hover(idxAt(e.clientX))}
+      onPointerUp={(e) => {
+        // Muis: laat de marker staan bij hover (geen flikker per klik). Touch/
+        // pen: wissen zodra de vinger loskomt.
+        if (e.pointerType !== "mouse") hover(null);
+      }}
+      onPointerLeave={() => hover(null)}
     >
       {/* climb bands */}
       {climbs.map((c, i) => (
