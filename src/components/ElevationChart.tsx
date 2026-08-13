@@ -15,6 +15,22 @@ const H = 96;
 const PAD_TOP = 10;
 const PAD_BOTTOM = 14;
 
+// Steilheids-kleuren op het profiel (Komoot-signatuur): in één oogopslag zien
+// wáár een route zwaar wordt, niet alleen hoeveel totale klim. Absolute grade
+// (klim én afdaling tellen), sequentieel koel→warm zodat "warmer = steiler"
+// vanzelf leest. Grenzen ~ gangbare fiets/wandel-steilheidsschaal.
+function gradeColor(absPct: number): string {
+  if (absPct < 3) return "#3b82f6"; // vlak — blauw (matcht de oude lijnkleur)
+  if (absPct < 6) return "#eab308"; // 3-6% — geel
+  if (absPct < 9) return "#f97316"; // 6-9% — oranje
+  if (absPct < 12) return "#ef4444"; // 9-12% — rood
+  return "#b91c1c"; // ≥12% — donkerrood
+}
+// Grade wordt over een afstand-venster gemeten i.p.v. tussen twee naburige
+// samples: routing-hoogte is ruizig (±1-2 m), waardoor per-segment-grade anders
+// wild zou flikkeren. 50 m dempt dat zonder echte hellingen glad te strijken.
+const GRADE_WINDOW_M = 50;
+
 export default function ElevationChart({
   elevation,
   distances,
@@ -38,6 +54,42 @@ export default function ElevationChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [elevation, distances],
   );
+
+  // Deel de profiellijn op in kleur-runs op basis van de (gedempte) grade.
+  // Aaneengesloten segmenten met dezelfde kleur worden tot één polyline
+  // samengevoegd — dat voorkomt gaten tussen losse <line>s en scheelt nodes.
+  const segments = useMemo(() => {
+    const n = elevation.length;
+    if (n < 2) return [] as { points: string; color: string }[];
+    const gradeAt = (i: number) => {
+      // Meet de hoogteverandering over ≥ GRADE_WINDOW_M rond segment i→i+1.
+      let lo = i;
+      while (lo > 0 && distances[i] - distances[lo] < GRADE_WINDOW_M / 2) lo--;
+      let hi = i + 1;
+      while (hi < n - 1 && distances[hi] - distances[i + 1] < GRADE_WINDOW_M / 2) hi++;
+      const dd = distances[hi] - distances[lo];
+      if (dd <= 0) return 0;
+      return (Math.abs(elevation[hi] - elevation[lo]) / dd) * 100;
+    };
+    const runs: { points: string; color: string }[] = [];
+    let cur: string[] = [`${x(0).toFixed(1)},${y(elevation[0]).toFixed(1)}`];
+    let curColor = gradeColor(gradeAt(0));
+    for (let i = 1; i < n; i++) {
+      const color = i < n - 1 ? gradeColor(gradeAt(i)) : curColor;
+      const pt = `${x(i).toFixed(1)},${y(elevation[i]).toFixed(1)}`;
+      if (color !== curColor) {
+        cur.push(pt); // sluit de vorige run op dit punt (naadloze overgang)
+        runs.push({ points: cur.join(" "), color: curColor });
+        cur = [pt];
+        curColor = color;
+      } else {
+        cur.push(pt);
+      }
+    }
+    if (cur.length > 1) runs.push({ points: cur.join(" "), color: curColor });
+    return runs;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elevation, distances]);
 
   if (elevation.length < 2 || totalM <= 0) return null;
 
@@ -106,7 +158,19 @@ export default function ElevationChart({
         fill="rgb(37 99 235 / 0.15)"
         stroke="none"
       />
-      <polyline points={linePts} fill="none" stroke="#2563eb" strokeWidth="1.5" />
+      {/* Profiellijn in steilheids-kleuren (zie gradeColor). Valt terug op één
+          blauwe lijn als er maar één run is (vlakke route). */}
+      {segments.map((s, i) => (
+        <polyline
+          key={i}
+          points={s.points}
+          fill="none"
+          stroke={s.color}
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ))}
       <text x="2" y="9" className="fill-neutral-500" fontSize="8">
         {Math.round(max)} m
       </text>
