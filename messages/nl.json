@@ -188,7 +188,8 @@
       "searchOptOutHint": "Je profiel is dan alleen via een directe link te vinden.",
       "defaultTour": "Standaard voor nieuwe routes & activiteiten",
       "defaultCollection": "Standaard voor nieuwe collecties"
-    }
+    },
+    "loginTitle": "Inloggen"
   },
   "activities": {
     "upload": "Activiteit uploaden",

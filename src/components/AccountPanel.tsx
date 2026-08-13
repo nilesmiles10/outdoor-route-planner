@@ -194,7 +194,11 @@ export default function AccountPanel({ tour, onLoadTour, hideLoginForm }: Props)
     }
     return (
       <div className="flex flex-col gap-2 rounded-lg bg-neutral-50 p-3">
-        <div className="text-xs font-medium text-neutral-700">{t("login")}</div>
+        {/* Neutrale kaart-titel: de gate-pagina toont er zelf al een
+            contextuele subkop boven (needLogin), dus "Log in om routes op te
+            slaan" was hier misleidend (bv. op /feed). De CTA-link hieronder
+            (hideLoginForm) houdt wél de route-specifieke tekst. */}
+        <div className="text-xs font-medium text-neutral-700">{t("loginTitle")}</div>
         {phase !== "code" ? (
           <div className="flex flex-col gap-2">
             <div className="flex gap-2">

@@ -188,7 +188,8 @@
       "searchOptOutHint": "Your profile can then only be found via a direct link.",
       "defaultTour": "Default for new routes & activities",
       "defaultCollection": "Default for new collections"
-    }
+    },
+    "loginTitle": "Log in"
   },
   "activities": {
     "upload": "Upload activity",
