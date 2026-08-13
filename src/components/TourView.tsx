@@ -11,6 +11,7 @@ import Avatar from "./Avatar";
 import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
 import { difficulty } from "@/lib/difficulty";
 import { groupWaytypes } from "@/lib/waytypes";
+import { buildKmMarkers } from "@/lib/kmMarkers";
 import { speedSeries, fmtDuration } from "@/lib/activity";
 import ExportMenu from "./ExportMenu";
 import type { CourseTurn } from "@/lib/course";
@@ -142,28 +143,10 @@ export default function TourView({
   // 5 km, of 10 km op lange routes. De tour-kaart toonde ze nog niet terwijl
   // de planner ze wél heeft — zelfde route-informatie hoort er ook hier te
   // staan. Afgeleid uit de al berekende coords + distances, geen extra data.
-  const kmMarkers = useMemo<GeoJSON.FeatureCollection | null>(() => {
-    const coords = geometry.coordinates;
-    if (!coords.length || distances.length === 0) return null;
-    const total = distances[distances.length - 1] ?? 0;
-    const stepM = (total > 100_000 ? 10 : 5) * 1000;
-    const features: GeoJSON.Feature[] = [];
-    let next = stepM;
-    for (let i = 0; i < distances.length && next < total; i++) {
-      if ((distances[i] ?? 0) >= next) {
-        const c = coords[i];
-        if (c) {
-          features.push({
-            type: "Feature",
-            properties: { label: String(Math.round(next / 1000)) },
-            geometry: { type: "Point", coordinates: [c[0], c[1]] },
-          });
-        }
-        next += stepM;
-      }
-    }
-    return features.length ? { type: "FeatureCollection", features } : null;
-  }, [geometry, distances]);
+  const kmMarkers = useMemo<GeoJSON.FeatureCollection | null>(
+    () => buildKmMarkers(geometry.coordinates, distances),
+    [geometry, distances],
+  );
   const climbs = useMemo(
     () => detectClimbs(elevation, distances),
     [elevation, distances],

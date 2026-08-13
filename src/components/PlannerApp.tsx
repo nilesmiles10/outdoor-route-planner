@@ -15,6 +15,7 @@ import SearchField from "./SearchField";
 import ElevationChart from "./ElevationChart";
 import GradeLegend from "./GradeLegend";
 import { groupWaytypes } from "@/lib/waytypes";
+import { buildKmMarkers } from "@/lib/kmMarkers";
 import AccountPanel, { type TourPayload } from "./AccountPanel";
 import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
 import { parseGpx, sampleAnchors } from "@/lib/gpx";
@@ -857,28 +858,13 @@ export default function PlannerApp() {
   }, [filled]);
 
   // Distance markers along the route (GEN-137): every 5 km, 10 km on long routes.
-  const kmMarkers = useMemo<GeoJSON.FeatureCollection | null>(() => {
-    if (!showKmMarkers || !routeCoords || !distances || distances.length === 0)
-      return null;
-    const total = distances[distances.length - 1] ?? 0;
-    const stepM = (total > 100_000 ? 10 : 5) * 1000;
-    const features: GeoJSON.Feature[] = [];
-    let next = stepM;
-    for (let i = 0; i < distances.length && next < total; i++) {
-      if ((distances[i] ?? 0) >= next) {
-        const c = routeCoords[i];
-        if (c) {
-          features.push({
-            type: "Feature",
-            properties: { label: String(Math.round(next / 1000)) },
-            geometry: { type: "Point", coordinates: c },
-          });
-        }
-        next += stepM;
-      }
-    }
-    return features.length ? { type: "FeatureCollection", features } : null;
-  }, [showKmMarkers, routeCoords, distances]);
+  const kmMarkers = useMemo<GeoJSON.FeatureCollection | null>(
+    () =>
+      showKmMarkers && routeCoords && distances
+        ? buildKmMarkers(routeCoords, distances)
+        : null,
+    [showKmMarkers, routeCoords, distances],
+  );
 
   // Per-leg cache: editing one waypoint only refetches the adjacent legs,
   // everything else is served from cache (Komoot-style incremental routing).
