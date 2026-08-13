@@ -82,11 +82,15 @@ export default function SpeedChart({
   if (speeds.length < 2) return null;
 
   return (
-    <div>
+    // shrink-0: als directe flex-kolom-child van het info-paneel zou deze
+    // anders (net als het hoogteprofiel) tot 0px worden samengeperst.
+    <div className="shrink-0">
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
-        className="w-full cursor-crosshair touch-none select-none"
+        // Zonder expliciete hoogte klapt de w-full SVG in tot 0px; vaste
+        // hoogte (= viewBox-H) geeft een betrouwbare, correcte hoogte.
+        className="h-[72px] w-full cursor-crosshair touch-none select-none"
         onPointerDown={(e) => {
           (e.target as Element).setPointerCapture?.(e.pointerId);
           dragStart.current = idxAt(e.clientX);

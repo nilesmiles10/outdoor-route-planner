@@ -66,7 +66,12 @@ export default function ElevationChart({
     <svg
       ref={svgRef}
       viewBox={`0 0 ${W} ${H}`}
-      className="w-full cursor-crosshair select-none"
+      // De SVG is een directe flex-kolom-child van het info-paneel; met de
+      // default flex-shrink:1 werd hij tot 0px samengeperst → onzichtbaar
+      // hoogteprofiel (geen expliciete hoogte + intrinsieke viewBox-hoogte
+      // niet afgeleid). shrink-0 + vaste hoogte (= viewBox-H) garanderen de
+      // hoogte; box-aspect ≈ viewBox-aspect dus vrijwel geen letterboxing.
+      className="h-24 w-full shrink-0 cursor-crosshair select-none"
       role="img"
       aria-label="Elevation profile"
       onMouseMove={(e) => hover(idxFromEvent(e))}
