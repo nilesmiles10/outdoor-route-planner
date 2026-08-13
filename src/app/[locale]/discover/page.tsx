@@ -101,6 +101,30 @@ export default function DiscoverPage() {
     );
   }, [sb]);
 
+  // Filters uit de URL herstellen (deelbaar/bladwijzerbaar, overleeft refresh
+  // en deep-links van elders). Ná mount i.p.v. in de state-init: dan renderen
+  // server en eerste client-render allebei de defaults → geen hydration-
+  // mismatch. Schrijven gebeurt alleen in de klik-handlers (syncUrl), dus geen
+  // effect dat de zojuist gelezen waarde kan overschrijven.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const s = p.get("sport");
+    if (s && SPORTS.includes(s)) setSport(s);
+    const b = p.get("band");
+    if (b && BANDS.some(([k]) => k === b)) setBand(b);
+  }, []);
+
+  // "all" is de default → dan géén param (schone URL). replaceState i.p.v. push
+  // zodat filteren geen history-entries stapelt.
+  function syncUrl(nextSport: string, nextBand: string) {
+    const url = new URL(window.location.href);
+    if (nextSport && nextSport !== "all") url.searchParams.set("sport", nextSport);
+    else url.searchParams.delete("sport");
+    if (nextBand && nextBand !== "all") url.searchParams.set("band", nextBand);
+    else url.searchParams.delete("band");
+    window.history.replaceState(null, "", url);
+  }
+
   const [, lo, hi] = BANDS.find(([k]) => k === band)!;
   const filtered = rows
     .filter((r) => sport === "all" || r.sport === sport)
@@ -169,7 +193,10 @@ export default function DiscoverPage() {
           <button
             key={s}
             type="button"
-            onClick={() => setSport(s)}
+            onClick={() => {
+              setSport(s);
+              syncUrl(s, band);
+            }}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
               sport === s ? "bg-emerald-700 text-white" : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
             }`}
@@ -183,7 +210,10 @@ export default function DiscoverPage() {
           <button
             key={k}
             type="button"
-            onClick={() => setBand(k)}
+            onClick={() => {
+              setBand(k);
+              syncUrl(sport, k);
+            }}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
               band === k ? "bg-neutral-800 text-white" : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
             }`}
@@ -215,6 +245,7 @@ export default function DiscoverPage() {
                 onClick={() => {
                   setSport("all");
                   setBand("all");
+                  syncUrl("all", "all");
                 }}
                 className="text-sm font-medium text-emerald-700 hover:underline"
               >
