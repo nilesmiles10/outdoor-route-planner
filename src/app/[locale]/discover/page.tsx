@@ -119,16 +119,21 @@ export default function DiscoverPage() {
     if (s && SPORTS.includes(s)) setSport(s);
     const b = p.get("band");
     if (b && BANDS.some(([k]) => k === b)) setBand(b);
+    const so = p.get("sort");
+    if (so && (SORTS as readonly string[]).includes(so))
+      setSortBy(so as (typeof SORTS)[number]);
   }, []);
 
-  // "all" is de default → dan géén param (schone URL). replaceState i.p.v. push
-  // zodat filteren geen history-entries stapelt.
-  function syncUrl(nextSport: string, nextBand: string) {
+  // Defaults ("all" / "nearest") → géén param (schone URL). replaceState i.p.v.
+  // push zodat filteren/sorteren geen history-entries stapelt.
+  function syncUrl(nextSport: string, nextBand: string, nextSort: string) {
     const url = new URL(window.location.href);
     if (nextSport && nextSport !== "all") url.searchParams.set("sport", nextSport);
     else url.searchParams.delete("sport");
     if (nextBand && nextBand !== "all") url.searchParams.set("band", nextBand);
     else url.searchParams.delete("band");
+    if (nextSort && nextSort !== "nearest") url.searchParams.set("sort", nextSort);
+    else url.searchParams.delete("sort");
     window.history.replaceState(null, "", url);
   }
 
@@ -218,7 +223,7 @@ export default function DiscoverPage() {
             type="button"
             onClick={() => {
               setSport(s);
-              syncUrl(s, band);
+              syncUrl(s, band, sortBy);
             }}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
               sport === s ? "bg-emerald-700 text-white" : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
@@ -235,7 +240,7 @@ export default function DiscoverPage() {
             type="button"
             onClick={() => {
               setBand(k);
-              syncUrl(sport, k);
+              syncUrl(sport, k, sortBy);
             }}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
               band === k ? "bg-neutral-800 text-white" : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
@@ -255,7 +260,10 @@ export default function DiscoverPage() {
           <button
             key={s}
             type="button"
-            onClick={() => setSortBy(s)}
+            onClick={() => {
+              setSortBy(s);
+              syncUrl(sport, band, s);
+            }}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
               sortBy === s
                 ? "bg-emerald-700 text-white"
@@ -289,7 +297,7 @@ export default function DiscoverPage() {
                 onClick={() => {
                   setSport("all");
                   setBand("all");
-                  syncUrl("all", "all");
+                  syncUrl("all", "all", sortBy);
                 }}
                 className="text-sm font-medium text-emerald-700 hover:underline"
               >
