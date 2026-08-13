@@ -94,6 +94,22 @@ export default function EmbedView({
     map.on("styledata", addRoute);
     map.on("load", addRoute);
     addRoute();
+
+    // Canvas-sizing guard (zelfde bug + fix als MapView, commit ~iteratie 1):
+    // de GL-canvas valt terug op MapLibre's 400×300-default als de container
+    // bij constructie nog niet gemeten is, en de interne trackResize-observer
+    // corrigeert dat hier niet — de embed rendert dan enkel in de linkerboven-
+    // hoek. Forceer een resize na de eerste paint en bij elke container-maat-
+    // wijziging (embeds zitten doorgaans in een iframe dat schaalt). Bewust
+    // géén disconnect: dit component ruimt (zie boven) niets op om StrictMode-
+    // remounts te overleven, en de embed-pagina heeft één kaart die niet
+    // unmount.
+    const forceResize = () => map.resize();
+    requestAnimationFrame(forceResize);
+    map.once("load", forceResize);
+    if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+      new ResizeObserver(forceResize).observe(containerRef.current);
+    }
   }, [coordinates]);
 
   return <div ref={containerRef} className="h-full w-full" />;
