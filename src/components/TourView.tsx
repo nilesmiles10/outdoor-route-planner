@@ -292,6 +292,13 @@ export default function TourView({
                 </span>
               );
             })()}
+            {/* Klim-telling (zelfde als de planner): detectClimbs telt de
+                significante stijgingen; de grafiek toont ze al als banden. */}
+            {climbs.length > 0 && (
+              <span className="text-[11px] text-neutral-500">
+                {t("climbsCount", { count: climbs.length })}
+              </span>
+            )}
           </div>
         </div>
         <div className="grid grid-cols-4 gap-2 text-center">

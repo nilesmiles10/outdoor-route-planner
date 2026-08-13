@@ -142,7 +142,8 @@
       "foot_no": "Wandelen verboden op dit deel"
     },
     "collapsePanel": "Paneel inklappen",
-    "expandPanel": "Paneel uitklappen"
+    "expandPanel": "Paneel uitklappen",
+    "climbsCount": "{count, plural, one {# klim} other {# klimmen}}"
   },
   "account": {
     "login": "Log in om routes op te slaan",

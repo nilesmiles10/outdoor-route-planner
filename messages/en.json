@@ -142,7 +142,8 @@
       "foot_no": "Walking prohibited on this stretch"
     },
     "collapsePanel": "Collapse panel",
-    "expandPanel": "Expand panel"
+    "expandPanel": "Expand panel",
+    "climbsCount": "{count, plural, one {# climb} other {# climbs}}"
   },
   "account": {
     "login": "Log in to save routes",
