@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import BookmarkButton from "@/components/BookmarkButton";
+import ShareButton from "@/components/ShareButton";
 import MiniMap from "@/components/MiniMap";
 import { aggregateStats, gradientFor, SPORT_EMOJI } from "@/lib/collections";
 import SiteFooter from "@/components/SiteFooter";
@@ -119,6 +120,7 @@ export default async function CollectionPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <ShareButton title={c.title} />
           <BookmarkButton collectionId={c.id} />
           {isOwner && (
             <a
