@@ -88,9 +88,17 @@ export async function generateMetadata({
   const km = (tour.stats.distanceM / 1000).toFixed(1);
   const t = await getTranslations("tourPage");
   const authorName = tour.profile?.display_name ?? t("anonymous");
+  // Route-specifieke OG/Twitter: zonder deze erfden gedeelde tour-links de
+  // generieke layout-OG ("Tarnoo" / "Plan your next adventure") — elke
+  // gedeelde route zag er identiek uit. De OG-afbeelding komt al per tour uit
+  // de opengraph-image-route; alleen titel/omschrijving + large-image-card.
+  const ogTitle = `${tour.name} · ${km} km ${tour.sport}`;
+  const ogDesc = `${km} km · ↗ ${tour.stats.ascendM} m — ${buildAutoDesc(t, tour)}`;
   return {
     title: `${tour.name} | ${km} km ${tour.sport}`,
-    description: `${km} km · ↗ ${tour.stats.ascendM} m — ${buildAutoDesc(t, tour)} · ${t("byline", { name: authorName })}`,
+    description: `${ogDesc} · ${t("byline", { name: authorName })}`,
+    openGraph: { title: ogTitle, description: ogDesc },
+    twitter: { card: "summary_large_image", title: ogTitle, description: ogDesc },
   };
 }
 
