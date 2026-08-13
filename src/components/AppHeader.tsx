@@ -26,6 +26,7 @@ const NAV: { key: string; path: string; authOnly?: boolean }[] = [
 export default function AppHeader() {
   const site = useSiteSettings();
   const t = useTranslations("nav");
+  const tsport = useTranslations("planner.sports");
   const locale = useLocale();
   const sb: SupabaseClient = useMemo(() => supabaseBrowser(), []);
   const [email, setEmail] = useState<string | null>(null);
@@ -95,7 +96,7 @@ export default function AppHeader() {
         (r: { id: string; name: string; sport: string; stats: { distanceM: number } }) => ({
           type: "route",
           label: r.name,
-          sub: `${(r.stats.distanceM / 1000).toFixed(0)} km · ${r.sport}`,
+          sub: `${(r.stats.distanceM / 1000).toFixed(0)} km · ${tsport(r.sport as never)}`,
           href: `/${locale}/tour/${r.id}`,
         }),
       );

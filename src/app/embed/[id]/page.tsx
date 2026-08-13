@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@supabase/supabase-js";
 import EmbedView from "@/components/EmbedView";
 import { SITE_URL } from "@/app/sitemap";
@@ -36,6 +37,9 @@ export default async function EmbedPage({ params }: { params: { id: string } }) 
   const km = (tour.stats.distanceM / 1000).toFixed(1);
   const h = Math.floor(tour.stats.timeS / 3600);
   const m = Math.round((tour.stats.timeS % 3600) / 60);
+  // Nette sport-label i.p.v. de ruwe sleutel ("Mtb"/"Ebike"/"Road"). De embed
+  // is niet locale-scoped en linkt naar /nl/tour, dus expliciet NL.
+  const tsport = await getTranslations({ locale: "nl", namespace: "planner.sports" });
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
@@ -54,7 +58,7 @@ export default async function EmbedPage({ params }: { params: { id: string } }) 
           </div>
           <div className="text-xs text-neutral-500">
             {km} km · {h}:{String(m).padStart(2, "0")} h · ↗ {tour.stats.ascendM} m ·{" "}
-            <span className="capitalize">{tour.sport}</span>
+            <span>{tsport(tour.sport as never)}</span>
           </div>
         </div>
         <span className="shrink-0 rounded-full bg-emerald-700 px-3 py-1 text-xs font-medium text-white">

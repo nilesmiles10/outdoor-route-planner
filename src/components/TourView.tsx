@@ -299,8 +299,8 @@ export default function TourView({
           )}
           <h1 className="text-lg font-semibold text-neutral-900">{header.name}</h1>
           <div className="mt-0.5 flex flex-wrap items-center gap-2">
-            <p className="text-xs capitalize text-neutral-500">
-              {header.sport}
+            <p className="text-xs text-neutral-500">
+              {t(`sports.${header.sport}` as never)}
               {activity && (
                 <span className="normal-case"> · 🏁 {activity.recordedLabel}</span>
               )}

@@ -72,6 +72,7 @@ export default async function CollectionPage({
   if (!c) notFound();
   const t = await getTranslations("collections");
   const tdiff = await getTranslations("planner.difficultyLabels");
+  const tsport = await getTranslations("planner.sports");
   const { locale } = params;
 
   const sb = supabaseServer();
@@ -194,8 +195,8 @@ export default async function CollectionPage({
                 </div>
                 <div className="text-xs text-neutral-500">
                   {(tr.stats.distanceM / 1000).toFixed(1)} km · ↗ {tr.stats.ascendM} m ·{" "}
-                  <span className="capitalize">
-                    {SPORT_EMOJI[tr.sport] ?? ""} {tr.sport}
+                  <span>
+                    {SPORT_EMOJI[tr.sport] ?? ""} {tsport(tr.sport as never)}
                   </span>
                 </div>
                 {item.note && (
