@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import MapView, { type Waypoint } from "./MapView";
 import ElevationChart from "./ElevationChart";
 import SpeedChart from "./SpeedChart";
@@ -108,8 +109,13 @@ export default function TourView({
   turns,
   source,
 }: Props) {
+  const t = useTranslations("planner");
   const [embedCopied, setEmbedCopied] = useState(false);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  // Mobiel: info-paneel inklapbaar zodat de kaart-first-flow de route vrij
+  // laat verkennen i.p.v. permanent 45dvh aan het paneel kwijt te zijn.
+  // Zelfde patroon als de planner (grab-handle, md:hidden).
+  const [sheetCollapsed, setSheetCollapsed] = useState(false);
   const feature: GeoJSON.Feature = useMemo(
     () => ({ type: "Feature", properties: {}, geometry }),
     [geometry],
@@ -152,7 +158,24 @@ export default function TourView({
         onMarkerDragEnd={noop}
         onRouteDrop={noop}
       />
-      <div className="absolute flex flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur max-md:inset-x-2 max-md:bottom-2 max-md:max-h-[45dvh] md:left-4 md:top-16 md:max-h-[calc(100dvh-5rem)] md:w-[340px]">
+      <div
+        className={`absolute flex flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur max-md:inset-x-2 max-md:bottom-2 md:left-4 md:top-16 md:max-h-[calc(100dvh-5rem)] md:w-[340px] ${
+          sheetCollapsed
+            ? "max-md:max-h-[3.75rem] max-md:overflow-hidden"
+            : "max-md:max-h-[45dvh]"
+        }`}
+      >
+        {/* Mobiele grab-handle: tik om het paneel in/uit te klappen en de
+            kaart terug te winnen. Verborgen op desktop (vaste zijbalk). */}
+        <button
+          type="button"
+          onClick={() => setSheetCollapsed((v) => !v)}
+          aria-expanded={!sheetCollapsed}
+          aria-label={sheetCollapsed ? t("expandPanel") : t("collapsePanel")}
+          className="mx-auto -mt-1 mb-1 flex h-5 w-full items-center justify-center md:hidden"
+        >
+          <span className="h-1.5 w-10 rounded-full bg-neutral-300" />
+        </button>
         <div>
           {author && (
             <>
