@@ -51,7 +51,13 @@ export default async function TrailsPage({
   searchParams,
 }: {
   params: { locale: string };
-  searchParams: { sport?: string; country?: string; region?: string; q?: string };
+  searchParams: {
+    sport?: string;
+    country?: string;
+    region?: string;
+    q?: string;
+    loop?: string;
+  };
 }) {
   const { locale } = params;
   const t = await getTranslations("trailsPage");
@@ -65,6 +71,7 @@ export default async function TrailsPage({
     : "all";
   const region = searchParams.region ?? "all";
   const q = searchParams.q?.trim() ?? "";
+  const loopOnly = searchParams.loop === "1";
 
   const sb = supabaseServer();
   // Cap op de lijst; als 'ie geraakt wordt tonen we een verfijn-hint i.p.v.
@@ -80,6 +87,7 @@ export default async function TrailsPage({
   if (country !== "all") query = query.eq("country", country);
   if (region !== "all") query = query.eq("region", region);
   if (q) query = query.ilike("name", `%${q}%`);
+  if (loopOnly) query = query.eq("roundtrip", true);
 
   // Regio-chips alleen bínnen een gekozen land (Europa-breed = te veel).
   const [{ data }, countriesQ, regionsQ] = await Promise.all([
@@ -110,11 +118,20 @@ export default async function TrailsPage({
   const href = (patch: Record<string, string>) => {
     const p = new URLSearchParams();
     // land wisselen reset de regio (regio's zijn land-gebonden)
-    const merged = { sport, country, region, q, ...("country" in patch ? { region: "all" } : {}), ...patch };
+    const merged = {
+      sport,
+      country,
+      region,
+      q,
+      loop: loopOnly ? "1" : "",
+      ...("country" in patch ? { region: "all" } : {}),
+      ...patch,
+    };
     if (merged.sport !== "all") p.set("sport", merged.sport);
     if (merged.country !== "all") p.set("country", merged.country);
     if (merged.region !== "all") p.set("region", merged.region);
     if (merged.q) p.set("q", merged.q);
+    if (merged.loop === "1") p.set("loop", "1");
     const s = p.toString();
     return `/${locale}/trails${s ? `?${s}` : ""}`;
   };
@@ -183,6 +200,18 @@ export default async function TrailsPage({
             {s === "all" ? t("allSports") : tp(`sports.${s}` as never)}
           </a>
         ))}
+        {/* Rondje-filter op de echte roundtrip-kolom — veel wandelaars/fietsers
+            willen terug naar de start. */}
+        <a
+          href={href({ loop: loopOnly ? "" : "1" })}
+          className={`rounded-full px-3 py-1 text-xs font-medium ${
+            loopOnly
+              ? "bg-emerald-700 text-white"
+              : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+          }`}
+        >
+          🔁 {t("loopsOnly")}
+        </a>
       </div>
       {/* Regio's kunnen er 16+ zijn (Bundesländer, départements) — zelfde
           inklap-patroon als het land. */}

@@ -517,7 +517,8 @@
     "allCountries": "Alle landen",
     "gravelMeta": "{km} km gravel",
     "clearFilters": "Filters wissen",
-    "capHint": "De eerste {count} routes worden getoond. Verfijn op land, sport of zoek op naam om meer te zien."
+    "capHint": "De eerste {count} routes worden getoond. Verfijn op land, sport of zoek op naam om meer te zien.",
+    "loopsOnly": "Alleen rondjes"
   },
   "trailPage": {
     "official": "Officiële route",

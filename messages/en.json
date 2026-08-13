@@ -517,7 +517,8 @@
     "allCountries": "All countries",
     "gravelMeta": "{km} km gravel",
     "clearFilters": "Clear filters",
-    "capHint": "Showing the first {count} trails. Refine by country, sport, or search by name to see more."
+    "capHint": "Showing the first {count} trails. Refine by country, sport, or search by name to see more.",
+    "loopsOnly": "Loops only"
   },
   "trailPage": {
     "official": "Official trail",
