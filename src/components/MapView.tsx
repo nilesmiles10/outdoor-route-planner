@@ -115,11 +115,29 @@ export default function MapView({
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+    // Init meteen op de route-bounds (tour/trail) i.p.v. eerst Utrecht tonen en
+    // dan wegspringen: routes ver van Utrecht flitsten het verkeerde gebied +
+    // een camera-sprong. De planner (route == null) houdt de Utrecht-default.
+    const initCoords =
+      route?.geometry && (route.geometry as GeoJSON.LineString).type === "LineString"
+        ? (route.geometry as GeoJSON.LineString).coordinates
+        : null;
+    const initBounds =
+      initCoords && initCoords.length >= 2
+        ? initCoords.reduce(
+            (acc, c) => acc.extend([c[0], c[1]]),
+            new maplibregl.LngLatBounds(
+              [initCoords[0][0], initCoords[0][1]],
+              [initCoords[0][0], initCoords[0][1]],
+            ),
+          )
+        : null;
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: mapStyle(),
-      center: [5.1214, 52.0907], // Utrecht
-      zoom: 8,
+      ...(initBounds
+        ? { bounds: initBounds, fitBoundsOptions: { padding: 60 } }
+        : { center: [5.1214, 52.0907], zoom: 8 }), // Utrecht (planner-default)
     });
     // Surface style/source failures instead of silently showing a blank map —
     // the OpenFreeMap stalls and the pmtiles switch both failed this way.
@@ -724,6 +742,9 @@ export default function MapView({
       mapRef.current = null;
       setReady(false);
     };
+    // Init draait één keer; `route` wordt alleen als START-bounds gelezen, de
+    // route-sync-effect hieronder verwerkt latere wijzigingen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sync route line. Fit bounds only when a route first appears — refitting
