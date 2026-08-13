@@ -507,5 +507,11 @@
       "gravel": "gravelroute"
     },
     "gravelBadge": "Gravel · {km} km onverhard"
+  },
+  "notFound": {
+    "title": "Pagina niet gevonden",
+    "message": "Deze pagina bestaat niet of is misschien verplaatst.",
+    "home": "Terug naar de planner",
+    "discover": "Ontdek routes"
   }
 }

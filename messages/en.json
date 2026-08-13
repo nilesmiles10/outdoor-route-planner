@@ -507,5 +507,11 @@
       "gravel": "gravel route"
     },
     "gravelBadge": "Gravel · {km} km unpaved"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "message": "This page doesn't exist or may have been moved.",
+    "home": "Back to the planner",
+    "discover": "Discover routes"
   }
 }
