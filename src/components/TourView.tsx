@@ -200,7 +200,7 @@ export default function TourView({
       <div
         className={`absolute flex flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur max-md:inset-x-2 max-md:bottom-2 md:left-4 md:top-16 md:max-h-[calc(100dvh-5rem)] md:w-[340px] ${
           sheetCollapsed
-            ? "max-md:max-h-[3.75rem] max-md:overflow-hidden"
+            ? "max-md:max-h-[7rem] max-md:overflow-hidden"
             : "max-md:max-h-[45dvh]"
         }`}
       >
@@ -215,6 +215,41 @@ export default function TourView({
         >
           <span className="h-1.5 w-10 rounded-full bg-neutral-300" />
         </button>
+        {/* Ingeklapte peek: zonder dit toont het dichtgeklapte paneel niets
+            bruikbaars (alleen de grip), dus wie de kaart verkent verliest naam
+            + kerncijfers van de route. Compacte samenvatting houdt de identiteit
+            en afstand/moeilijkheid zichtbaar. Alleen mobiel + alleen ingeklapt
+            (anders dubbelt het met de titel/badge hieronder). */}
+        {sheetCollapsed && (
+          <div className="flex items-center gap-2 md:hidden">
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-900">
+              {header.name}
+            </span>
+            <span className="shrink-0 text-xs font-medium text-neutral-500">
+              {header.km} km
+            </span>
+            {(() => {
+              const d = difficulty(
+                header.sport,
+                parseFloat(header.km) * 1000,
+                header.ascend,
+              );
+              return (
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                    d === "easy"
+                      ? "bg-emerald-100 text-emerald-800"
+                      : d === "moderate"
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {t(`difficultyLabels.${d}` as never)}
+                </span>
+              );
+            })()}
+          </div>
+        )}
         <div>
           {author && (
             <>
