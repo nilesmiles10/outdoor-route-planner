@@ -505,7 +505,8 @@
     "attribution": "Routegegevens © OpenStreetMap-bijdragers (ODbL).",
     "allCountries": "Alle landen",
     "gravelMeta": "{km} km gravel",
-    "clearFilters": "Filters wissen"
+    "clearFilters": "Filters wissen",
+    "capHint": "De eerste {count} routes worden getoond. Verfijn op land, sport of zoek op naam om meer te zien."
   },
   "trailPage": {
     "official": "Officiële route",

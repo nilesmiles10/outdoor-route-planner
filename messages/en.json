@@ -505,7 +505,8 @@
     "attribution": "Trail data © OpenStreetMap contributors (ODbL).",
     "allCountries": "All countries",
     "gravelMeta": "{km} km gravel",
-    "clearFilters": "Clear filters"
+    "clearFilters": "Clear filters",
+    "capHint": "Showing the first {count} trails. Refine by country, sport, or search by name to see more."
   },
   "trailPage": {
     "official": "Official trail",

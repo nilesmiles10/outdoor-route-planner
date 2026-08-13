@@ -67,11 +67,14 @@ export default async function TrailsPage({
   const q = searchParams.q?.trim() ?? "";
 
   const sb = supabaseServer();
+  // Cap op de lijst; als 'ie geraakt wordt tonen we een verfijn-hint i.p.v.
+  // stil de rest (NL alleen al ~4.4k trails) weg te laten.
+  const TRAIL_LIMIT = 200;
   let query = sb
     .from("trails")
     .select("id,name,sport,region,roundtrip,stats,is_gravel,gravel_m")
     .order("name")
-    .limit(200);
+    .limit(TRAIL_LIMIT);
   if (sport === "gravel") query = query.eq("is_gravel", true);
   else if (sport !== "all") query = query.eq("sport", sport);
   if (country !== "all") query = query.eq("country", country);
@@ -277,6 +280,11 @@ export default async function TrailsPage({
             </a>
           ))}
         </div>
+      )}
+      {trails.length === TRAIL_LIMIT && (
+        <p className="mt-4 rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-500">
+          {t("capHint", { count: TRAIL_LIMIT })}
+        </p>
       )}
       <p className="mt-8 text-[11px] text-neutral-400">{t("attribution")}</p>
       <SiteFooter />
