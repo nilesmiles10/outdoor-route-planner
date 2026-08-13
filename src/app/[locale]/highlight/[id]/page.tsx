@@ -152,11 +152,20 @@ export default async function HighlightPage({
         .eq("visibility", "public")
         .eq("kind", "planned")
         .limit(100),
+      // Bbox rond dit punt i.p.v. de hele tabel: `.limit(2000)` gaf door de
+      // PostgREST max-rows-cap 1000 wíllekeurige (= oudste, dus NL/BE) punten
+      // uit 500k, dus de linkmesh "in de buurt" was buiten NL/BE stil leeg.
+      // ~0,15° ≈ 16 km; nabijheid wordt daarna in JS gesorteerd.
       sb
         .from("highlights")
         .select("id,name,category,lon,lat")
         .eq("kind", "point")
-        .limit(2000),
+        .neq("id", hl.id)
+        .gte("lon", hl.lon - 0.15)
+        .lte("lon", hl.lon + 0.15)
+        .gte("lat", hl.lat - 0.15)
+        .lte("lat", hl.lat + 0.15)
+        .limit(1000),
       getPlace(hl.lon, hl.lat),
       getWeather(hl.lon, hl.lat),
     ]);

@@ -121,11 +121,25 @@ export default async function TourPage({
       .eq("kind", "planned")
       .neq("id", tour.id)
       .limit(100),
-    sb
-      .from("highlights")
-      .select("id,name,category,lon,lat")
-      .eq("kind", "point")
-      .limit(2000),
+    // Bbox rond de route i.p.v. de hele tabel. `.limit(2000)` leverde door de
+    // PostgREST max-rows-cap 1000 wíllekeurige (= oudste, dus NL/BE) punten uit
+    // 500k: buiten NL/BE waren zowel "in de buurt" als de Onderweg-lijst
+    // daardoor stil leeg. PAD ≈ 16 km rond de track.
+    (() => {
+      const cs = tour.geometry.coordinates;
+      const PAD = 0.15;
+      const lons = cs.map((c) => c[0]);
+      const lats = cs.map((c) => c[1]);
+      return sb
+        .from("highlights")
+        .select("id,name,category,lon,lat")
+        .eq("kind", "point")
+        .gte("lon", Math.min(...lons) - PAD)
+        .lte("lon", Math.max(...lons) + PAD)
+        .gte("lat", Math.min(...lats) - PAD)
+        .lte("lat", Math.max(...lats) + PAD)
+        .limit(1000);
+    })(),
   ]);
 
   type TourLite = {
