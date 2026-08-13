@@ -47,6 +47,9 @@ export default function DiscoverPage() {
   const locale = useLocale();
   const sb: SupabaseClient = useMemo(() => supabaseBrowser(), []);
   const [rows, setRows] = useState<Row[]>([]);
+  // Tot de eerste routes-fetch klaar is: anders toonde de lege lijst de
+  // "geen routes gevonden"-tekst (misleidend — ze laden nog).
+  const [loading, setLoading] = useState(true);
   const [featured, setFeatured] = useState<Row[]>([]);
   // GEN-145: officiële routes (OSM-import) — kleine rail met doorlink.
   const [trails, setTrails] = useState<
@@ -64,7 +67,10 @@ export default function DiscoverPage() {
       .eq("visibility", "public")
       .eq("kind", "planned")
       .limit(100)
-      .then(({ data }) => setRows((data as Row[]) ?? []));
+      .then(({ data }) => {
+        setRows((data as Row[]) ?? []);
+        setLoading(false);
+      });
     // Fase C admin-curatie: uitgelichte routes bovenaan als aparte rail.
     sb.from("tours")
       .select("id,name,sport,stats,waypoints")
@@ -186,7 +192,17 @@ export default function DiscoverPage() {
       </div>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        {filtered.length === 0 && (
+        {loading &&
+          Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={`sk${i}`}
+              className="animate-pulse rounded-2xl border border-neutral-100 bg-white p-4"
+            >
+              <div className="h-4 w-2/3 rounded bg-neutral-200" />
+              <div className="mt-2 h-3 w-1/3 rounded bg-neutral-100" />
+            </div>
+          ))}
+        {!loading && filtered.length === 0 && (
           <div className="col-span-full flex flex-col items-start gap-2">
             <p className="text-sm text-neutral-400">{t("empty")}</p>
             {/* Reset-knop alleen tonen als er daadwerkelijk een filter actief
