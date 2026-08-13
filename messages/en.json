@@ -489,7 +489,8 @@
     "empty": "No trails match these filters.",
     "attribution": "Trail data © OpenStreetMap contributors (ODbL).",
     "allCountries": "All countries",
-    "gravelMeta": "{km} km gravel"
+    "gravelMeta": "{km} km gravel",
+    "clearFilters": "Clear filters"
   },
   "trailPage": {
     "official": "Official trail",

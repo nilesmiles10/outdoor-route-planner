@@ -226,7 +226,23 @@ export default async function TrailsPage({
       </form>
 
       {trails.length === 0 ? (
-        <p className="mt-8 text-sm text-neutral-400">{t("empty")}</p>
+        <div className="mt-8 flex flex-col items-start gap-2">
+          <p className="text-sm text-neutral-400">{t("empty")}</p>
+          {/* Reset alleen tonen als er echt een filter/zoekterm actief is —
+              anders helpt wissen niet. Link naar de kale /trails (server-
+              component, dus geen client-state om te resetten). */}
+          {(sport !== "all" ||
+            country !== "all" ||
+            region !== "all" ||
+            q !== "") && (
+            <a
+              href={`/${locale}/trails`}
+              className="text-sm font-medium text-emerald-700 hover:underline"
+            >
+              {t("clearFilters")}
+            </a>
+          )}
+        </div>
       ) : (
         <div className="mt-5 grid gap-2 sm:grid-cols-2">
           {trails.map((tr) => (

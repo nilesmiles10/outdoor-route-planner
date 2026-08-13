@@ -489,7 +489,8 @@
     "empty": "Geen routes gevonden met deze filters.",
     "attribution": "Routegegevens © OpenStreetMap-bijdragers (ODbL).",
     "allCountries": "Alle landen",
-    "gravelMeta": "{km} km gravel"
+    "gravelMeta": "{km} km gravel",
+    "clearFilters": "Filters wissen"
   },
   "trailPage": {
     "official": "Officiële route",
