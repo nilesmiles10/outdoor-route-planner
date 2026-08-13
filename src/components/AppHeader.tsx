@@ -150,6 +150,16 @@ export default function AppHeader() {
           onChange={(e) => onChange(e.target.value)}
           onFocus={() => hits.length > 0 && setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onKeyDown={(e) => {
+            // Enter → naar het bovenste resultaat (routes staan vooraan);
+            // Escape → dropdown dicht. Zonder dit moest je altijd klikken.
+            if (e.key === "Enter" && hits.length > 0) {
+              window.location.href = hits[0].href;
+            } else if (e.key === "Escape") {
+              setOpen(false);
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
           placeholder={t("searchPlaceholder")}
           className="w-full rounded-full border border-neutral-200 bg-neutral-50 px-4 py-1.5 text-sm outline-none focus:border-emerald-600"
         />
@@ -307,6 +317,11 @@ export default function AppHeader() {
             <input
               value={q}
               onChange={(e) => onChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && hits.length > 0) {
+                  window.location.href = hits[0].href;
+                }
+              }}
               placeholder={t("searchPlaceholder")}
               className="w-full rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm outline-none focus:border-emerald-600"
             />
