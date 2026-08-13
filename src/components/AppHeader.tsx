@@ -33,6 +33,9 @@ export default function AppHeader() {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<Hit[]>([]);
   const [open, setOpen] = useState(false);
+  // Zonder dit gaf de zoekbalk geen enkele feedback tijdens debounce + fetch:
+  // je tikte en zag niks tot de resultaten binnen waren. Nu meteen een spinner.
+  const [searching, setSearching] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
@@ -64,9 +67,16 @@ export default function AppHeader() {
     clearTimeout(timer.current);
     if (v.trim().length < 2) {
       setHits([]);
+      setSearching(false);
       setOpen(false);
       return;
     }
+    // Meteen openen + spinner tonen (vóór debounce/fetch), zodat tikken direct
+    // zichtbaar wordt i.p.v. een lege stilte tot de resultaten binnen zijn.
+    // Oude treffers wissen: anders staan ze onder de spinner tijdens de fetch.
+    setHits([]);
+    setSearching(true);
+    setOpen(true);
     timer.current = setTimeout(async () => {
       const [tours, people, places] = await Promise.all([
         sb
@@ -106,6 +116,7 @@ export default function AppHeader() {
           href: `/${locale}?at=${p.lon.toFixed(5)},${p.lat.toFixed(5)}&atn=${encodeURIComponent(p.name)}`,
         }));
       setHits([...routeHits, ...personHits, ...placeHits]);
+      setSearching(false);
       setOpen(true);
     }, 250);
   }
@@ -165,13 +176,19 @@ export default function AppHeader() {
         />
         {open && q.trim().length >= 2 && (
           <div className="absolute z-40 mt-1 w-full overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg">
-            {/* Geen-resultaten-feedback: open wordt pas true ná de fetch, dus
-                lege hits + query = zoekopdracht zonder treffers (geen flikker
-                tijdens het typen). */}
-            {hits.length === 0 && (
-              <div className="px-3 py-3 text-sm text-neutral-400">
-                {t("noResults")}
+            {/* Spinner tijdens de fetch, anders (leeg + klaar) = geen treffers.
+                Hits zijn bij de start gewist, dus onder de spinner staat niks. */}
+            {searching ? (
+              <div className="flex items-center gap-2 px-3 py-3 text-sm text-neutral-500">
+                <span className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-neutral-300 border-t-emerald-600" />
+                {t("searching")}
               </div>
+            ) : (
+              hits.length === 0 && (
+                <div className="px-3 py-3 text-sm text-neutral-400">
+                  {t("noResults")}
+                </div>
+              )
             )}
             {routeHits.length > 0 && (
               <div className="px-3 pt-2 text-[10px] font-semibold uppercase text-neutral-400">
@@ -325,7 +342,13 @@ export default function AppHeader() {
               placeholder={t("searchPlaceholder")}
               className="w-full rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm outline-none focus:border-emerald-600"
             />
-            {open && q.trim().length >= 2 && hits.length === 0 && (
+            {open && q.trim().length >= 2 && searching && (
+              <div className="mt-1 flex items-center gap-2 px-3 py-2 text-sm text-neutral-500">
+                <span className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-neutral-300 border-t-emerald-600" />
+                {t("searching")}
+              </div>
+            )}
+            {open && q.trim().length >= 2 && !searching && hits.length === 0 && (
               <div className="mt-1 px-3 py-2 text-sm text-neutral-400">
                 {t("noResults")}
               </div>

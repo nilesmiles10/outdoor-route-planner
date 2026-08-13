@@ -302,7 +302,8 @@
     "menu": "Menu",
     "account": "Account",
     "language": "Language",
-    "noResults": "No results"
+    "noResults": "No results",
+    "searching": "Searching…"
   },
   "collections": {
     "title": "Collections",

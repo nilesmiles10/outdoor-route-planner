@@ -302,7 +302,8 @@
     "menu": "Menu",
     "account": "Account",
     "language": "Taal",
-    "noResults": "Geen resultaten"
+    "noResults": "Geen resultaten",
+    "searching": "Zoeken…"
   },
   "collections": {
     "title": "Collecties",
