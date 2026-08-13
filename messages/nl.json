@@ -513,5 +513,11 @@
     "message": "Deze pagina bestaat niet of is misschien verplaatst.",
     "home": "Terug naar de planner",
     "discover": "Ontdek routes"
+  },
+  "errorPage": {
+    "title": "Er ging iets mis",
+    "message": "Er trad een onverwachte fout op bij het laden van deze pagina.",
+    "retry": "Opnieuw proberen",
+    "home": "Terug naar de planner"
   }
 }

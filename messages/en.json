@@ -513,5 +513,11 @@
     "message": "This page doesn't exist or may have been moved.",
     "home": "Back to the planner",
     "discover": "Discover routes"
+  },
+  "errorPage": {
+    "title": "Something went wrong",
+    "message": "An unexpected error occurred while loading this page.",
+    "retry": "Try again",
+    "home": "Back to the planner"
   }
 }
