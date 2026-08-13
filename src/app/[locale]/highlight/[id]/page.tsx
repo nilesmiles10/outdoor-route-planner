@@ -8,6 +8,7 @@ import { CATEGORY_EMOJI, CATEGORY_COLOR } from "@/lib/highlights";
 import { gradientFor } from "@/lib/collections";
 import HighlightMap from "@/components/HighlightMap";
 import HighlightActions from "@/components/HighlightActions";
+import ShareButton from "@/components/ShareButton";
 import Avatar from "@/components/Avatar";
 import SiteFooter from "@/components/SiteFooter";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
@@ -283,6 +284,10 @@ export default async function HighlightPage({
           >
             {t("bringMeHere")}
           </a>
+          <ShareButton
+            title={hl.name}
+            className="rounded-full border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+          />
         </div>
       </div>
 
