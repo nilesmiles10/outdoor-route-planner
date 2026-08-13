@@ -740,6 +740,7 @@ export default function MapView({
         (route.geometry as GeoJSON.LineString | undefined)?.coordinates ?? null;
       if (!hasFitRef.current) {
         const coords = (route.geometry as GeoJSON.LineString).coordinates;
+        if (!coords?.length) return;
         const bounds = coords.reduce(
           (bd, c) => bd.extend([c[0], c[1]]),
           new maplibregl.LngLatBounds(
@@ -747,23 +748,60 @@ export default function MapView({
             [coords[0][0], coords[0][1]],
           ),
         );
-        // Padding volgt de layout: op md+ staat het paneel links (340px),
-        // op smalle schermen onderaan (max 45dvh). Hardcoded left:400 was
-        // fout op mobiel — dat is méér dan de vensterbreedte, waardoor
-        // fitBounds geen bruikbare camera kon berekenen en de route
-        // helemaal niet in beeld kwam. Alles geclampt op 40% van de as.
-        const cw = map.getContainer().clientWidth;
-        const ch = map.getContainer().clientHeight;
-        const wide = cw >= 768;
-        map.fitBounds(bounds, {
-          padding: {
-            top: 60,
-            right: 60,
-            left: wide ? Math.min(400, Math.round(cw * 0.4)) : 40,
-            bottom: wide ? 60 : Math.min(Math.round(ch * 0.45) + 24, Math.round(ch * 0.5)),
-          },
-        });
-        hasFitRef.current = true;
+        // Fit pas zodra de canvas écht gemeten is. Bij eerste load kan de GL-
+        // canvas nog op zijn 400×300-default staan (of 0×0 terwijl de pane
+        // offscreen is); de layout-bewuste left:400-padding overtreft dan de
+        // breedte → fitBounds degenereert en de route belandt uitgezoomd,
+        // buiten beeld óf achter het paneel (tour-detail toonde zo een lege
+        // kaart). Daarom: probeer de fit, en her-probeer bij elke map-resize
+        // tot er één tegen een fatsoenlijk-gemeten canvas draait.
+        // Fit pas nadat resizes zijn uitgeraasd. Bij eerste load kaskadeert de
+        // canvas door tussenmaten (400×300-default → 0×0 terwijl de pane
+        // offscreen is → uiteindelijke containergrootte). Meteen fitten op de
+        // eerste "acceptabele" maat pakte een tussenmaat en left:400-padding
+        // liet de route uitgezoomd/achter het paneel belanden. Daarom
+        // debouncen we: na de laatste resize (150 ms stil) fitten we één keer
+        // tegen de definitieve maat. NB: NOOIT map.resize() vanuit een
+        // 'resize'-listener — dat vuurt 'resize' en geeft oneindige recursie.
+        let fitTimer: ReturnType<typeof setTimeout> | null = null;
+        const doFit = () => {
+          fitTimer = null;
+          if (hasFitRef.current) return;
+          const canvas = map.getCanvas();
+          const cont = map.getContainer();
+          const cw = cont.clientWidth;
+          const ch = cont.clientHeight;
+          // Canvas nog niet gesynct met de container, of pane verborgen/te
+          // klein? Sla over; de volgende resize plant een nieuwe poging.
+          if (
+            Math.abs(canvas.clientWidth - cw) > 2 ||
+            Math.abs(canvas.clientHeight - ch) > 2 ||
+            cw < 200 ||
+            ch < 200
+          ) {
+            return;
+          }
+          const wide = cw >= 768;
+          // Padding volgt de layout: paneel links (md+) of onderaan (mobiel).
+          const left = wide ? Math.min(400, Math.round(cw * 0.4)) : 40;
+          const bottom = wide
+            ? 60
+            : Math.min(Math.round(ch * 0.45) + 24, Math.round(ch * 0.5));
+          map.fitBounds(bounds, { padding: { top: 60, right: 60, left, bottom } });
+          hasFitRef.current = true;
+          map.off("resize", scheduleFit);
+        };
+        const scheduleFit = () => {
+          if (hasFitRef.current) return;
+          if (fitTimer) clearTimeout(fitTimer);
+          fitTimer = setTimeout(doFit, 150);
+        };
+        scheduleFit();
+        map.on("resize", scheduleFit);
+        return () => {
+          if (fitTimer) clearTimeout(fitTimer);
+          map.off("resize", scheduleFit);
+        };
       }
     } else {
       src.setData({ type: "FeatureCollection", features: [] });
