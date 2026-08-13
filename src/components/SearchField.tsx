@@ -1,9 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { Waypoint } from "./MapView";
 
 type Suggestion = Waypoint & { label: string; type: string };
+// Zichtbare status van de geocoder-lookup. Zonder dit bleef een 503 (Photon
+// down) of een lege trefferlijst volledig stil: de dropdown rende alleen bij
+// >0 suggesties, dus wie een plaats tikte zag niks — geen spinner, geen "niets
+// gevonden", geen "niet beschikbaar". Nu geeft elk pad feedback.
+type SearchStatus = "idle" | "loading" | "results" | "empty" | "error" | "rateLimited";
 
 type Props = {
   placeholder: string;
@@ -31,8 +37,10 @@ export default function SearchField({
   onRename,
   actionLabels,
 }: Props) {
+  const ts = useTranslations("planner.search");
   const [text, setText] = useState(value?.name ?? "");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [status, setStatus] = useState<SearchStatus>("idle");
   const [open, setOpen] = useState(false);
   // Rename mode: typing edits the waypoint's label, no geocoder search.
   const [renaming, setRenaming] = useState(false);
@@ -63,17 +71,37 @@ export default function SearchField({
     clearTimeout(timer.current);
     if (q.trim().length < 2) {
       setSuggestions([]);
+      setStatus("idle");
       setOpen(false);
       return;
     }
+    // Toon meteen de loading-staat zodat het paneel niet leeg blijft tijdens
+    // de debounce + fetch (anders lijkt zoeken "kapot" bij trage geocoder).
+    setStatus("loading");
+    setOpen(true);
+    // Vang deze fetch af tegen een latere: een trage vroege response mag geen
+    // verse resultaten overschrijven (last-write-wins op de eigen query).
+    const myQuery = q;
     timer.current = setTimeout(async () => {
       try {
         const res = await fetch(`/api/geo/search?q=${encodeURIComponent(q)}`);
+        // input is intussen verder getikt — laat de nieuwere call winnen
+        if (inputRef.current && inputRef.current.value !== myQuery) return;
+        if (!res.ok) {
+          setSuggestions([]);
+          setStatus(res.status === 429 ? "rateLimited" : "error");
+          setOpen(true);
+          return;
+        }
         const data = await res.json();
-        setSuggestions(data.results ?? []);
+        const results: Suggestion[] = data.results ?? [];
+        setSuggestions(results);
+        setStatus(results.length ? "results" : "empty");
         setOpen(true);
       } catch {
         setSuggestions([]);
+        setStatus("error");
+        setOpen(true);
       }
     }, 250);
   }
@@ -101,7 +129,9 @@ export default function SearchField({
           placeholder={placeholder}
           value={text}
           onChange={(e) => handleChange(e.target.value)}
-          onFocus={() => !renaming && suggestions.length > 0 && setOpen(true)}
+          onFocus={() =>
+            !renaming && (suggestions.length > 0 || status !== "idle") && setOpen(true)
+          }
           onBlur={() => {
             setTimeout(() => setOpen(false), 150);
             commitRename();
@@ -160,24 +190,47 @@ export default function SearchField({
           )}
         </div>
       </div>
-      {open && suggestions.length > 0 && !renaming && (
-        <ul className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
-          {suggestions.map((s, i) => (
-            <li key={i}>
-              <button
-                type="button"
-                className="w-full px-3 py-2 text-left text-sm hover:bg-neutral-50"
-                onMouseDown={() => {
-                  onSelect({ name: s.name, lon: s.lon, lat: s.lat });
-                  setOpen(false);
-                }}
-              >
-                <span className="font-medium">{s.name}</span>
-                <span className="ml-2 text-xs text-neutral-500">{s.label}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+      {open && !renaming && status !== "idle" && (
+        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
+          {status === "loading" && (
+            <div className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-500">
+              <span className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-neutral-300 border-t-emerald-600" />
+              {ts("searching")}
+            </div>
+          )}
+          {status === "results" && (
+            <ul>
+              {suggestions.map((s, i) => (
+                <li key={i}>
+                  <button
+                    type="button"
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-neutral-50"
+                    onMouseDown={() => {
+                      onSelect({ name: s.name, lon: s.lon, lat: s.lat });
+                      setStatus("idle");
+                      setOpen(false);
+                    }}
+                  >
+                    <span className="font-medium">{s.name}</span>
+                    <span className="ml-2 text-xs text-neutral-500">{s.label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {status === "empty" && (
+            <div className="px-3 py-2 text-sm text-neutral-500">{ts("noResults")}</div>
+          )}
+          {status === "rateLimited" && (
+            <div className="px-3 py-2 text-sm text-amber-700">{ts("rateLimited")}</div>
+          )}
+          {status === "error" && (
+            <div className="px-3 py-2 text-sm text-neutral-600">
+              <span className="font-medium text-amber-700">{ts("unavailable")}</span>
+              <span className="mt-0.5 block text-xs text-neutral-500">{ts("errorHint")}</span>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

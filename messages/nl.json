@@ -144,7 +144,14 @@
     "collapsePanel": "Paneel inklappen",
     "expandPanel": "Paneel uitklappen",
     "climbsCount": "{count, plural, one {# klim} other {# klimmen}}",
-    "difficultyTooltip": "Moeilijkheid — op basis van afstand en hoogtemeters"
+    "difficultyTooltip": "Moeilijkheid — op basis van afstand en hoogtemeters",
+    "search": {
+      "searching": "Zoeken…",
+      "noResults": "Geen plaatsen gevonden",
+      "rateLimited": "Te veel zoekopdrachten — wacht heel even",
+      "unavailable": "Zoeken is nu niet beschikbaar",
+      "errorHint": "Tip: klik op de kaart om zelf een punt te plaatsen"
+    }
   },
   "account": {
     "login": "Log in om routes op te slaan",

@@ -144,7 +144,14 @@
     "collapsePanel": "Collapse panel",
     "expandPanel": "Expand panel",
     "climbsCount": "{count, plural, one {# climb} other {# climbs}}",
-    "difficultyTooltip": "Difficulty — based on distance and elevation gain"
+    "difficultyTooltip": "Difficulty — based on distance and elevation gain",
+    "search": {
+      "searching": "Searching…",
+      "noResults": "No places found",
+      "rateLimited": "Too many searches — please wait a moment",
+      "unavailable": "Search is unavailable right now",
+      "errorHint": "Tip: click the map to drop a point instead"
+    }
   },
   "account": {
     "login": "Log in to save routes",
