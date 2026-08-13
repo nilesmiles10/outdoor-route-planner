@@ -75,18 +75,26 @@ export async function generateMetadata({
   if (!trail) return { title: "Trail not found" };
   const t = await getTranslations("trailPage");
   const km = (trail.stats.distanceM / 1000).toFixed(1);
+  const sportNoun = t(
+    `sportNoun.${trail.is_gravel ? "gravel" : trail.sport}` as never,
+  );
+  const metaDesc = t("metaDescription", {
+    name: trail.name,
+    km,
+    region: trail.region ?? "Nederland",
+  });
+  // Entity-specifieke OG i.p.v. de generieke layout-OG bij gedeelde links.
+  const ogTitle = `${trail.name} · ${km} km ${sportNoun}`;
   return {
     title: pageTitle(
       await getSiteSettings(),
       // Gravel is de term waar mensen op zoeken; voor die routes wint hij van
       // het generieke "fietsroute" in de <title>.
-      `${trail.name} | ${km} km ${t(`sportNoun.${trail.is_gravel ? "gravel" : trail.sport}` as never)}`,
+      `${trail.name} | ${km} km ${sportNoun}`,
     ),
-    description: t("metaDescription", {
-      name: trail.name,
-      km,
-      region: trail.region ?? "Nederland",
-    }),
+    description: metaDesc,
+    openGraph: { title: ogTitle, description: metaDesc },
+    twitter: { title: ogTitle, description: metaDesc },
   };
 }
 
