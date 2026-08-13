@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import type { Difficulty } from "@/lib/difficulty";
 
 export type TimelineItem = {
   id: string;
@@ -16,6 +17,9 @@ export type TimelineItem = {
   dateLabel: string;
   distanceKm: string;
   ascendM: number;
+  // Server-berekend (zelfde formule als discover/collectie/tour) zodat de
+  // moeilijkheidsbadge overal consistent is; het profiel-timeline miste 'm.
+  difficulty: Difficulty;
   movingLabel: string | null;
   likeCount: number;
   likedByMe: boolean;
@@ -24,6 +28,7 @@ export type TimelineItem = {
 
 export default function ProfileTimeline({ items: initial }: { items: TimelineItem[] }) {
   const t = useTranslations("profile");
+  const tdiff = useTranslations("planner.difficultyLabels");
   const locale = useLocale();
   const sb: SupabaseClient = useMemo(() => supabaseBrowser(), []);
   const [user, setUser] = useState<User | null>(null);
@@ -68,6 +73,17 @@ export default function ProfileTimeline({ items: initial }: { items: TimelineIte
             <div className="flex items-center gap-2 text-sm font-medium text-neutral-900">
               {it.kind === "completed" && <span aria-hidden>🏁</span>}
               <span className="truncate">{it.name}</span>
+              <span
+                className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                  it.difficulty === "easy"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : it.difficulty === "moderate"
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-red-100 text-red-800"
+                }`}
+              >
+                {tdiff(it.difficulty)}
+              </span>
             </div>
             <div className="text-xs text-neutral-500">
               {it.distanceKm} km · ↗ {it.ascendM} m · {it.sportLabel}

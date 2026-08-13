@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { fmtDuration } from "@/lib/activity";
+import { difficulty } from "@/lib/difficulty";
 import Avatar from "@/components/Avatar";
 import ProfileActions from "@/components/ProfileActions";
 import ShareButton from "@/components/ShareButton";
@@ -170,6 +171,7 @@ export default async function UserPage({
       ).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" }),
       distanceKm: (x.stats.distanceM / 1000).toFixed(1),
       ascendM: x.stats.ascendM,
+      difficulty: difficulty(x.sport, x.stats.distanceM, x.stats.ascendM),
       movingLabel: isCompleted && x.moving_s ? fmtDuration(x.moving_s) : null,
       likeCount: likeRows.filter((l) => l.tour_id === x.id).length,
       likedByMe: !!viewer && likeRows.some((l) => l.tour_id === x.id && l.user_id === viewer.id),
