@@ -1383,6 +1383,7 @@ export default function PlannerApp() {
         route={route?.geometry ?? null}
         waypoints={plan.slots}
         hoverPoint={hoverPoint}
+        onRouteHover={setHoverIdx}
         onMapClick={handleMapClick}
         onMarkerDragEnd={handleMarkerDragEnd}
         onRouteDrop={handleRouteDrop}
@@ -2290,6 +2291,7 @@ export default function PlannerApp() {
                 distances={distances}
                 climbs={climbs}
                 onHover={setHoverIdx}
+                externalHoverIdx={hoverIdx}
               />
             )}
             {distances && <GradeLegend />}

@@ -29,6 +29,10 @@ type Props = {
   route: GeoJSON.Feature | null;
   waypoints: (Waypoint | null)[];
   hoverPoint: GeoJSON.Position | null;
+  // Cursor over de route-lijn → dichtstbijzijnde route-index (of null bij
+  // verlaten). Voedt de elevation-marker zodat kaart↔profiel tweerichtings
+  // linken. Optioneel (TourView geeft dit niet door).
+  onRouteHover?: (idx: number | null) => void;
   onMapClick: (lon: number, lat: number) => void;
   onMarkerDragEnd: (slotIndex: number, lon: number, lat: number) => void;
   onRouteDrop: (lon: number, lat: number) => void;
@@ -66,6 +70,7 @@ export default function MapView({
   route,
   waypoints,
   hoverPoint,
+  onRouteHover,
   onMapClick,
   onMarkerDragEnd,
   onRouteDrop,
@@ -102,6 +107,7 @@ export default function MapView({
     onSavedPlaceClick,
     onMarkerClick,
     onViewportChange,
+    onRouteHover,
   });
   cbRef.current = {
     onMapClick,
@@ -111,6 +117,7 @@ export default function MapView({
     onSavedPlaceClick,
     onMarkerClick,
     onViewportChange,
+    onRouteHover,
   };
 
   useEffect(() => {
@@ -692,15 +699,46 @@ export default function MapView({
       });
 
       // Drag the route line to insert a via point (Komoot-style).
+      let routeDragging = false;
+      let lastHoverIdx: number | null = null;
       map.on("mouseenter", "route-hit", () => {
         map.getCanvas().style.cursor = "grab";
       });
+      // Kaart↔profiel-link: cursor over de lijn → dichtstbijzijnde route-index
+      // → elevation-marker. Lineaire scan over de route-coords (paar duizend
+      // punten = sub-ms); gededupeerd op index zodat we niet elke pixel een
+      // setState triggeren. Tijdens slepen onderdrukt zodat de via-drag niet
+      // met scrub-updates vecht.
+      map.on("mousemove", "route-hit", (e) => {
+        if (routeDragging || !cbRef.current.onRouteHover) return;
+        const coords = routeCoordsRef.current;
+        if (!coords || coords.length < 2) return;
+        const { lng, lat } = e.lngLat;
+        let best = 0;
+        let bestD = Infinity;
+        for (let i = 0; i < coords.length; i++) {
+          const dx = coords[i][0] - lng;
+          const dy = coords[i][1] - lat;
+          const d = dx * dx + dy * dy;
+          if (d < bestD) {
+            bestD = d;
+            best = i;
+          }
+        }
+        if (best !== lastHoverIdx) {
+          lastHoverIdx = best;
+          cbRef.current.onRouteHover(best);
+        }
+      });
       map.on("mouseleave", "route-hit", () => {
         map.getCanvas().style.cursor = "";
+        lastHoverIdx = null;
+        cbRef.current.onRouteHover?.(null);
       });
       map.on("mousedown", "route-hit", (e) => {
         if (e.originalEvent.button !== 0) return;
         e.preventDefault();
+        routeDragging = true;
         map.getCanvas().style.cursor = "grabbing";
         const startPt = e.point;
         let moved = false;
@@ -724,6 +762,7 @@ export default function MapView({
         const onUp = (ev: maplibregl.MapMouseEvent) => {
           map.off("mousemove", onMove);
           ghost?.remove();
+          routeDragging = false;
           map.getCanvas().style.cursor = "";
           // Only an actual drag inserts a via (plain clicks on the line were
           // spawning waypoints — reported 2026-07-19). A non-drag click falls

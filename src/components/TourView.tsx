@@ -212,6 +212,7 @@ export default function TourView({
           window.location.href = `/${locale}/highlight/${h.id}`;
         }}
         hoverPoint={hoverIdx !== null ? geometry.coordinates[hoverIdx] ?? null : null}
+        onRouteHover={setHoverIdx}
         onMapClick={noop}
         onMarkerDragEnd={noop}
         onRouteDrop={noop}
@@ -423,6 +424,7 @@ export default function TourView({
           distances={distances}
           climbs={climbs}
           onHover={setHoverIdx}
+          externalHoverIdx={hoverIdx}
         />
         <GradeLegend />
         {/* Klim-uitsplitsing: het profiel toont wáár het klimt, deze lijst

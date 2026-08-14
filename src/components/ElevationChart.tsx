@@ -8,6 +8,10 @@ type Props = {
   distances: number[]; // cumulative meters, same length
   climbs: Climb[];
   onHover: (index: number | null) => void;
+  // Extern-gestuurde hover (bv. cursor over de route-lijn op de kaart): toont
+  // dezelfde marker op het profiel zonder dat de grafiek zelf gehoverd wordt.
+  // Directe grafiek-hover (interne state) wint als beide actief zijn.
+  externalHoverIdx?: number | null;
 };
 
 const W = 320;
@@ -63,9 +67,22 @@ export default function ElevationChart({
   distances,
   climbs,
   onHover,
+  externalHoverIdx = null,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  // De marker volgt de directe grafiek-hover; valt terug op de externe hover
+  // (kaart-lijn) zodat de link tweerichtings is. Clamp tegen out-of-range: de
+  // externe index komt uit routeCoords en kan één render voorlopen op een
+  // her-berekend profiel.
+  const activeIdx =
+    hoverIdx !== null
+      ? hoverIdx
+      : externalHoverIdx !== null &&
+          externalHoverIdx >= 0 &&
+          externalHoverIdx < elevation.length
+        ? externalHoverIdx
+        : null;
 
   const totalM = distances[distances.length - 1] ?? 0;
   const min = useMemo(() => Math.min(...elevation), [elevation]);
@@ -196,11 +213,11 @@ export default function ElevationChart({
       <text x="2" y={H - 3} className="fill-neutral-500" fontSize="8">
         {Math.round(min)} m
       </text>
-      {hoverIdx !== null && (
+      {activeIdx !== null && (
         <g>
           <line
-            x1={x(hoverIdx)}
-            x2={x(hoverIdx)}
+            x1={x(activeIdx)}
+            x2={x(activeIdx)}
             y1={PAD_TOP}
             y2={H - PAD_BOTTOM}
             stroke="#404040"
@@ -208,25 +225,25 @@ export default function ElevationChart({
             strokeDasharray="2 2"
           />
           <circle
-            cx={x(hoverIdx)}
-            cy={y(elevation[hoverIdx])}
+            cx={x(activeIdx)}
+            cy={y(elevation[activeIdx])}
             r="3"
             fill="#2563eb"
             stroke="#fff"
             strokeWidth="1.5"
           />
           <text
-            x={x(hoverIdx) > W - 95 ? x(hoverIdx) - 4 : x(hoverIdx) + 4}
+            x={x(activeIdx) > W - 95 ? x(activeIdx) - 4 : x(activeIdx) + 4}
             y={PAD_TOP + 8}
-            textAnchor={x(hoverIdx) > W - 95 ? "end" : "start"}
+            textAnchor={x(activeIdx) > W - 95 ? "end" : "start"}
             fontSize="9"
             className="fill-neutral-700"
           >
-            {(distances[hoverIdx] / 1000).toFixed(1)} km ·{" "}
-            {Math.round(elevation[hoverIdx])} m
+            {(distances[activeIdx] / 1000).toFixed(1)} km ·{" "}
+            {Math.round(elevation[activeIdx])} m
             {(() => {
               // Grade bij de cursor (Komoot toont dit): met teken, +omhoog.
-              const g = gradeAtIndex(elevation, distances, hoverIdx);
+              const g = gradeAtIndex(elevation, distances, activeIdx);
               return ` · ${g >= 0 ? "+" : ""}${g.toFixed(1)}%`;
             })()}
           </text>
