@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getWeather } from "@/lib/weather";
 import TourView from "@/components/TourView";
+import { buildAutoDesc } from "@/lib/autoDesc";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 import { passedHighlightPins } from "@/lib/passedHighlights";
 
@@ -166,6 +167,10 @@ export default async function TrailPage({
   const t = await getTranslations("trailPage");
   const tt = await getTranslations("tourPage");
   const tHl = await getTranslations("highlightPage");
+  // Menselijk-leesbare moeilijkheid + ondergrond ("Zware route. … Grotendeels
+  // verharde wegen."). Tours toonden dit al; trails niet — zelfde helper, zodat
+  // beide detailpagina's consistent zijn.
+  const autoDesc = buildAutoDesc(tt, trail);
 
   const km = (trail.stats.distanceM / 1000).toFixed(1);
   const h = Math.floor(trail.stats.timeS / 3600);
@@ -229,6 +234,7 @@ export default async function TrailPage({
         geometry={trail.geometry}
         elevation={trail.elevation}
         waypoints={startWaypoint}
+        autoDesc={autoDesc}
         highlightPins={highlightPins}
         header={{
           name: trail.name,

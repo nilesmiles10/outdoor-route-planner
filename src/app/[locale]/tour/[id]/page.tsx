@@ -3,10 +3,10 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getWeather } from "@/lib/weather";
-import { difficulty } from "@/lib/difficulty";
+import { buildAutoDesc } from "@/lib/autoDesc";
 import { CATEGORY_EMOJI } from "@/lib/highlights";
 import TourView from "@/components/TourView";
-import { getTour, type TourRow } from "./data";
+import { getTour } from "./data";
 
 function haversineKm(aLon: number, aLat: number, bLon: number, bLat: number) {
   const R = 6371;
@@ -22,24 +22,6 @@ function haversineKm(aLon: number, aLat: number, bLon: number, bLat: number) {
 
 // Komoot-style auto description (GEN-132), templated from difficulty +
 // surface aggregates.
-function buildAutoDesc(
-  t: Awaited<ReturnType<typeof getTranslations>>,
-  tour: TourRow,
-): string {
-  const diff = difficulty(tour.sport, tour.stats.distanceM, tour.stats.ascendM);
-  const b = tour.surfaces.buckets;
-  const total = b.paved + b.unpaved + b.unknown;
-  const surfKey =
-    total === 0
-      ? "mixed"
-      : b.paved / total >= 0.7
-        ? "paved"
-        : b.unpaved / total >= 0.7
-          ? "unpaved"
-          : "mixed";
-  return `${t(`autoDesc.${diff}` as never)} ${t(`autoDesc.${surfKey}` as never)}`;
-}
-
 export async function generateMetadata({
   params,
 }: {
