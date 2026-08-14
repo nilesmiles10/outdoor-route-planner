@@ -1846,6 +1846,25 @@ export default function PlannerApp() {
               {selectedHl.description}
             </p>
           )}
+          {/* Route via dit hoogtepunt (Komoot-signatuur): plan langs een mooi
+              punt. placePoint("via") is slim — leeg → start, alleen-start →
+              bestemming, volledige route → tussenpunt; sluit de balloon zelf. */}
+          <button
+            type="button"
+            onClick={() =>
+              placePoint(
+                {
+                  name: selectedHl.name,
+                  lon: selectedHl.lon,
+                  lat: selectedHl.lat,
+                },
+                "via",
+              )
+            }
+            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800"
+          >
+            ➕ {t("balloon.addVia")}
+          </button>
           <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center gap-1">
               <button
