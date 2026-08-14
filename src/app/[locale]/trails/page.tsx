@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { difficulty } from "@/lib/difficulty";
+import { fmtDuration } from "@/lib/activity";
 import SiteFooter from "@/components/SiteFooter";
 import RegionFilterSelect from "@/components/RegionFilterSelect";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
@@ -473,7 +474,8 @@ export default async function TrailsPage({
                 })()}
               </div>
               <div className="mt-0.5 text-xs text-neutral-500">
-                {(tr.stats.distanceM / 1000).toFixed(1)} km · ↗ {tr.stats.ascendM} m ·{" "}
+                {(tr.stats.distanceM / 1000).toFixed(1)} km ·{" "}
+                {fmtDuration(tr.stats.timeS)} h · ↗ {tr.stats.ascendM} m ·{" "}
                 {tp(`sports.${tr.sport}` as never)}
                 {tr.is_gravel
                   ? ` · ${t("gravelMeta", { km: (tr.gravel_m / 1000).toFixed(1) })}`
