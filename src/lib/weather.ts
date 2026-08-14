@@ -3,7 +3,7 @@
 
 export type Weather = {
   days: { date: string; tMax: number; tMin: number; rain: number; code: number }[];
-  packTip: "rain" | "cold" | "heat" | null;
+  packTip: "storm" | "snow" | "rain" | "cold" | "heat" | null;
 };
 
 // WMO weather-interpretation-code → emoji. Voegt de daadwerkelijke conditie toe
@@ -40,14 +40,21 @@ export async function getWeather(
       code: d.daily.weathercode?.[i] ?? 0,
     }));
     if (!days.length) return null;
-    const packTip =
-      days[0].rain >= 50
-        ? "rain"
-        : days[0].tMin <= 4
-          ? "cold"
-          : days[0].tMax >= 27
-            ? "heat"
-            : null;
+    // Conditie-code weegt vóór temp/regen: onweer en sneeuw veranderen radicaal
+    // wat je meeneemt. Codes 95-99 = onweer; 71-77 + 85-86 = (buien met) sneeuw.
+    const c = days[0].code;
+    const packTip: Weather["packTip"] =
+      c >= 95
+        ? "storm"
+        : (c >= 71 && c <= 77) || c === 85 || c === 86
+          ? "snow"
+          : days[0].rain >= 50
+            ? "rain"
+            : days[0].tMin <= 4
+              ? "cold"
+              : days[0].tMax >= 27
+                ? "heat"
+                : null;
     return { days, packTip };
   } catch {
     return null;

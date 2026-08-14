@@ -267,6 +267,8 @@
     "away": "hiervandaan",
     "weather": "Weer",
     "pack": {
+      "storm": "Onweer verwacht — check de tijden en mijd open of hooggelegen terrein.",
+      "snow": "Sneeuw op komst — warme laagjes en waterdicht, stevig schoeisel.",
       "rain": "Redelijk grote kans op regen — een waterdichte jas kan goed van pas komen.",
       "cold": "Koud vandaag — neem warme laagjes mee.",
       "heat": "Warm vandaag — neem extra water en zonnebrand mee."

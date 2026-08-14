@@ -267,6 +267,8 @@
     "away": "away",
     "weather": "Weather",
     "pack": {
+      "storm": "Thunderstorms expected — check the timing and avoid open or high ground.",
+      "snow": "Snow on the way — warm layers and waterproof, sturdy footwear.",
       "rain": "Fair chance of rain — a waterproof jacket may come in handy.",
       "cold": "Cold today — pack warm layers.",
       "heat": "Hot today — bring extra water and sunscreen."
