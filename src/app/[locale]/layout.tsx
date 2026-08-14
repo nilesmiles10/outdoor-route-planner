@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import AppHeader from "@/components/AppHeader";
@@ -24,10 +24,14 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const s = await getSiteSettings();
   const desc = tagline(s, params.locale);
+  // Zoek-snippet: een rijke waardepropositie (sporten + Europa + hoogte/onder-
+  // grond + 30k officiële routes) scoort beter dan de kale tagline. De tagline
+  // blijft de punchy OG-omschrijving voor social previews.
+  const tApp = await getTranslations({ locale: params.locale, namespace: "app" });
   return {
     metadataBase: new URL(SITE_URL),
     title: s.site_name,
-    description: desc,
+    description: tApp("metaDescription"),
     // GEEN alternates.languages hier: die zetten op layout-niveau een STATISCHE
     // hreflang naar de homepage (/nl, /en) op ÉLKE pagina — dus /nl/trail/x
     // claimde dat zijn Engelse variant de homepage is. next-intl's middleware

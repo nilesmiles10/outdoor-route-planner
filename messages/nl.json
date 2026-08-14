@@ -1,7 +1,8 @@
 {
   "app": {
     "title": "Tarnoo",
-    "tagline": "Plan je volgende avontuur"
+    "tagline": "Plan je volgende avontuur",
+    "metaDescription": "Plan wandel-, hardloop-, fiets- en MTB-routes in heel Europa met hoogteprofiel, ondergrond en 30.000+ officiële routes. Gratis, geen account nodig."
   },
   "planner": {
     "title": "Tarnoo",

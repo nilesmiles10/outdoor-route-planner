@@ -1,7 +1,8 @@
 {
   "app": {
     "title": "Tarnoo",
-    "tagline": "Plan your next adventure"
+    "tagline": "Plan your next adventure",
+    "metaDescription": "Plan hiking, running, cycling and MTB routes across Europe with elevation, surface and 30,000+ official routes. Free, no account needed."
   },
   "planner": {
     "title": "Tarnoo",
