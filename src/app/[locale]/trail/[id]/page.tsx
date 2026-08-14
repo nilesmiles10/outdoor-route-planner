@@ -5,6 +5,7 @@ import { getWeather } from "@/lib/weather";
 import TourView from "@/components/TourView";
 import { buildAutoDesc } from "@/lib/autoDesc";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
+import { SITE_URL } from "@/app/sitemap";
 import { passedHighlightPins } from "@/lib/passedHighlights";
 
 // GEN-145 — detailpagina voor officiële routes (OSM-import). Hergebruikt
@@ -215,6 +216,23 @@ export default async function TrailPage({
     };
   });
 
+  // Eén bron voor de zichtbare breadcrumb (TourView) én de BreadcrumbList-JSON-LD,
+  // zodat ze niet uit elkaar lopen. Regio-link draagt land mee tegen regionaam-
+  // botsingen (Limburg NL vs BE).
+  const crumbs = [
+    { label: tNav("trails"), href: `/${locale}/trails` },
+    ...(trail.region
+      ? [
+          {
+            label: trail.region,
+            href: trail.country
+              ? `/${locale}/trails?country=${trail.country}&region=${encodeURIComponent(trail.region)}`
+              : `/${locale}/trails?region=${encodeURIComponent(trail.region)}`,
+          },
+        ]
+      : []),
+  ];
+
   return (
     <main className="relative h-dvh w-full">
       <script
@@ -233,25 +251,38 @@ export default async function TrailPage({
           }),
         }}
       />
+      {/* BreadcrumbList voor Google rich results (matcht de zichtbare breadcrumb):
+          Trails › regio › routenaam, met absolute URLs. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              ...crumbs.map((c, i) => ({
+                "@type": "ListItem",
+                position: i + 1,
+                name: c.label,
+                item: `${SITE_URL}${c.href}`,
+              })),
+              {
+                "@type": "ListItem",
+                position: crumbs.length + 1,
+                name: trail.name,
+                item: `${SITE_URL}/${locale}/trail/${params.id}`,
+              },
+            ],
+          }),
+        }}
+      />
       <TourView
         geometry={trail.geometry}
         elevation={trail.elevation}
         waypoints={startWaypoint}
         autoDesc={autoDesc}
         highlightPins={highlightPins}
-        breadcrumb={[
-          { label: tNav("trails"), href: `/${locale}/trails` },
-          ...(trail.region
-            ? [
-                {
-                  label: trail.region,
-                  href: trail.country
-                    ? `/${locale}/trails?country=${trail.country}&region=${encodeURIComponent(trail.region)}`
-                    : `/${locale}/trails?region=${encodeURIComponent(trail.region)}`,
-                },
-              ]
-            : []),
-        ]}
+        breadcrumb={crumbs}
         header={{
           name: trail.name,
           sport: trail.sport,
