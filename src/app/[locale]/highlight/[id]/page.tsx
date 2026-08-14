@@ -6,6 +6,7 @@ import { GEO_REVERSE_BASE, geoHeaders } from "@/lib/geo";
 import { getWeather } from "@/lib/weather";
 import { CATEGORY_EMOJI, CATEGORY_COLOR } from "@/lib/highlights";
 import { gradientFor } from "@/lib/collections";
+import { regionSlugFor } from "@/lib/regionSlug";
 import HighlightMap from "@/components/HighlightMap";
 import HighlightActions from "@/components/HighlightActions";
 import ShareButton from "@/components/ShareButton";
@@ -30,6 +31,8 @@ type Highlight = {
   description_en: string | null;
   kind: string;
   geometry: GeoJSON.LineString | null;
+  region: string | null;
+  country: string | null;
 };
 type Vote = { value: number; sport: string | null };
 type Tip = {
@@ -89,7 +92,9 @@ async function getHighlight(id: string): Promise<Highlight | null> {
   const sb = supabaseServer();
   const { data } = await sb
     .from("highlights")
-    .select("id,name,category,lon,lat,description,description_nl,description_en,kind,geometry")
+    .select(
+      "id,name,category,lon,lat,description,description_nl,description_en,kind,geometry,region,country",
+    )
     .eq("id", id)
     .maybeSingle();
   return (data as Highlight) ?? null;
@@ -160,9 +165,10 @@ export default async function HighlightPage({
     (locale === "en" ? hl.description_en : hl.description_nl) ?? hl.description;
   const t = await getTranslations("highlightPage");
   const ts = await getTranslations("planner.sports");
+  const tr = await getTranslations("regionPage");
 
   const sb = supabaseServer();
-  const [votesQ, tipsQ, photosQ, toursQ, nearbyQ, place, weather] =
+  const [votesQ, tipsQ, photosQ, toursQ, nearbyQ, place, weather, regionQ] =
     await Promise.all([
       sb.from("highlight_votes").select("value,sport").eq("highlight_id", hl.id),
       sb
@@ -201,6 +207,19 @@ export default async function HighlightPage({
         .limit(1000),
       getPlace(hl.lon, hl.lat),
       getWeather(hl.lon, hl.lat),
+      // Bestaat de regio-categoriepagina voor dit punt? (≥8 van deze categorie
+      // in deze regio — dezelfde thin-content-poort als de regiopagina zelf, dus
+      // de breadcrumb-link kan nooit naar een 404 wijzen). Meerdere rijen = de
+      // regionaam botst over landen → land-suffix in de slug (zelfde regel als
+      // withRegionSlugs/resolve()).
+      hl.region
+        ? sb
+            .from("highlight_regions")
+            .select("country")
+            .eq("region", hl.region)
+            .eq("category", hl.category)
+            .gte("n", 8)
+        : Promise.resolve({ data: [] as { country: string | null }[] }),
     ]);
 
   const votes = (votesQ.data as Vote[]) ?? [];
@@ -239,6 +258,22 @@ export default async function HighlightPage({
       .slice(0, 8)
   );
 
+  // Middelste breadcrumb-crumb: link naar de regio-categoriepagina ("Toppen in
+  // Bayern") als die bestaat, anders de kale categorie-tekst ("Top"). Zo leidt
+  // de breadcrumb terug naar de bovenliggende lijst i.p.v. dood tekst te zijn.
+  const regionRows = (regionQ.data as { country: string | null }[] | null) ?? [];
+  const regionCrumb =
+    hl.region && regionRows.length > 0
+      ? {
+          href: `/${locale}/discover/${regionSlugFor(
+            hl.region,
+            hl.country,
+            regionRows.length > 1,
+          )}/${hl.category}`,
+          label: `${tr(`catPlural.${hl.category}` as never)} in ${hl.region}`,
+        }
+      : null;
+
   const storageBase = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/highlight-photos/`;
   // atrole=dest: "Breng me hierheen" zet de POI als BESTEMMING (navigeer
   // ernaartoe), niet als startpunt.
@@ -266,7 +301,13 @@ export default async function HighlightPage({
           {t("breadcrumbDiscover")}
         </a>
         {" / "}
-        <span>{t(`cat.${hl.category}` as never)}</span>
+        {regionCrumb ? (
+          <a href={regionCrumb.href} className="hover:underline">
+            {regionCrumb.label}
+          </a>
+        ) : (
+          <span>{t(`cat.${hl.category}` as never)}</span>
+        )}
         {" / "}
         <span className="text-neutral-600">{hl.name}</span>
       </nav>
