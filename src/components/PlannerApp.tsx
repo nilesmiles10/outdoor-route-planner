@@ -83,7 +83,8 @@ type PlanAction =
   // coordinates without touching route state or the undo history.
   | { type: "rename"; lon: number; lat: number; name: string }
   // Replace the whole plan (share-URL restore, GPX import, round trip).
-  | { type: "load"; slots: Slots };
+  | { type: "load"; slots: Slots }
+  | { type: "clear" };
 
 function planReducer(state: PlanState, action: PlanAction): PlanState {
   const commit = (slots: Slots): PlanState => ({
@@ -149,6 +150,10 @@ function planReducer(state: PlanState, action: PlanAction): PlanState {
       while (slots.length < 2) slots = [...slots, null];
       return { slots, past: [], future: [] };
     }
+    // Undobaar wissen (via commit) i.p.v. "load": een per ongeluk gewiste route
+    // kun je zo terughalen met Ctrl-Z / de ↶-knop.
+    case "clear":
+      return commit([null, null]);
   }
 }
 
@@ -2243,14 +2248,25 @@ export default function PlannerApp() {
             >
               + {t("addWaypoint")}
             </button>
-            <button
-              type="button"
-              onClick={() => dispatch({ type: "reverse" })}
-              disabled={filled.length < 2}
-              className="text-xs text-emerald-700 hover:underline disabled:text-neutral-300"
-            >
-              ⇅ {t("reverse")}
-            </button>
+            <div className="flex items-center gap-3">
+              {filled.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => dispatch({ type: "clear" })}
+                  className="text-xs text-neutral-500 hover:text-red-600 hover:underline"
+                >
+                  ✕ {t("clear")}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => dispatch({ type: "reverse" })}
+                disabled={filled.length < 2}
+                className="text-xs text-emerald-700 hover:underline disabled:text-neutral-300"
+              >
+                ⇅ {t("reverse")}
+              </button>
+            </div>
           </div>
           {/* Komoot's "Heen en terug": route your planned trip back to the start */}
           {filled.length >= 2 && (

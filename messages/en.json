@@ -10,6 +10,7 @@
     "start": "Enter starting point",
     "destination": "Enter destination",
     "reverse": "Reverse",
+    "clear": "Clear",
     "calculating": "Calculating route…",
     "time": "time",
     "surfaces": "Surfaces",
