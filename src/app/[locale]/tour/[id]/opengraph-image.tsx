@@ -1,13 +1,13 @@
-import { ImageResponse } from "next/og";
 import { getTranslations } from "next-intl/server";
 import { supabaseServer } from "@/lib/supabase/server";
+import { notFoundOgCard, OG_SIZE, routeOgCard } from "@/lib/og/routeCard";
 
 export const runtime = "nodejs";
-export const size = { width: 1200, height: 630 };
+export const size = OG_SIZE;
 export const contentType = "image/png";
 
-// OG card: route polyline drawn as pure SVG (no external tiles → works
-// inside the OG renderer), plus headline stats.
+// OG card: route polyline drawn as pure SVG (no external tiles → works inside
+// the OG renderer), plus headline stats. Shared with the trail OG image.
 export default async function OgImage({
   params,
 }: {
@@ -20,130 +20,20 @@ export default async function OgImage({
     .eq("id", params.id)
     .maybeSingle();
 
-  if (!tour) {
-    return new ImageResponse(
-      (
-        <div
-          style={{
-            width: "100%",
-            height: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "#0f172a",
-            color: "#fff",
-            fontSize: 48,
-          }}
-        >
-          Tarnoo
-        </div>
-      ),
-      size,
-    );
-  }
+  if (!tour || !tour.geometry) return notFoundOgCard();
 
-  const coords = (tour.geometry as GeoJSON.LineString).coordinates;
-  const lons = coords.map((c) => c[0]);
-  const lats = coords.map((c) => c[1]);
-  const minLon = Math.min(...lons);
-  const maxLon = Math.max(...lons);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const spanLon = Math.max(maxLon - minLon, 1e-4);
-  const spanLat = Math.max(maxLat - minLat, 1e-4);
-  const W = 640;
-  const H = 470;
-  const pts = coords
-    .filter((_, i) => i % Math.ceil(coords.length / 300) === 0 || i === coords.length - 1)
-    .map((c) => {
-      const x = ((c[0] - minLon) / spanLon) * (W - 40) + 20;
-      const y = H - (((c[1] - minLat) / spanLat) * (H - 40) + 20);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-
-  const km = ((tour.stats as { distanceM: number }).distanceM / 1000).toFixed(1);
-  const ascend = (tour.stats as { ascendM: number }).ascendM;
-  // Nette, gelokaliseerde sport-label i.p.v. de ruwe sleutel: de share-card
-  // toonde "Road"/"Mtb"/"Ebike" i.p.v. "Road bike"/"MTB"/"E-bike" (NL:
-  // "Racefiets"). Expliciete locale zodat het niet op request-context leunt.
+  // Nette, gelokaliseerde sport-label i.p.v. de ruwe sleutel; expliciete locale
+  // zodat het niet op request-context leunt.
   const tsport = await getTranslations({
     locale: params.locale,
     namespace: "planner.sports",
   });
-  const sportLabel = tsport(tour.sport as never);
 
-  return new ImageResponse(
-    (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          background: "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)",
-          fontFamily: "sans-serif",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            padding: "60px 20px 60px 60px",
-            width: 480,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <svg width="72" height="72" viewBox="0 0 512 512">
-              <rect width="512" height="512" rx="116" fill="#047857" />
-              <path d="M232 316 L330 188 L430 316 Z" fill="#6ee7b7" />
-              <path d="M96 316 L212 150 L318 316 Z" fill="#ffffff" />
-              <rect x="150" y="352" width="150" height="12" rx="6" fill="#ffffff" />
-              <rect x="118" y="386" width="90" height="12" rx="6" fill="#a7f3d0" />
-            </svg>
-            <div style={{ fontSize: 22, color: "#047857", fontWeight: 700 }}>
-              TARNOO
-            </div>
-          </div>
-          <div
-            style={{
-              fontSize: 44,
-              fontWeight: 700,
-              color: "#111827",
-              marginTop: 12,
-              lineHeight: 1.15,
-            }}
-          >
-            {(tour.name as string).slice(0, 60)}
-          </div>
-          <div style={{ display: "flex", gap: 28, marginTop: 28, fontSize: 34, color: "#374151" }}>
-            <span>{km} km</span>
-            <span>↗ {ascend} m</span>
-            <span>{sportLabel}</span>
-          </div>
-        </div>
-        <svg width={W} height={630} viewBox={`0 0 ${W} 630`}>
-          <g transform="translate(0, 80)">
-            <polyline
-              points={pts}
-              fill="none"
-              stroke="#ffffff"
-              strokeWidth="14"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <polyline
-              points={pts}
-              fill="none"
-              stroke="#2563eb"
-              strokeWidth="7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </g>
-        </svg>
-      </div>
-    ),
-    size,
-  );
+  return routeOgCard({
+    name: tour.name as string,
+    sportLabel: tsport(tour.sport as never),
+    coords: (tour.geometry as GeoJSON.LineString).coordinates as [number, number][],
+    distanceM: (tour.stats as { distanceM: number }).distanceM,
+    ascendM: (tour.stats as { ascendM: number }).ascendM,
+  });
 }
