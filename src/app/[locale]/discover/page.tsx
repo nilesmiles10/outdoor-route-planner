@@ -21,11 +21,23 @@ type Row = {
 };
 
 const SPORTS = ["all", "hike", "run", "touring", "gravel", "mtb", "road", "ebike"];
-// Zoals /api/discover/combos ze levert: al gesorteerd op aantal, slug klaar.
-type Combo = { slug: string; label: string; category: string; n: number };
+// Zoals /api/discover/combos ze levert: globaal op aantal gesorteerd, met de
+// top-Benelux achteraan aangehecht (die halen de globale top-200 niet). `country`
+// laat de client de Benelux-combo's voor de nl-locale vooraan zetten.
+type Combo = {
+  slug: string;
+  label: string;
+  category: string;
+  n: number;
+  country?: string | null;
+};
 // 3.614 combo's halen de ≥8-poort — als chiprij onbruikbaar. De rijkste eerst;
 // de rest blijft bereikbaar via de sitemap en de links op de regiopagina's.
 const MAX_CHIPS = 60;
+// Nederlandstalige bezoekers zijn vrijwel altijd op zoek naar Benelux-regio's;
+// de globale top-200 is puur bergland (DE/AT/ES/IT). Voor nl zetten we daarom de
+// Benelux-combo's vooraan. Andere locales houden de globale volgorde.
+const BENELUX = new Set(["NL", "BE", "LU"]);
 const BANDS: [string, number, number][] = [
   ["all", 0, Infinity],
   ["short", 0, 20000],
@@ -94,6 +106,16 @@ export default function DiscoverPage() {
   const [geoState, setGeoState] = useState<"idle" | "loading" | "off">("idle");
   // GEN-116: region × category combos with enough content for a page.
   const [combos, setCombos] = useState<Combo[]>([]);
+  // Voor nl-bezoekers: Benelux-combo's (stabiel op hun globale n-volgorde) eerst,
+  // daarna de globale rest. Andere locales houden de globale volgorde ongemoeid.
+  const orderedCombos = useMemo(() => {
+    if (locale !== "nl") return combos;
+    const be: Combo[] = [];
+    const rest: Combo[] = [];
+    for (const c of combos)
+      (c.country && BENELUX.has(c.country) ? be : rest).push(c);
+    return [...be, ...rest];
+  }, [combos, locale]);
 
   // Vraag de locatie op voor de "Dichtstbij"-sortering. Aangeroepen op expliciete
   // actie (Dichtstbij-chip / locatie-knop) en bij mount alléén als de permissie
@@ -565,7 +587,7 @@ export default function DiscoverPage() {
             {t("browseRegions")}
           </h2>
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {combos.slice(0, MAX_CHIPS).map((c) => (
+            {orderedCombos.slice(0, MAX_CHIPS).map((c) => (
               <a
                 key={`${c.slug}|${c.category}`}
                 href={`/${locale}/discover/${c.slug}/${c.category}`}

@@ -63,10 +63,35 @@ export async function GET() {
   // Slugs worden over de VOLLEDIGE set bepaald (botsingen!), pas daarna kappen
   // we af: alle 3.6k combo's uitsturen is ~220 kB voor een rij van 60 chips.
   // De rest is niet verloren — die staat in de sitemap en op de regiopagina's.
-  const combos = withRegionSlugs(rows)
+  const withSlugs = withRegionSlugs(rows);
+  const toOut = (c: (typeof withSlugs)[number]) => ({
+    slug: c.slug,
+    label: c.label,
+    category: c.category,
+    n: c.n,
+    country: c.country,
+  });
+  const global = [...withSlugs].sort((a, b) => b.n - a.n).slice(0, 200);
+  // Benelux-combo's halen de globale top-200 niet (de rijkste — Luik/monument
+  // met n≈449 — zit onder de 200e plek, ≈497). Voor de NL/BE-doelgroep zijn ze
+  // juist de relevantste "ontdek per regio"-instap. Voeg de top-30 Benelux toe
+  // zodat de client ze voor de nl-locale vooraan kan zetten; de globale volgorde
+  // (en dus het gedrag voor andere locales) blijft ongewijzigd — ze komen er
+  // enkel achteraan bij. `country` gaat mee zodat de client kan filteren.
+  const BENELUX = new Set(["NL", "BE", "LU"]);
+  const benelux = [...withSlugs]
+    .filter((c) => c.country && BENELUX.has(c.country))
     .sort((a, b) => b.n - a.n)
-    .slice(0, 200)
-    .map(({ slug, label, category, n }) => ({ slug, label, category, n }));
+    .slice(0, 30);
+  const seen = new Set<string>();
+  const combos = [...global, ...benelux]
+    .filter((c) => {
+      const k = `${c.slug}|${c.category}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .map(toOut);
 
   return NextResponse.json(combos);
 }
