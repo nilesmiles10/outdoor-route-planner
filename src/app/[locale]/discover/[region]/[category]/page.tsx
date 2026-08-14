@@ -5,6 +5,7 @@ import { CATEGORY_EMOJI, HIGHLIGHT_CATEGORIES } from "@/lib/highlights";
 import { withRegionSlugs, type RegionCombo } from "@/lib/regionSlug";
 import SiteFooter from "@/components/SiteFooter";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
+import { SITE_URL } from "@/app/sitemap";
 
 // GEN-116 — programmatic SEO pages: "<Category-plural> in <Region>".
 // Driven by the highlights corpus (680 POIs with a backfilled region).
@@ -188,6 +189,32 @@ export default async function RegionCategoryPage({
               name: h.name,
               url: `/${locale}/highlight/${h.id}`,
             })),
+          }),
+        }}
+      />
+      {/* BreadcrumbList voor Google rich results (matcht de zichtbare breadcrumb).
+          2 niveaus: Ontdekken → deze categorie-pagina; er is geen losse regio-URL
+          (regio is bewust een niet-link-span), dus die valt buiten de trail. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              {
+                "@type": "ListItem",
+                position: 1,
+                name: t("breadcrumbDiscover"),
+                item: `${SITE_URL}/${locale}/discover`,
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: `${cat} in ${label}`,
+                item: `${SITE_URL}/${locale}/discover/${params.region}/${params.category}`,
+              },
+            ],
           }),
         }}
       />
