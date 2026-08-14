@@ -103,6 +103,8 @@
       "clickMap": "Click the map…",
       "asWaypoint": "Add to route",
       "loginToVote": "Log in to vote",
+      "upvote": "Useful — upvote",
+      "downvote": "Not useful — downvote",
       "newTitle": "New highlight",
       "namePlaceholder": "Name (e.g. Viewpoint over the valley)",
       "save": "Save",

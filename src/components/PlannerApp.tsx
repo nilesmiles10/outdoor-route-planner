@@ -1803,7 +1803,8 @@ export default function PlannerApp() {
                 type="button"
                 onClick={() => voteHl(1)}
                 disabled={!user}
-                title={user ? "" : t("highlights.loginToVote")}
+                title={user ? t("highlights.upvote") : t("highlights.loginToVote")}
+                aria-label={t("highlights.upvote")}
                 className={`rounded-lg px-2 py-1 text-sm disabled:opacity-30 ${
                   myVote === 1 ? "bg-emerald-100 text-emerald-800" : "bg-neutral-100 hover:bg-neutral-200"
                 }`}
@@ -1817,6 +1818,8 @@ export default function PlannerApp() {
                 type="button"
                 onClick={() => voteHl(-1)}
                 disabled={!user}
+                title={user ? t("highlights.downvote") : t("highlights.loginToVote")}
+                aria-label={t("highlights.downvote")}
                 className={`rounded-lg px-2 py-1 text-sm disabled:opacity-30 ${
                   myVote === -1 ? "bg-red-100 text-red-800" : "bg-neutral-100 hover:bg-neutral-200"
                 }`}
@@ -1837,6 +1840,8 @@ export default function PlannerApp() {
             <div className="flex items-center gap-1" title={t("highlights.asWaypoint")}>
               <button
                 type="button"
+                title={t("balloon.setStart")}
+                aria-label={t("balloon.setStart")}
                 onClick={() =>
                   placePoint(
                     { name: selectedHl.name, lon: selectedHl.lon, lat: selectedHl.lat },
@@ -1849,6 +1854,8 @@ export default function PlannerApp() {
               </button>
               <button
                 type="button"
+                title={t("balloon.setDest")}
+                aria-label={t("balloon.setDest")}
                 onClick={() =>
                   placePoint(
                     { name: selectedHl.name, lon: selectedHl.lon, lat: selectedHl.lat },
