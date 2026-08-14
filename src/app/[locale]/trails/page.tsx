@@ -36,7 +36,7 @@ const SPORTS = ["all", "hike", "touring", "gravel", "mtb"] as const;
 // (niet `->>`): `stats->distanceM` ordent numeriek, geverifieerd. "name" =
 // de bestaande alfabetische default.
 const TRAIL_SORTS = {
-  name: { col: "name", asc: true },
+  name: { col: "name_sort", asc: true },
   shortest: { col: "stats->distanceM", asc: true },
   longest: { col: "stats->distanceM", asc: false },
   climbing: { col: "stats->ascendM", asc: false },
@@ -174,14 +174,16 @@ export default async function TrailsPage({
   // op de naam-sort; Kortst/Langst/Meeste-klim komen al numeriek uit de DB. De
   // DB-order bepaalt nog wélke 200 (bij een gefilterde regio < 200 = alle).
   if (sort === "name") {
-    // Namen met leidende leestekens ("- Münstertal", "... - Kefferhausen",
-    // "'s-Gravelandse …") clusterden bovenaan A–Z omdat leestekens vóór letters
-    // sorteren — de eerste ~schermvol was zo leesteken-ruis. Vergelijk op de
-    // naam zonder leidende niet-alfanumerieke tekens, zodat ze op hun eerste
-    // létter sorteren; numeric houdt "1, 2, … 10" menselijk.
-    const key = (s: string) =>
-      s.replace(/^[\s'’‘"“”„«».…·,;:!?()[\]{}\-–—+<>*#~_\/\\|=&@§%$^]+/, "") ||
-      s;
+    // Namen met leidende leestekens ("- Münstertal", "'s-Gravelandse …",
+    // Duitse "[▶14]"/"[<1]"-KEV-routes) clusterden bovenaan A–Z omdat leestekens
+    // vóór letters sorteren. De DB sorteert nu op de generated kolom `name_sort`
+    // (naam zonder leidende niet-alfanumerieke tekens) zodat óók de 200-cap op
+    // de eerste échte letter selecteert. Hier her-sorteren we identiek —
+    // Unicode-bewust ([^\p{L}\p{N}], zelfde als [:alnum:] in de DB, accenten
+    // blijven) — plus numeric voor "1, 2, … 10". new RegExp i.p.v. literal:
+    // de u-vlag op een literal vereist een hogere TS-target (TS1501).
+    const leadPunct = new RegExp("^[^\\p{L}\\p{N}]+", "u");
+    const key = (s: string) => s.replace(leadPunct, "") || s;
     trails.sort((a, b) =>
       key(a.name).localeCompare(key(b.name), locale, { numeric: true }),
     );
