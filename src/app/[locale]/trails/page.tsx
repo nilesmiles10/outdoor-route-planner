@@ -91,6 +91,7 @@ export default async function TrailsPage({
     loop?: string;
     sort?: string;
     band?: string;
+    diff?: string;
   };
 }) {
   const { locale } = params;
@@ -109,11 +110,15 @@ export default async function TrailsPage({
   const band = BANDS.some(([k]) => k === searchParams.band)
     ? searchParams.band!
     : "all";
+  const diff = ["easy", "moderate", "hard"].includes(searchParams.diff ?? "")
+    ? searchParams.diff!
+    : "all";
   const filtersActive =
     sport !== "all" ||
     country !== "all" ||
     region !== "all" ||
     band !== "all" ||
+    diff !== "all" ||
     q !== "" ||
     loopOnly;
   const sort: TrailSort =
@@ -137,10 +142,14 @@ export default async function TrailsPage({
   if (q) query = query.ilike("name", `%${q}%`);
   if (loopOnly) query = query.eq("roundtrip", true);
   // Afstandsband: numeriek op de JSONB-afstand (zie BANDS). Vóór de cap, dus
-  // correct over álle trails — niet post-fetch zoals moeilijkheid zou moeten.
+  // correct over álle trails.
   const [, bandLo, bandHi] = BANDS.find(([k]) => k === band)!;
   if (bandLo > 0) query = query.gte("stats->distanceM", bandLo);
   if (bandHi !== Infinity) query = query.lt("stats->distanceM", bandHi);
+  // Moeilijkheid: server-side via de generated column `difficulty` (repliceert
+  // lib/difficulty.ts, geïndexeerd) — dus vóór de 200-cap, correct over álle
+  // trails i.p.v. alleen de zichtbare pagina.
+  if (diff !== "all") query = query.eq("difficulty", diff);
 
   // Regio-chips alleen bínnen een gekozen land (Europa-breed = te veel).
   const [{ data }, countriesQ, regionsQ] = await Promise.all([
@@ -187,6 +196,7 @@ export default async function TrailsPage({
       loop: loopOnly ? "1" : "",
       sort,
       band,
+      diff,
       ...("country" in patch ? { region: "all" } : {}),
       ...patch,
     };
@@ -197,6 +207,7 @@ export default async function TrailsPage({
     if (merged.loop === "1") p.set("loop", "1");
     if (merged.sort && merged.sort !== "name") p.set("sort", merged.sort);
     if (merged.band && merged.band !== "all") p.set("band", merged.band);
+    if (merged.diff && merged.diff !== "all") p.set("diff", merged.diff);
     const s = p.toString();
     return `/${locale}/trails${s ? `?${s}` : ""}`;
   };
@@ -295,6 +306,23 @@ export default async function TrailsPage({
           </a>
         ))}
       </div>
+      {/* Moeilijkheidsfilter (server-side via de generated `difficulty`-kolom).
+          Labels/kleuren consistent met de kaartjes en /discover. */}
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {(["all", "easy", "moderate", "hard"] as const).map((d) => (
+          <a
+            key={d}
+            href={href({ diff: d })}
+            className={`rounded-full px-3 py-1 text-xs font-medium ${
+              diff === d
+                ? "bg-neutral-800 text-white"
+                : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+            }`}
+          >
+            {d === "all" ? t("diffAll") : tp(`difficultyLabels.${d}` as never)}
+          </a>
+        ))}
+      </div>
       {/* Regio's kunnen er 16+ zijn (Bundesländer, départements) — zelfde
           inklap-patroon als het land. */}
       {regions.length > 1 && (
@@ -344,6 +372,7 @@ export default async function TrailsPage({
         {loopOnly && <input type="hidden" name="loop" value="1" />}
         {sort !== "name" && <input type="hidden" name="sort" value={sort} />}
         {band !== "all" && <input type="hidden" name="band" value={band} />}
+        {diff !== "all" && <input type="hidden" name="diff" value={diff} />}
         <input
           name="q"
           defaultValue={q}

@@ -528,6 +528,7 @@
     "gravelMeta": "{km} km gravel",
     "clearFilters": "Filters wissen",
     "capHint": "De eerste {count} routes worden getoond. Verfijn op land, sport of zoek op naam om meer te zien.",
+    "diffAll": "Elke moeilijkheid",
     "loopsOnly": "Alleen rondjes",
     "sortBy": "Sorteren",
     "sort": {

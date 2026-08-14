@@ -528,6 +528,7 @@
     "gravelMeta": "{km} km gravel",
     "clearFilters": "Clear filters",
     "capHint": "Showing the first {count} trails. Refine by country, sport, or search by name to see more.",
+    "diffAll": "Any difficulty",
     "loopsOnly": "Loops only",
     "sortBy": "Sort",
     "sort": {
