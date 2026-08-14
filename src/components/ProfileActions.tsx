@@ -43,6 +43,28 @@ export default function ProfileActions({ profile }: { profile: Profile }) {
     sports: profile.preferred_sports ?? [],
   });
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Sluit het …-menu (report/block) bij een klik erbuiten of Escape. Robuuster
+  // dan onBlur op de knop (miste een klik op niet-focusbare ruimte) én
+  // toetsenbord-vriendelijk — samen met onClick-items i.p.v. onMouseDown, zodat
+  // report/block ook met Enter/Space werken. Zelfde patroon als het account- en
+  // export-menu.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: PointerEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     sb.auth.getUser().then(({ data }) => setUser(data.user));
@@ -282,11 +304,12 @@ export default function ProfileActions({ profile }: { profile: Profile }) {
             ? t("requested")
             : t("follow")}
       </button>
-      <div className="relative">
+      <div ref={menuRef} className="relative">
         <button
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
-          onBlur={() => setTimeout(() => setMenuOpen(false), 150)}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
           className="rounded-lg bg-neutral-100 px-2 py-1.5 text-xs text-neutral-500 hover:bg-neutral-200"
         >
           …
@@ -295,14 +318,14 @@ export default function ProfileActions({ profile }: { profile: Profile }) {
           <div className="absolute right-0 z-40 mt-1 w-40 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
             <button
               type="button"
-              onMouseDown={report}
+              onClick={report}
               className="block w-full px-3 py-1.5 text-left text-xs text-neutral-700 hover:bg-neutral-50"
             >
               🚩 {t("report")}
             </button>
             <button
               type="button"
-              onMouseDown={toggleBlock}
+              onClick={toggleBlock}
               className="block w-full px-3 py-1.5 text-left text-xs text-red-600 hover:bg-neutral-50"
             >
               {blocked ? t("unblock") : `⛔ ${t("block")}`}
