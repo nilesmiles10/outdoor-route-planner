@@ -48,8 +48,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           .range(from, to),
     ),
     sb
+      // collection_items(tours(id)) meenemen om lege collecties te herkennen:
+      // RLS geeft alleen publieke leden-tours terug, dus een collectie met 0
+      // zichtbare routes is noindex (page.tsx) en hoort niet in de sitemap.
       .from("collections")
-      .select("id,updated_at")
+      .select("id,updated_at,collection_items(tours(id))")
       .eq("visibility", "public")
       .limit(1000),
     sb
@@ -99,6 +102,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // sitemap (Google's limiet is 50.000 URL's). De region×category-
     // combo's hierboven blijven hier: dat zijn er weinig.
     for (const c of collections.data ?? []) {
+      // Lege collecties (0 zichtbare routes) zijn noindex → overslaan, anders
+      // adverteert de sitemap een noindex-pagina (tegenstrijdig signaal).
+      const ci = (c as { collection_items?: { tours: unknown | null }[] })
+        .collection_items;
+      if (!ci?.some((i) => i.tours != null)) continue;
       entries.push({
         url: `${SITE_URL}/${locale}/collection/${c.id}`,
         lastModified: c.updated_at,
