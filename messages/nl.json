@@ -392,7 +392,9 @@
       "longest": "Langst",
       "climbing": "Meeste klim"
     },
-    "loopsOnly": "Alleen rondjes"
+    "loopsOnly": "Alleen rondjes",
+    "geoLoading": "Locatie bepalen…",
+    "geoHint": "Sta locatie toe om op afstand te sorteren"
   },
   "regionPage": {
     "breadcrumbDiscover": "Ontdekken",

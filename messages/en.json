@@ -392,7 +392,9 @@
       "longest": "Longest",
       "climbing": "Most climbing"
     },
-    "loopsOnly": "Loops only"
+    "loopsOnly": "Loops only",
+    "geoLoading": "Getting your location…",
+    "geoHint": "Allow location to sort by distance"
   },
   "regionPage": {
     "breadcrumbDiscover": "Discover",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -75,8 +75,30 @@ export default function DiscoverPage() {
   const [sortBy, setSortBy] = useState<(typeof SORTS)[number]>("nearest");
   const [loopOnly, setLoopOnly] = useState(false);
   const [pos, setPos] = useState<[number, number] | null>(null);
+  // Status van de locatie-aanvraag, zodat "Dichtstbij" feedback geeft i.p.v.
+  // stil niets te doen als er geen locatie is (zonder pos zijn alle afstanden
+  // null en sorteert nearest op de ruwe fetch-volgorde).
+  const [geoState, setGeoState] = useState<"idle" | "loading" | "off">("idle");
   // GEN-116: region × category combos with enough content for a page.
   const [combos, setCombos] = useState<Combo[]>([]);
+
+  // Vraag de locatie op voor de "Dichtstbij"-sortering — bij mount én zodra de
+  // gebruiker die sortering expliciet kiest zonder dat we al een positie hebben.
+  const requestLocation = useCallback(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setGeoState("off");
+      return;
+    }
+    setGeoState("loading");
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        setPos([p.coords.longitude, p.coords.latitude]);
+        setGeoState("idle");
+      },
+      () => setGeoState("off"),
+      { timeout: 8000 },
+    );
+  }, []);
 
   useEffect(() => {
     sb.from("tours")
@@ -109,12 +131,8 @@ export default function DiscoverPage() {
       .then((r) => (r.ok ? r.json() : []))
       .then((c: Combo[]) => setCombos(c))
       .catch(() => {});
-    navigator.geolocation?.getCurrentPosition(
-      (p) => setPos([p.coords.longitude, p.coords.latitude]),
-      () => {},
-      { timeout: 4000 },
-    );
-  }, [sb]);
+    requestLocation();
+  }, [sb, requestLocation]);
 
   // Filters uit de URL herstellen (deelbaar/bladwijzerbaar, overleeft refresh
   // en deep-links van elders). Ná mount i.p.v. in de state-init: dan renderen
@@ -303,6 +321,9 @@ export default function DiscoverPage() {
             onClick={() => {
               setSortBy(s);
               syncUrl({ sort: s });
+              // "Dichtstbij" heeft een positie nodig; vraag 'm op als we die
+              // (nog) niet hebben i.p.v. stil op fetch-volgorde te sorteren.
+              if (s === "nearest" && !pos) requestLocation();
             }}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
               sortBy === s
@@ -314,6 +335,26 @@ export default function DiscoverPage() {
           </button>
         ))}
       </div>
+      {/* Feedback voor "Dichtstbij" zonder locatie — anders lijkt de sortering
+          stil kapot (geen positie = geen herordening). */}
+      {sortBy === "nearest" && !pos && (
+        <p className="mt-1.5 text-[11px] text-neutral-500">
+          {geoState === "loading" ? (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-3 w-3 animate-spin rounded-full border-2 border-neutral-300 border-t-emerald-600" />
+              {t("geoLoading")}
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={requestLocation}
+              className="text-emerald-700 hover:underline"
+            >
+              📍 {t("geoHint")}
+            </button>
+          )}
+        </p>
+      )}
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {loading &&
