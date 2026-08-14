@@ -196,6 +196,7 @@ export default function SearchField({
             <button
               type="button"
               title={actionLabels?.rename}
+              aria-label={actionLabels?.rename}
               onClick={() => {
                 setRenaming(true);
                 setOpen(false);
@@ -211,6 +212,7 @@ export default function SearchField({
             <button
               type="button"
               title={actionLabels?.up}
+              aria-label={actionLabels?.up}
               onClick={onMoveUp}
               className="px-0.5 text-xs text-neutral-400 hover:text-emerald-700"
             >
@@ -221,6 +223,7 @@ export default function SearchField({
             <button
               type="button"
               title={actionLabels?.down}
+              aria-label={actionLabels?.down}
               onClick={onMoveDown}
               className="px-0.5 text-xs text-neutral-400 hover:text-emerald-700"
             >
