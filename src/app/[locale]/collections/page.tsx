@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { aggregateStats, gradientFor, SPORT_EMOJI } from "@/lib/collections";
+import { fmtDuration } from "@/lib/activity";
 import SiteFooter from "@/components/SiteFooter";
 
-type ItemTour = { tours: { sport: string; stats: { distanceM?: number; ascendM?: number } } | null };
+type ItemTour = { tours: { sport: string; stats: { distanceM?: number; ascendM?: number; timeS?: number } } | null };
 type Coll = {
   id: string;
   title: string;
@@ -24,7 +25,7 @@ const SELECT =
 function CollectionCard({ c, locale }: { c: Coll; locale: string }) {
   const tours = c.collection_items.map((i) => i.tours).filter(Boolean) as {
     sport: string;
-    stats: { distanceM?: number; ascendM?: number };
+    stats: { distanceM?: number; ascendM?: number; timeS?: number };
   }[];
   const agg = aggregateStats(tours.map((t) => t.stats));
   const sport = tours[0]?.sport;
@@ -51,7 +52,9 @@ function CollectionCard({ c, locale }: { c: Coll; locale: string }) {
         </div>
         <div className="mt-1 text-xs text-neutral-500">
           {tours.length} {tours.length === 1 ? "route" : "routes"} ·{" "}
-          {(agg.distanceM / 1000).toFixed(0)} km · ↗ {Math.round(agg.ascendM)} m
+          {(agg.distanceM / 1000).toFixed(0)} km
+          {agg.timeS > 0 ? ` · ${fmtDuration(agg.timeS)} h` : ""} · ↗{" "}
+          {Math.round(agg.ascendM)} m
         </div>
         {c.intro && (
           <p className="mt-1 line-clamp-2 text-xs text-neutral-400">{c.intro}</p>

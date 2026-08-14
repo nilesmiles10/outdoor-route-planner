@@ -177,7 +177,9 @@ export default async function CollectionPage({
           <h1 className="text-2xl font-semibold text-neutral-900">{c.title}</h1>
           <p className="mt-1 text-sm text-neutral-500">
             {tours.length} {tours.length === 1 ? "route" : "routes"} ·{" "}
-            {(agg.distanceM / 1000).toFixed(0)} km · ↗ {Math.round(agg.ascendM)} m
+            {(agg.distanceM / 1000).toFixed(0)} km
+            {agg.timeS > 0 ? ` · ${fmtDuration(agg.timeS)} h` : ""} · ↗{" "}
+            {Math.round(agg.ascendM)} m
           </p>
         </div>
         <div className="flex items-center gap-2">

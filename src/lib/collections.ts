@@ -38,14 +38,15 @@ export function gradientFor(sport?: string): string {
 
 /** Aggregate distance (m) + ascent (m) over a list of tour stats. */
 export function aggregateStats(
-  stats: { distanceM?: number; ascendM?: number }[],
-): { distanceM: number; ascendM: number } {
-  return stats.reduce<{ distanceM: number; ascendM: number }>(
+  stats: { distanceM?: number; ascendM?: number; timeS?: number }[],
+): { distanceM: number; ascendM: number; timeS: number } {
+  return stats.reduce<{ distanceM: number; ascendM: number; timeS: number }>(
     (a, s) => ({
       distanceM: a.distanceM + (s.distanceM ?? 0),
       ascendM: a.ascendM + (s.ascendM ?? 0),
+      timeS: a.timeS + (s.timeS ?? 0),
     }),
-    { distanceM: 0, ascendM: 0 },
+    { distanceM: 0, ascendM: 0, timeS: 0 },
   );
 }
 
