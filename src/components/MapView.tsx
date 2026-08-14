@@ -73,6 +73,10 @@ type Props = {
   // GEN-137: distance markers along the route (every 5/10 km).
   kmMarkers?: GeoJSON.FeatureCollection | null;
   emphasisSlot?: number | null;
+  // GeolocateControl fired: de gebruiker liet zich lokaliseren. De planner kan
+  // dit gebruiken om "plan vanaf mijn locatie" te doen (start zetten bij lege
+  // route). TourView laat dit weg.
+  onGeolocate?: (lon: number, lat: number) => void;
 };
 
 export default function MapView({
@@ -101,6 +105,7 @@ export default function MapView({
   networkOverlays,
   kmMarkers,
   emphasisSlot,
+  onGeolocate,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -119,6 +124,7 @@ export default function MapView({
     onMarkerClick,
     onViewportChange,
     onRouteHover,
+    onGeolocate,
   });
   cbRef.current = {
     onMapClick,
@@ -129,6 +135,7 @@ export default function MapView({
     onMarkerClick,
     onViewportChange,
     onRouteHover,
+    onGeolocate,
   };
 
   useEffect(() => {
@@ -200,13 +207,17 @@ export default function MapView({
       new maplibregl.NavigationControl({ visualizePitch: true }),
       "top-right",
     );
-    map.addControl(
-      new maplibregl.GeolocateControl({
-        positionOptions: { enableHighAccuracy: true },
-        trackUserLocation: true,
-      }),
-      "top-right",
-    );
+    const geolocate = new maplibregl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: true },
+      trackUserLocation: true,
+    });
+    // "Plan vanaf mijn locatie": geef de gefixde positie door zodat de planner
+    // 'm als start kan zetten. De control centreert de kaart al zelf.
+    geolocate.on("geolocate", (e) => {
+      const c = (e as GeolocationPosition).coords;
+      if (c) cbRef.current.onGeolocate?.(c.longitude, c.latitude);
+    });
+    map.addControl(geolocate, "top-right");
     map.addControl(
       new maplibregl.ScaleControl({ maxWidth: 120, unit: "metric" }),
       "bottom-left",

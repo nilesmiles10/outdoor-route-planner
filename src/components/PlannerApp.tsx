@@ -1505,6 +1505,18 @@ export default function PlannerApp() {
         onRouteHover={setHoverIdx}
         focusPoint={focusReq}
         onMapClick={handleMapClick}
+        onGeolocate={(lon, lat) => {
+          // "Plan vanaf mijn locatie": alleen zetten als er nog geen enkel punt
+          // staat. Anders zou lokaliseren (kijken waar je bent, of het periodiek
+          // her-tracken van de GeolocateControl) je bestaande route overschrijven.
+          if (filled.length > 0) return;
+          dispatch({
+            type: "set",
+            index: 0,
+            wp: { name: coordName(lon, lat), lon, lat },
+          });
+          patchName(lon, lat);
+        }}
         onMarkerDragEnd={handleMarkerDragEnd}
         onRouteDrop={handleRouteDrop}
         highlights={hlFeatures}
