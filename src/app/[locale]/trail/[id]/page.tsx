@@ -169,6 +169,7 @@ export default async function TrailPage({
   const t = await getTranslations("trailPage");
   const tt = await getTranslations("tourPage");
   const tHl = await getTranslations("highlightPage");
+  const tNav = await getTranslations("nav");
   // Menselijk-leesbare moeilijkheid + ondergrond ("Zware route. … Grotendeels
   // verharde wegen."). Tours toonden dit al; trails niet — zelfde helper, zodat
   // beide detailpagina's consistent zijn.
@@ -238,6 +239,19 @@ export default async function TrailPage({
         waypoints={startWaypoint}
         autoDesc={autoDesc}
         highlightPins={highlightPins}
+        breadcrumb={[
+          { label: tNav("trails"), href: `/${locale}/trails` },
+          ...(trail.region
+            ? [
+                {
+                  label: trail.region,
+                  href: trail.country
+                    ? `/${locale}/trails?country=${trail.country}&region=${encodeURIComponent(trail.region)}`
+                    : `/${locale}/trails?region=${encodeURIComponent(trail.region)}`,
+                },
+              ]
+            : []),
+        ]}
         header={{
           name: trail.name,
           sport: trail.sport,

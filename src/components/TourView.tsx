@@ -63,6 +63,10 @@ type Props = {
     href: string;        // OSM-relatie-URL
     linkText: string;    // "Bekijk op OpenStreetMap"
   } | null;
+  // Breadcrumb (officiële routes hebben regio/land → Trails › regio › naam).
+  // Verbetert navigatie terug naar de lijst + intern SEO-linkmesh. Tours laten
+  // dit weg (geen regio-context).
+  breadcrumb?: { label: string; href: string }[];
   // Publieke collecties waar deze route in zit — terug-link naar de curatie-
   // context (collecties linken naar routes; dit sluit de graaf de andere kant op).
   collections?: { id: string; title: string; href: string }[];
@@ -149,6 +153,7 @@ export default function TourView({
   source,
   collections,
   collectionsLabel,
+  breadcrumb,
 }: Props) {
   const t = useTranslations("planner");
   const locale = useLocale();
@@ -337,6 +342,21 @@ export default function TourView({
                 </span>
               ))}
             </div>
+          )}
+          {breadcrumb && breadcrumb.length > 0 && (
+            <nav
+              aria-label="Breadcrumb"
+              className="mb-1.5 flex flex-wrap items-center gap-x-1 text-[11px] text-neutral-400"
+            >
+              {breadcrumb.map((c, i) => (
+                <span key={i} className="flex items-center gap-x-1">
+                  {i > 0 && <span aria-hidden>/</span>}
+                  <a href={c.href} className="hover:text-emerald-700 hover:underline">
+                    {c.label}
+                  </a>
+                </span>
+              ))}
+            </nav>
           )}
           {source && (
             <div className="mb-1.5">
