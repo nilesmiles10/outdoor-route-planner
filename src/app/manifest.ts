@@ -20,6 +20,13 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     icons: [
       { src: "/icon.svg", type: "image/svg+xml", sizes: "any", purpose: "any" },
       { src: "/apple-icon", type: "image/png", sizes: "180x180" },
+      // Android adaptive (maskable): schone launcher-mask zonder witte rand.
+      {
+        src: "/icon-512-maskable",
+        type: "image/png",
+        sizes: "512x512",
+        purpose: "maskable",
+      },
     ],
   };
 }
