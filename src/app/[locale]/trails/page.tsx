@@ -174,7 +174,17 @@ export default async function TrailsPage({
   // op de naam-sort; Kortst/Langst/Meeste-klim komen al numeriek uit de DB. De
   // DB-order bepaalt nog wélke 200 (bij een gefilterde regio < 200 = alle).
   if (sort === "name") {
-    trails.sort((a, b) => a.name.localeCompare(b.name, locale, { numeric: true }));
+    // Namen met leidende leestekens ("- Münstertal", "... - Kefferhausen",
+    // "'s-Gravelandse …") clusterden bovenaan A–Z omdat leestekens vóór letters
+    // sorteren — de eerste ~schermvol was zo leesteken-ruis. Vergelijk op de
+    // naam zonder leidende niet-alfanumerieke tekens, zodat ze op hun eerste
+    // létter sorteren; numeric houdt "1, 2, … 10" menselijk.
+    const key = (s: string) =>
+      s.replace(/^[\s'’‘"“”„«».…·,;:!?()[\]{}\-–—+<>*#~_\/\\|=&@§%$^]+/, "") ||
+      s;
+    trails.sort((a, b) =>
+      key(a.name).localeCompare(key(b.name), locale, { numeric: true }),
+    );
   }
   // RPC levert land + aantal, gesorteerd op aantal (meeste content eerst).
   const countries = (countriesQ.data as { country: string; n: number }[] | null) ?? [
