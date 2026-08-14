@@ -6,6 +6,7 @@ import MapView, { type Waypoint } from "./MapView";
 import ElevationChart from "./ElevationChart";
 import GradeLegend from "./GradeLegend";
 import SpeedChart from "./SpeedChart";
+import MiniMap from "./MiniMap";
 import TourSocial from "./TourSocial";
 import Avatar from "./Avatar";
 import { cumulativeDistances, detectClimbs, haversineM } from "@/lib/elevation";
@@ -80,7 +81,12 @@ type Props = {
   } | null;
   related?: {
     toursTitle: string;
-    tours: { href: string; name: string; meta: string }[];
+    tours: {
+      href: string;
+      name: string;
+      meta: string;
+      coords?: [number, number][];
+    }[];
     passedTitle?: string;
     passed?: {
       href: string;
@@ -668,12 +674,19 @@ export default function TourView({
                 <a
                   key={tr.href}
                   href={tr.href}
-                  className="rounded-lg bg-neutral-50 px-2 py-1.5 hover:bg-neutral-100"
+                  className="flex items-center gap-2 rounded-lg bg-neutral-50 px-2 py-1.5 hover:bg-neutral-100"
                 >
-                  <div className="truncate text-xs font-medium text-neutral-800">
-                    {tr.name}
+                  {tr.coords && tr.coords.length > 1 && (
+                    <div className="h-9 w-12 shrink-0 overflow-hidden rounded bg-white">
+                      <MiniMap coords={tr.coords} className="h-full w-full" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <div className="truncate text-xs font-medium text-neutral-800">
+                      {tr.name}
+                    </div>
+                    <div className="text-[10px] text-neutral-500">{tr.meta}</div>
                   </div>
-                  <div className="text-[10px] text-neutral-500">{tr.meta}</div>
                 </a>
               ))}
             </div>

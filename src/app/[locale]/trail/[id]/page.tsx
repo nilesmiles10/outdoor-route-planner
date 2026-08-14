@@ -95,6 +95,7 @@ type RelatedTrail = {
   sport: string;
   is_gravel: boolean;
   stats: { distanceM: number; ascendM: number };
+  geometry: GeoJSON.LineString | null;
 };
 
 // Andere officiële routes in dezelfde regio (+ land, om regionaam-botsingen als
@@ -107,7 +108,7 @@ async function getRelatedTrails(
   excludeId: string,
 ): Promise<RelatedTrail[]> {
   const q =
-    `select=id,name,sport,is_gravel,stats&region=eq.${encodeURIComponent(region)}` +
+    `select=id,name,sport,is_gravel,stats,geometry&region=eq.${encodeURIComponent(region)}` +
     (country ? `&country=eq.${encodeURIComponent(country)}` : "") +
     `&id=neq.${excludeId}&order=name&limit=6`;
   const res = await fetch(
@@ -307,6 +308,9 @@ export default async function TrailPage({
                   meta: `${(tr.stats.distanceM / 1000).toFixed(1)} km · ↗${tr.stats.ascendM} m · ${tsport(
                     (tr.is_gravel ? "gravel" : tr.sport) as never,
                   )}`,
+                  coords: tr.geometry?.coordinates as
+                    | [number, number][]
+                    | undefined,
                 })),
                 highlightsTitle: t("highlightsOnRoute"),
                 highlights: passedHl,
