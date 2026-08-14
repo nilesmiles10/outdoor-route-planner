@@ -3,7 +3,12 @@ import { getTranslations } from "next-intl/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { difficulty } from "@/lib/difficulty";
 import SiteFooter from "@/components/SiteFooter";
+import RegionFilterSelect from "@/components/RegionFilterSelect";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
+
+// Boven dit aantal regio's wordt de chip-rij een onbruikbare muur (GB heeft er
+// 149) → dan een compacte dropdown i.p.v. chips.
+const REGION_CHIP_CAP = 16;
 
 // GEN-145 — index van officiële routes (OSM-import): sport-chips +
 // regio-filter, zelfde interactiepatroon als /discover (GET-params,
@@ -240,27 +245,36 @@ export default async function TrailsPage({
             <span className="text-neutral-400 group-open:hidden">▾</span>
             <span className="hidden text-neutral-400 group-open:inline">▴</span>
           </summary>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <a
-              href={href({ region: "all" })}
-              className={`rounded-full px-2.5 py-0.5 text-[11px] ${
-                region === "all" ? "bg-neutral-800 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-              }`}
-            >
-              {t("allRegions")}
-            </a>
-            {regions.map((r) => (
+          {regions.length > REGION_CHIP_CAP ? (
+            <RegionFilterSelect
+              options={regions.map((r) => ({ region: r, href: href({ region: r }) }))}
+              current={region}
+              allLabel={t("allRegions")}
+              allHref={href({ region: "all" })}
+            />
+          ) : (
+            <div className="mt-2 flex flex-wrap gap-1.5">
               <a
-                key={r}
-                href={href({ region: r })}
+                href={href({ region: "all" })}
                 className={`rounded-full px-2.5 py-0.5 text-[11px] ${
-                  region === r ? "bg-neutral-800 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                  region === "all" ? "bg-neutral-800 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
                 }`}
               >
-                {r}
+                {t("allRegions")}
               </a>
-            ))}
-          </div>
+              {regions.map((r) => (
+                <a
+                  key={r}
+                  href={href({ region: r })}
+                  className={`rounded-full px-2.5 py-0.5 text-[11px] ${
+                    region === r ? "bg-neutral-800 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                  }`}
+                >
+                  {r}
+                </a>
+              ))}
+            </div>
+          )}
         </details>
       )}
       <form className="mt-3">
