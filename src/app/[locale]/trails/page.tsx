@@ -403,9 +403,25 @@ export default async function TrailsPage({
                 <span className="min-w-0 truncate text-sm font-medium text-neutral-900">
                   {tr.name}
                 </span>
-                <span className="shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
-                  {tp(`difficultyLabels.${difficulty(tr.sport, tr.stats.distanceM, tr.stats.ascendM)}` as never)}
-                </span>
+                {(() => {
+                  // Kleur volgt de moeilijkheid (zoals /discover, planner en
+                  // detailpagina's). Was hard-coded emerald → een "Zwaar"-route
+                  // kreeg een groene badge (tegenstrijdig, niet scanbaar op kleur).
+                  const d = difficulty(tr.sport, tr.stats.distanceM, tr.stats.ascendM);
+                  return (
+                    <span
+                      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                        d === "easy"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : d === "moderate"
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {tp(`difficultyLabels.${d}` as never)}
+                    </span>
+                  );
+                })()}
               </div>
               <div className="mt-0.5 text-xs text-neutral-500">
                 {(tr.stats.distanceM / 1000).toFixed(1)} km · ↗ {tr.stats.ascendM} m ·{" "}
