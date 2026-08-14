@@ -87,3 +87,49 @@ export function miniPath(
     })
     .join(" ");
 }
+
+/**
+ * Multiple routes normalized to ONE shared bounding box, so a collection can be
+ * shown as a single overview (all route shapes in their relative positions —
+ * clustered = one area, scattered = wide coverage). Returns one SVG path per
+ * route (skips routes without usable geometry).
+ */
+export function multiMiniPaths(
+  routes: (readonly [number, number][] | undefined)[],
+  w: number,
+  h: number,
+  pad = 8,
+): string[] {
+  const usable = routes.filter(
+    (c): c is [number, number][] => !!c && c.length >= 2,
+  );
+  if (!usable.length) return [];
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
+  for (const coords of usable) {
+    for (const [lon, lat] of coords) {
+      if (lon < minX) minX = lon;
+      if (lon > maxX) maxX = lon;
+      if (lat < minY) minY = lat;
+      if (lat > maxY) maxY = lat;
+    }
+  }
+  const spanX = maxX - minX || 1e-6;
+  const spanY = maxY - minY || 1e-6;
+  const iw = w - pad * 2;
+  const ih = h - pad * 2;
+  const scale = Math.min(iw / spanX, ih / spanY);
+  const offX = pad + (iw - spanX * scale) / 2;
+  const offY = pad + (ih - spanY * scale) / 2;
+  return usable.map((coords) =>
+    coords
+      .map(([lon, lat], i) => {
+        const x = offX + (lon - minX) * scale;
+        const y = offY + (maxY - lat) * scale;
+        return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(" "),
+  );
+}

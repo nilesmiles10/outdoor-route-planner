@@ -5,7 +5,12 @@ import { supabaseServer } from "@/lib/supabase/server";
 import BookmarkButton from "@/components/BookmarkButton";
 import ShareButton from "@/components/ShareButton";
 import MiniMap from "@/components/MiniMap";
-import { aggregateStats, gradientFor, SPORT_EMOJI } from "@/lib/collections";
+import {
+  aggregateStats,
+  gradientFor,
+  multiMiniPaths,
+  SPORT_EMOJI,
+} from "@/lib/collections";
 import { difficulty } from "@/lib/difficulty";
 import SiteFooter from "@/components/SiteFooter";
 import { getSiteSettings } from "@/lib/siteSettings";
@@ -85,6 +90,22 @@ export default async function CollectionPage({
   const tours = items.map((i) => i.tours).filter(Boolean) as TourLite[];
   const agg = aggregateStats(tours.map((t) => t.stats));
   const coverSport = tours[0]?.sport;
+  // Overzicht van álle route-vormen in één genormaliseerd kader → de hero laat
+  // de echte inhoud + geografische spreiding zien i.p.v. een generieke gradient.
+  // Hergebruikt de al-opgehaalde geometrie; bemonsterd tot ~60 punten zodat de
+  // hero-SVG klein blijft (op 480×100 is vol-resolutie niet zichtbaar).
+  const sample = (
+    c: [number, number][] | undefined,
+  ): [number, number][] | undefined => {
+    if (!c || c.length <= 60) return c;
+    const step = (c.length - 1) / 59;
+    return Array.from({ length: 60 }, (_, i) => c[Math.round(i * step)]);
+  };
+  const overviewPaths = multiMiniPaths(
+    tours.map((t) => sample(t.geometry?.coordinates as [number, number][] | undefined)),
+    480,
+    100,
+  );
 
   return (
     <main className="mx-auto min-h-dvh max-w-3xl px-4 pb-16 pt-16">
@@ -108,11 +129,33 @@ export default async function CollectionPage({
       />
 
       <div
-        className={`relative mt-2 flex h-40 items-center justify-center rounded-2xl bg-gradient-to-br ${gradientFor(coverSport)}`}
+        className={`relative mt-2 flex h-40 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br ${gradientFor(coverSport)}`}
       >
-        <span className="text-6xl opacity-90 drop-shadow">
-          {(coverSport && SPORT_EMOJI[coverSport]) || "🗺️"}
-        </span>
+        {overviewPaths.length > 0 ? (
+          <svg
+            viewBox="0 0 480 100"
+            className="h-full w-full"
+            preserveAspectRatio="xMidYMid meet"
+            aria-hidden
+          >
+            {overviewPaths.map((d, i) => (
+              <path
+                key={i}
+                d={d}
+                fill="none"
+                stroke="white"
+                strokeOpacity={0.9}
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            ))}
+          </svg>
+        ) : (
+          <span className="text-6xl opacity-90 drop-shadow">
+            {(coverSport && SPORT_EMOJI[coverSport]) || "🗺️"}
+          </span>
+        )}
         {c.visibility === "private" && (
           <span className="absolute right-3 top-3 rounded-full bg-black/30 px-2 py-0.5 text-xs font-medium text-white">
             🔒 {t("private")}
