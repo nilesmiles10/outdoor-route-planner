@@ -17,6 +17,10 @@ export async function generateMetadata({
   return {
     title: pageTitle(await getSiteSettings(), t("title")),
     description: t("subtitle"),
+    // Canonical naar de kale route: de filters (sport/afstand/moeilijkheid/sort/
+    // rondje) zitten in query-params en zouden anders tientallen dunne duplicaat-
+    // URL's opleveren. Zo consolideert alles naar /<locale>/discover.
+    alternates: { canonical: `/${params.locale}/discover` },
   };
 }
 

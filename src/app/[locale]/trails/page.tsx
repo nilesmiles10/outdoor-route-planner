@@ -71,6 +71,10 @@ export async function generateMetadata({
   return {
     title: pageTitle(await getSiteSettings(), t("title")),
     description: t("subtitle"),
+    // Canonical naar de kale route: sport/land/regio/afstand/rondje/sort/zoek
+    // zitten in query-params → consolideer alle filtercombinaties naar
+    // /<locale>/trails i.p.v. ze als dunne duplicaten te laten indexeren.
+    alternates: { canonical: `/${params.locale}/trails` },
   };
 }
 
