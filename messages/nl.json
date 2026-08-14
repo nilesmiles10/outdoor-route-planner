@@ -530,6 +530,12 @@
       "shortest": "Kortst",
       "longest": "Langst",
       "climbing": "Meeste klim"
+    },
+    "bands": {
+      "all": "Elke afstand",
+      "short": "< 20 km",
+      "mid": "20–50 km",
+      "long": "> 50 km"
     }
   },
   "trailPage": {

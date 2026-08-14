@@ -43,6 +43,18 @@ const TRAIL_SORTS = {
 } as const;
 type TrailSort = keyof typeof TRAIL_SORTS;
 
+// Afstandsbanden (meters), zelfde grenzen als /discover. Server-side gefilterd
+// op `stats->distanceM` — PostgREST vergelijkt met `->` numeriek (empirisch
+// geverifieerd: lt.9000 sluit 10000+ correct uit, geen tekst-vergelijking).
+// Dus vóór de 200-cap, i.t.t. moeilijkheid (diagonale km+klim-grens, niet als
+// range uit te drukken zonder RPC).
+const BANDS: [string, number, number][] = [
+  ["all", 0, Infinity],
+  ["short", 0, 20000],
+  ["mid", 20000, 50000],
+  ["long", 50000, Infinity],
+];
+
 // ISO-landcode → vlag-emoji (regional indicators); naam via Intl.DisplayNames.
 function flag(iso: string): string {
   return String.fromCodePoint(
@@ -74,6 +86,7 @@ export default async function TrailsPage({
     q?: string;
     loop?: string;
     sort?: string;
+    band?: string;
   };
 }) {
   const { locale } = params;
@@ -89,8 +102,16 @@ export default async function TrailsPage({
   const region = searchParams.region ?? "all";
   const q = searchParams.q?.trim() ?? "";
   const loopOnly = searchParams.loop === "1";
+  const band = BANDS.some(([k]) => k === searchParams.band)
+    ? searchParams.band!
+    : "all";
   const filtersActive =
-    sport !== "all" || country !== "all" || region !== "all" || q !== "" || loopOnly;
+    sport !== "all" ||
+    country !== "all" ||
+    region !== "all" ||
+    band !== "all" ||
+    q !== "" ||
+    loopOnly;
   const sort: TrailSort =
     searchParams.sort && searchParams.sort in TRAIL_SORTS
       ? (searchParams.sort as TrailSort)
@@ -111,6 +132,11 @@ export default async function TrailsPage({
   if (region !== "all") query = query.eq("region", region);
   if (q) query = query.ilike("name", `%${q}%`);
   if (loopOnly) query = query.eq("roundtrip", true);
+  // Afstandsband: numeriek op de JSONB-afstand (zie BANDS). Vóór de cap, dus
+  // correct over álle trails — niet post-fetch zoals moeilijkheid zou moeten.
+  const [, bandLo, bandHi] = BANDS.find(([k]) => k === band)!;
+  if (bandLo > 0) query = query.gte("stats->distanceM", bandLo);
+  if (bandHi !== Infinity) query = query.lt("stats->distanceM", bandHi);
 
   // Regio-chips alleen bínnen een gekozen land (Europa-breed = te veel).
   const [{ data }, countriesQ, regionsQ] = await Promise.all([
@@ -148,6 +174,7 @@ export default async function TrailsPage({
       q,
       loop: loopOnly ? "1" : "",
       sort,
+      band,
       ...("country" in patch ? { region: "all" } : {}),
       ...patch,
     };
@@ -157,6 +184,7 @@ export default async function TrailsPage({
     if (merged.q) p.set("q", merged.q);
     if (merged.loop === "1") p.set("loop", "1");
     if (merged.sort && merged.sort !== "name") p.set("sort", merged.sort);
+    if (merged.band && merged.band !== "all") p.set("band", merged.band);
     const s = p.toString();
     return `/${locale}/trails${s ? `?${s}` : ""}`;
   };
@@ -238,6 +266,23 @@ export default async function TrailsPage({
           🔁 {t("loopsOnly")}
         </a>
       </div>
+      {/* Afstandsfilter (server-side, numeriek op stats->distanceM). Zelfde
+          banden als /discover; de trails-lijst had 'm nog niet. */}
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {BANDS.map(([k]) => (
+          <a
+            key={k}
+            href={href({ band: k })}
+            className={`rounded-full px-3 py-1 text-xs font-medium ${
+              band === k
+                ? "bg-neutral-800 text-white"
+                : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+            }`}
+          >
+            {t(`bands.${k}` as never)}
+          </a>
+        ))}
+      </div>
       {/* Regio's kunnen er 16+ zijn (Bundesländer, départements) — zelfde
           inklap-patroon als het land. */}
       {regions.length > 1 && (
@@ -286,6 +331,7 @@ export default async function TrailsPage({
         {/* Óók loop/sort meesturen, anders dropt de naam-zoek die filters. */}
         {loopOnly && <input type="hidden" name="loop" value="1" />}
         {sort !== "name" && <input type="hidden" name="sort" value={sort} />}
+        {band !== "all" && <input type="hidden" name="band" value={band} />}
         <input
           name="q"
           defaultValue={q}

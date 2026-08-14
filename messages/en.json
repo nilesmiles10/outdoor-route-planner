@@ -530,6 +530,12 @@
       "shortest": "Shortest",
       "longest": "Longest",
       "climbing": "Most climbing"
+    },
+    "bands": {
+      "all": "Any distance",
+      "short": "< 20 km",
+      "mid": "20–50 km",
+      "long": "> 50 km"
     }
   },
   "trailPage": {
