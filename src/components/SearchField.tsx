@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { Waypoint } from "./MapView";
 
@@ -42,6 +42,13 @@ export default function SearchField({
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [status, setStatus] = useState<SearchStatus>("idle");
   const [open, setOpen] = useState(false);
+  // Index van de met pijltjes gemarkeerde suggestie. Zonder dit was de
+  // dropdown muis-only (onMouseDown): een toetsenbord-gebruiker die een
+  // plaats tikte kon niets kiezen (Enter/Space vuren geen mousedown, en er
+  // was geen pijl-navigatie). 0 = bovenste treffer, zodat "tik + Enter"
+  // meteen de beste match pakt.
+  const [activeIdx, setActiveIdx] = useState(0);
+  const listboxId = useId();
   // Rename mode: typing edits the waypoint's label, no geocoder search.
   const [renaming, setRenaming] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -96,6 +103,7 @@ export default function SearchField({
         const data = await res.json();
         const results: Suggestion[] = data.results ?? [];
         setSuggestions(results);
+        setActiveIdx(0);
         setStatus(results.length ? "results" : "empty");
         setOpen(true);
       } catch {
@@ -104,6 +112,43 @@ export default function SearchField({
         setOpen(true);
       }
     }, 250);
+  }
+
+  // Selecteer een suggestie (muis én toetsenbord delen dit pad).
+  function choose(s: Suggestion) {
+    onSelect({ name: s.name, lon: s.lon, lat: s.lat });
+    setStatus("idle");
+    setOpen(false);
+  }
+
+  // Toetsenbord-navigatie door de suggestielijst (combobox-patroon).
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (renaming) {
+      if (e.key === "Enter") commitRename();
+      return;
+    }
+    const hasResults = status === "results" && suggestions.length > 0;
+    if (e.key === "ArrowDown") {
+      if (!hasResults) return;
+      e.preventDefault();
+      setOpen(true);
+      setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1));
+    } else if (e.key === "ArrowUp") {
+      if (!hasResults) return;
+      e.preventDefault();
+      setActiveIdx((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      const s = suggestions[activeIdx];
+      if (hasResults && open && s) {
+        e.preventDefault();
+        choose(s);
+      }
+    } else if (e.key === "Escape") {
+      if (open) {
+        e.preventDefault();
+        setOpen(false);
+      }
+    }
   }
 
   function commitRename() {
@@ -136,9 +181,14 @@ export default function SearchField({
             setTimeout(() => setOpen(false), 150);
             commitRename();
           }}
-          onKeyDown={(e) => {
-            if (renaming && e.key === "Enter") commitRename();
-          }}
+          onKeyDown={handleKeyDown}
+          role="combobox"
+          aria-expanded={open && !renaming}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
+          aria-activedescendant={
+            open && status === "results" ? `${listboxId}-${activeIdx}` : undefined
+          }
         />
         {/* Hover actions: rename / move up / move down / remove */}
         <div className="hidden shrink-0 items-center gap-0.5 group-focus-within:flex group-hover:flex">
@@ -199,17 +249,19 @@ export default function SearchField({
             </div>
           )}
           {status === "results" && (
-            <ul>
+            <ul id={listboxId} role="listbox">
               {suggestions.map((s, i) => (
                 <li key={i}>
                   <button
                     type="button"
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-neutral-50"
-                    onMouseDown={() => {
-                      onSelect({ name: s.name, lon: s.lon, lat: s.lat });
-                      setStatus("idle");
-                      setOpen(false);
-                    }}
+                    id={`${listboxId}-${i}`}
+                    role="option"
+                    aria-selected={i === activeIdx}
+                    className={`w-full px-3 py-2 text-left text-sm ${
+                      i === activeIdx ? "bg-neutral-100" : "hover:bg-neutral-50"
+                    }`}
+                    onMouseEnter={() => setActiveIdx(i)}
+                    onMouseDown={() => choose(s)}
                   >
                     <span className="font-medium">{s.name}</span>
                     <span className="ml-2 text-xs text-neutral-500">{s.label}</span>
