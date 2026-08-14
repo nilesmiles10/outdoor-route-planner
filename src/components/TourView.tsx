@@ -149,6 +149,17 @@ export default function TourView({
   const [embedCopied, setEmbedCopied] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  // Klik op een klim → vlieg de kaart naar het beginpunt (zie planner). Teller
+  // `n` maakt herhaald klikken op dezelfde klim herhaalbaar.
+  const [focusReq, setFocusReq] = useState<{
+    lon: number;
+    lat: number;
+    n: number;
+  } | null>(null);
+  const focusOnIndex = (idx: number) => {
+    const c = geometry.coordinates[idx];
+    if (c) setFocusReq((prev) => ({ lon: c[0], lat: c[1], n: (prev?.n ?? 0) + 1 }));
+  };
   // Mobiel: info-paneel inklapbaar zodat de kaart-first-flow de route vrij
   // laat verkennen i.p.v. permanent 45dvh aan het paneel kwijt te zijn.
   // Zelfde patroon als de planner (grab-handle, md:hidden).
@@ -213,6 +224,7 @@ export default function TourView({
         }}
         hoverPoint={hoverIdx !== null ? geometry.coordinates[hoverIdx] ?? null : null}
         onRouteHover={setHoverIdx}
+        focusPoint={focusReq}
         onMapClick={noop}
         onMarkerDragEnd={noop}
         onRouteDrop={noop}
@@ -439,6 +451,9 @@ export default function TourView({
                 type="button"
                 onMouseEnter={() => setHoverIdx(c.startIdx)}
                 onMouseLeave={() => setHoverIdx(null)}
+                onFocus={() => setHoverIdx(c.startIdx)}
+                onBlur={() => setHoverIdx(null)}
+                onClick={() => focusOnIndex(c.startIdx)}
                 className="flex items-center justify-between rounded-lg bg-orange-50 px-2 py-1 text-left text-[11px] text-orange-900 hover:bg-orange-100"
               >
                 <span>

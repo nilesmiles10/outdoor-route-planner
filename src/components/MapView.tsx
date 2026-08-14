@@ -33,6 +33,10 @@ type Props = {
   // verlaten). Voedt de elevation-marker zodat kaart↔profiel tweerichtings
   // linken. Optioneel (TourView geeft dit niet door).
   onRouteHover?: (idx: number | null) => void;
+  // Imperatief camera-focus-verzoek: klik op een waarschuwing/klim → vlieg naar
+  // dat punt op de route. `n` is een teller zodat hetzelfde punt twee keer
+  // aanklikken opnieuw triggert (zelfde coord = zelfde prop-waarde). Optioneel.
+  focusPoint?: { lon: number; lat: number; n: number } | null;
   onMapClick: (lon: number, lat: number) => void;
   onMarkerDragEnd: (slotIndex: number, lon: number, lat: number) => void;
   onRouteDrop: (lon: number, lat: number) => void;
@@ -71,6 +75,7 @@ export default function MapView({
   waypoints,
   hoverPoint,
   onRouteHover,
+  focusPoint,
   onMapClick,
   onMarkerDragEnd,
   onRouteDrop,
@@ -992,6 +997,20 @@ export default function MapView({
       savedPlaces ?? { type: "FeatureCollection", features: [] },
     );
   }, [savedPlaces, ready]);
+
+  // Camera-focus op verzoek (klik op waarschuwing/klim). Ease naar het punt en
+  // zoom desnoods in tot een leesbaar niveau; nooit uitzoomen als de gebruiker
+  // al dichterbij zit. Getriggerd op de teller zodat herhaald klikken werkt.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !focusPoint) return;
+    map.easeTo({
+      center: [focusPoint.lon, focusPoint.lat],
+      zoom: Math.max(map.getZoom(), 14),
+      duration: 700,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusPoint?.n, ready]);
 
   // Sync elevation-hover point
   useEffect(() => {

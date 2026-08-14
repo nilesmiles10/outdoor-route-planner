@@ -362,10 +362,21 @@ export default function PlannerApp() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  // Camera-focus-verzoek: klik op een waarschuwing/klim vliegt de kaart naar dat
+  // punt. De teller `n` maakt herhaald klikken op hetzelfde punt herhaalbaar.
+  const [focusReq, setFocusReq] = useState<{
+    lon: number;
+    lat: number;
+    n: number;
+  } | null>(null);
 
   const routeCoords = route
     ? (route.geometry.geometry as GeoJSON.LineString).coordinates
     : null;
+  const focusOnIndex = (idx: number) => {
+    const c = routeCoords?.[idx];
+    if (c) setFocusReq((prev) => ({ lon: c[0], lat: c[1], n: (prev?.n ?? 0) + 1 }));
+  };
   const distances = useMemo(
     () => (routeCoords ? cumulativeDistances(routeCoords) : null),
     [routeCoords],
@@ -1384,6 +1395,7 @@ export default function PlannerApp() {
         waypoints={plan.slots}
         hoverPoint={hoverPoint}
         onRouteHover={setHoverIdx}
+        focusPoint={focusReq}
         onMapClick={handleMapClick}
         onMarkerDragEnd={handleMarkerDragEnd}
         onRouteDrop={handleRouteDrop}
@@ -2269,6 +2281,9 @@ export default function PlannerApp() {
                     // kaart kunnen lokaliseren, niet alleen met de muis.
                     onFocus={() => setHoverIdx(a.fromIdx)}
                     onBlur={() => setHoverIdx(null)}
+                    // Klik → vlieg de kaart naar het gewaarschuwde segment.
+                    // Onmisbaar op touch (geen hover): "waar is dit?" → kijk.
+                    onClick={() => focusOnIndex(a.fromIdx)}
                     className="flex items-center justify-between rounded-lg bg-red-50 px-2 py-1 text-left text-[11px] text-red-900 hover:bg-red-100"
                   >
                     <span>
@@ -2304,6 +2319,10 @@ export default function PlannerApp() {
                     type="button"
                     onMouseEnter={() => setHoverIdx(c.startIdx)}
                     onMouseLeave={() => setHoverIdx(null)}
+                    onFocus={() => setHoverIdx(c.startIdx)}
+                    onBlur={() => setHoverIdx(null)}
+                    // Klik → vlieg naar het begin van de klim (touch-vriendelijk).
+                    onClick={() => focusOnIndex(c.startIdx)}
                     className="flex items-center justify-between rounded-lg bg-orange-50 px-2 py-1 text-left text-[11px] text-orange-900 hover:bg-orange-100"
                   >
                     <span>
