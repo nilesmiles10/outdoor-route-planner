@@ -366,6 +366,11 @@ function mergeLegs(legs: RouteResult[]): RouteResult {
 
 export default function PlannerApp() {
   const t = useTranslations("planner");
+  // Uitleg-tooltip bij de moeilijkheidsbadge ("Zware route. Zeer goede conditie
+  // vereist."). Hergebruikt de bestaande detailpagina-strings zodat de planner
+  // dezelfde uitleg geeft als tour/trail — de kale badge zei niet wat "Zwaar"
+  // betekent (afstand + klim, niet technische zwaarte).
+  const tAuto = useTranslations("tourPage.autoDesc");
   const locale = useLocale();
   const [plan, dispatch] = useReducer(planReducer, {
     slots: [null, null],
@@ -2267,7 +2272,10 @@ export default function PlannerApp() {
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <span
-                className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                title={tAuto(
+                  difficulty(sport, route.stats.distanceM, route.stats.ascendM),
+                )}
+                className={`cursor-help rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                   difficulty(sport, route.stats.distanceM, route.stats.ascendM) ===
                   "easy"
                     ? "bg-emerald-100 text-emerald-800"
