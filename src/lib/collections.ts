@@ -54,6 +54,25 @@ export function aggregateStats(
  * with a small padding. Latitude is flipped (SVG y grows downward). Returns "" if
  * there are too few points.
  */
+// Max aantal punten in een thumbnail-pad. Een 80px-vorm heeft geen 300+ punten
+// nodig; ~48 ziet er identiek uit maar scheelt ~10x aan SVG-path-DOM over álle
+// thumbnails samen (discover-grid, collectie-kaarten/hero, profiel-tijdlijn).
+const THUMB_PTS = 48;
+
+// Gelijkmatig downsamplen met behoud van eerste + laatste punt. De bounding box
+// blijft bewust op de vólle coords (in de aanroepers) zodat de uitsnede exact
+// hetzelfde blijft — alleen het aantal tussenpunten daalt.
+function sampleCoords(
+  coords: readonly [number, number][],
+  max: number,
+): readonly [number, number][] {
+  if (coords.length <= max) return coords;
+  const step = (coords.length - 1) / (max - 1);
+  const out: [number, number][] = [];
+  for (let i = 0; i < max; i++) out.push(coords[Math.round(i * step)]);
+  return out;
+}
+
 export function miniPath(
   coords: [number, number][] | undefined,
   w: number,
@@ -79,7 +98,7 @@ export function miniPath(
   const scale = Math.min(iw / spanX, ih / spanY);
   const offX = pad + (iw - spanX * scale) / 2;
   const offY = pad + (ih - spanY * scale) / 2;
-  return coords
+  return sampleCoords(coords, THUMB_PTS)
     .map(([lon, lat], i) => {
       const x = offX + (lon - minX) * scale;
       const y = offY + (maxY - lat) * scale; // flip
@@ -124,7 +143,7 @@ export function multiMiniPaths(
   const offX = pad + (iw - spanX * scale) / 2;
   const offY = pad + (ih - spanY * scale) / 2;
   return usable.map((coords) =>
-    coords
+    sampleCoords(coords, THUMB_PTS)
       .map(([lon, lat], i) => {
         const x = offX + (lon - minX) * scale;
         const y = offY + (maxY - lat) * scale;
