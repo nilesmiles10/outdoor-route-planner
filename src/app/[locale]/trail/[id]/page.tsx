@@ -66,14 +66,22 @@ async function getTrail(id: string): Promise<Trail | null> {
       next: { revalidate: 86400, tags: ["trails"] },
     },
   );
-  // Zelfde reden als de regio-categoriepagina (be72b0e): !res.ok is een infra-
-  // fout, geen "trail bestaat niet". null teruggeven zou notFound() → een 404
-  // cachen — en hier mét revalidate=86400, dus een transiënte Supabase-blip zet
-  // een geldige trail (30k in de sitemap) een héle dag op 404 (Google
-  // deindexeert 404, retryt 5xx). Throw i.p.v.: Next cachet de render niet en
-  // probeert de volgende request opnieuw. Network-errors propageren nu ook
-  // (geen try/catch die ze tot null slikt).
-  if (!res.ok) throw new Error(`trails REST ${res.status} for id ${id}`);
+  // Onderscheid 4xx (permanent) van 5xx/network (transiënt) — beide zijn "niet
+  // ok" maar vragen om tegengesteld gedrag:
+  //  • 4xx: de request kán niet slagen. Vooral 400 op een niet-uuid `id` (een
+  //    oude/kapotte of door een crawler verzonnen URL zoals /trail/foo) — Postgres
+  //    kan "foo" niet naar uuid casten. Dat is géén trail → notFound() geeft een
+  //    cachebare 404, precies wat een crawler moet zien. Vóór deze split gooide
+  //    het hier → de error-boundary → 500, en Google retryt 5xx eindeloos op een
+  //    URL die nooit gaat bestaan.
+  //  • 5xx/network: transiënte Supabase-blip. Throwen zodat Next de render níét
+  //    cachet (revalidate=86400 zou een geldige trail anders een hele dag op 404
+  //    vastzetten) en de volgende request opnieuw probeert. Network-errors
+  //    (fetch reject) propageren vanzelf als throw — ook transiënt, juist zo.
+  if (!res.ok) {
+    if (res.status >= 400 && res.status < 500) return null;
+    throw new Error(`trails REST ${res.status} for id ${id}`);
+  }
   const rows = (await res.json()) as Trail[];
   // fetch ok + geen rij = de trail bestaat écht niet → notFound (juist, cachebaar).
   return rows[0] ?? null;
