@@ -398,7 +398,7 @@
   },
   "regionPage": {
     "breadcrumbDiscover": "Discover",
-    "intro": "The {count} best {category} in {region} — with tips, photos and routes nearby.",
+    "intro": "Discover {count} {category} in {region} — with tips, photos and routes nearby.",
     "metaDescription": "Discover {count} {category} in {region}: community highlights with tips, photos and nearby routes.",
     "catPlural": {
       "peak": "Peaks",

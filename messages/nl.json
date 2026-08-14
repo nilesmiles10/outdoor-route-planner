@@ -398,7 +398,7 @@
   },
   "regionPage": {
     "breadcrumbDiscover": "Ontdekken",
-    "intro": "De {count} mooiste {category} in {region} — met tips, foto's en routes in de buurt.",
+    "intro": "Ontdek {count} {category} in {region} — met tips, foto's en routes in de buurt.",
     "metaDescription": "Ontdek {count} {category} in {region}: community-highlights met tips, foto's en routes in de buurt.",
     "catPlural": {
       "peak": "Toppen",
