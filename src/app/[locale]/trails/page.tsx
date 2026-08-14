@@ -102,9 +102,18 @@ export default async function TrailsPage({
   const sport = SPORTS.includes(searchParams.sport as never)
     ? (searchParams.sport as (typeof SPORTS)[number])
     : "all";
-  const country = /^[A-Z]{2}$/.test(searchParams.country ?? "")
-    ? searchParams.country!
-    : "all";
+  // NL-standaarddoelgroep: zonder expliciete landkeuze default op Nederland
+  // (~4.4k NL-trails) i.p.v. een alfabetische Europa-mix waarin een NL-bezoeker
+  // Franse routes bovenaan ziet. Andere locales houden "alle landen". Een
+  // expliciete ?country=all overschrijft de default — de href-builder zet die
+  // param dan ook expliciet, want anders zou de kale URL weer op NL defaulten.
+  const defaultCountry = locale === "nl" ? "NL" : "all";
+  const country =
+    searchParams.country === "all"
+      ? "all"
+      : /^[A-Z]{2}$/.test(searchParams.country ?? "")
+        ? searchParams.country!
+        : defaultCountry;
   const region = searchParams.region ?? "all";
   const q = searchParams.q?.trim() ?? "";
   const loopOnly = searchParams.loop === "1";
@@ -116,7 +125,7 @@ export default async function TrailsPage({
     : "all";
   const filtersActive =
     sport !== "all" ||
-    country !== "all" ||
+    country !== defaultCountry ||
     region !== "all" ||
     band !== "all" ||
     diff !== "all" ||
@@ -220,7 +229,7 @@ export default async function TrailsPage({
       ...patch,
     };
     if (merged.sport !== "all") p.set("sport", merged.sport);
-    if (merged.country !== "all") p.set("country", merged.country);
+    if (merged.country !== defaultCountry) p.set("country", merged.country);
     if (merged.region !== "all") p.set("region", merged.region);
     if (merged.q) p.set("q", merged.q);
     if (merged.loop === "1") p.set("loop", "1");
