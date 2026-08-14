@@ -2257,6 +2257,11 @@ export default function PlannerApp() {
                     type="button"
                     onMouseEnter={() => setHoverIdx(a.fromIdx)}
                     onMouseLeave={() => setHoverIdx(null)}
+                    // onFocus/onBlur spiegelen de hover zodat toetsenbord- én
+                    // touch-gebruikers (geen hover) de waarschuwing ook op de
+                    // kaart kunnen lokaliseren, niet alleen met de muis.
+                    onFocus={() => setHoverIdx(a.fromIdx)}
+                    onBlur={() => setHoverIdx(null)}
                     className="flex items-center justify-between rounded-lg bg-red-50 px-2 py-1 text-left text-[11px] text-red-900 hover:bg-red-100"
                   >
                     <span>
