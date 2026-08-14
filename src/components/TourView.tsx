@@ -104,6 +104,28 @@ type Props = {
 
 const noop = () => {};
 
+// Planner-punten voor "Open in planner". Een tour levert echte waypoints
+// (start/via/eind) → gebruik die. Een trail (OSM-route) heeft er maar één
+// (het startpunt); daarmee zou de link `?w=lon,lat` één punt bevatten en de
+// planner negeert dat (hij eist ≥2 punten) → lege planner. Bemonster dan
+// gelijkmatig langs de geometrie zodat de planner de trail benaderend
+// herbouwt. Cap 8 (BRouter routeert max 10 punten). Werkt ook voor
+// roundtrip-trails (start≈eind): de tussenpunten houden de lus intact.
+function plannerWaypointsFrom(
+  waypoints: Waypoint[],
+  coords: GeoJSON.Position[],
+): [number, number][] {
+  if (waypoints.length >= 2) {
+    return waypoints.map((p) => [p.lon, p.lat]);
+  }
+  const n = Math.min(8, coords.length);
+  if (n < 2) return coords.map((c) => [c[0], c[1]]);
+  return Array.from({ length: n }, (_, i) => {
+    const c = coords[Math.round((i * (coords.length - 1)) / (n - 1))];
+    return [c[0], c[1]];
+  });
+}
+
 export default function TourView({
   geometry,
   elevation,
@@ -157,8 +179,8 @@ export default function TourView({
     [activity, geometry],
   );
   const total = header.buckets.paved + header.buckets.unpaved + header.buckets.unknown;
-  const plannerHref = `/?w=${waypoints
-    .map((p) => `${p.lon.toFixed(5)},${p.lat.toFixed(5)}`)
+  const plannerHref = `/?w=${plannerWaypointsFrom(waypoints, geometry.coordinates)
+    .map(([lon, lat]) => `${lon.toFixed(5)},${lat.toFixed(5)}`)
     .join(";")}&sport=${header.sport}`;
 
   const exportData = () => ({
