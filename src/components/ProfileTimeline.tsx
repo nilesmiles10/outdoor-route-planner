@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import MiniMap from "@/components/MiniMap";
 import type { Difficulty } from "@/lib/difficulty";
 
 export type TimelineItem = {
@@ -24,6 +25,8 @@ export type TimelineItem = {
   likeCount: number;
   likedByMe: boolean;
   commentCount: number;
+  // Bemonsterde route-vorm voor de MiniMap-thumbnail (null = geen geometrie).
+  coords: [number, number][] | null;
 };
 
 export default function ProfileTimeline({ items: initial }: { items: TimelineItem[] }) {
@@ -68,26 +71,34 @@ export default function ProfileTimeline({ items: initial }: { items: TimelineIte
           </div>
           <a
             href={`/${locale}/tour/${it.id}`}
-            className="mt-1.5 block rounded-lg bg-neutral-50 px-3 py-2 hover:bg-neutral-100"
+            className="mt-1.5 flex items-stretch gap-3 rounded-lg bg-neutral-50 px-3 py-2 hover:bg-neutral-100"
           >
-            <div className="flex items-center gap-2 text-sm font-medium text-neutral-900">
-              {it.kind === "completed" && <span aria-hidden>🏁</span>}
-              <span className="truncate">{it.name}</span>
-              <span
-                className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                  it.difficulty === "easy"
-                    ? "bg-emerald-100 text-emerald-800"
-                    : it.difficulty === "moderate"
-                      ? "bg-amber-100 text-amber-800"
-                      : "bg-red-100 text-red-800"
-                }`}
-              >
-                {tdiff(it.difficulty)}
-              </span>
-            </div>
-            <div className="text-xs text-neutral-500">
-              {it.distanceKm} km · ↗ {it.ascendM} m · {it.sportLabel}
-              {it.movingLabel ? ` · ${it.movingLabel} h` : ""}
+            {it.coords && (
+              <MiniMap
+                coords={it.coords}
+                className="h-14 w-20 shrink-0 self-center rounded-md bg-white"
+              />
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 text-sm font-medium text-neutral-900">
+                {it.kind === "completed" && <span aria-hidden>🏁</span>}
+                <span className="truncate">{it.name}</span>
+                <span
+                  className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                    it.difficulty === "easy"
+                      ? "bg-emerald-100 text-emerald-800"
+                      : it.difficulty === "moderate"
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {tdiff(it.difficulty)}
+                </span>
+              </div>
+              <div className="text-xs text-neutral-500">
+                {it.distanceKm} km · ↗ {it.ascendM} m · {it.sportLabel}
+                {it.movingLabel ? ` · ${it.movingLabel} h` : ""}
+              </div>
             </div>
           </a>
           <div className="mt-2 flex items-center gap-3 text-xs">
