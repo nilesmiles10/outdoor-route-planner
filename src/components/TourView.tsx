@@ -7,6 +7,7 @@ import ElevationChart from "./ElevationChart";
 import GradeLegend from "./GradeLegend";
 import SpeedChart from "./SpeedChart";
 import MiniMap from "./MiniMap";
+import { wmoEmoji } from "@/lib/weather";
 import TourSocial from "./TourSocial";
 import Avatar from "./Avatar";
 import { cumulativeDistances, detectClimbs, haversineM } from "@/lib/elevation";
@@ -76,7 +77,14 @@ type Props = {
   autoDesc?: string;
   weather?: {
     title: string;
-    days: { date: string; label: string; tMax: number; tMin: number; rain: number }[];
+    days: {
+      date: string;
+      label: string;
+      tMax: number;
+      tMin: number;
+      rain: number;
+      code: number;
+    }[];
     packTip: string | null;
   } | null;
   related?: {
@@ -650,6 +658,7 @@ export default function TourView({
               {weather.days.map((d) => (
                 <div key={d.date} className="min-w-10 shrink-0">
                   <div className="text-[9px] text-neutral-500">{d.label}</div>
+                  <div className="text-sm leading-none">{wmoEmoji(d.code)}</div>
                   <div className="text-xs font-medium">{d.tMax}°</div>
                   <div className="text-[10px] text-neutral-500">{d.tMin}°</div>
                   {/* 💧 verduidelijkt dat het % de neerslagkans is (kale "0%"

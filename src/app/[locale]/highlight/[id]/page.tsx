@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { GEO_REVERSE_BASE, geoHeaders } from "@/lib/geo";
-import { getWeather } from "@/lib/weather";
+import { getWeather, wmoEmoji } from "@/lib/weather";
 import { CATEGORY_EMOJI, CATEGORY_COLOR } from "@/lib/highlights";
 import { gradientFor } from "@/lib/collections";
 import { regionSlugFor } from "@/lib/regionSlug";
@@ -518,6 +518,7 @@ export default async function HighlightPage({
                         weekday: "short",
                       })}
                     </div>
+                    <div className="text-base leading-none">{wmoEmoji(d.code)}</div>
                     <div className="text-sm font-medium">{d.tMax}°</div>
                     <div className="text-[11px] text-neutral-400">{d.tMin}°</div>
                     <div className="text-[10px] text-sky-600">{d.rain}%</div>

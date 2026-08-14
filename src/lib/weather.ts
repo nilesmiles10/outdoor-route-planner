@@ -2,9 +2,24 @@
 // tour page in GEN-132). Server-side only — uses fetch with ISR caching.
 
 export type Weather = {
-  days: { date: string; tMax: number; tMin: number; rain: number }[];
+  days: { date: string; tMax: number; tMin: number; rain: number; code: number }[];
   packTip: "rain" | "cold" | "heat" | null;
 };
+
+// WMO weather-interpretation-code → emoji. Voegt de daadwerkelijke conditie toe
+// (sneeuw/mist/onweer zeggen meer dan alleen neerslagkans). Codes: open-meteo.com.
+export function wmoEmoji(code: number): string {
+  if (code === 0) return "☀️"; // helder
+  if (code <= 2) return "🌤️"; // (bijna) helder / half bewolkt
+  if (code === 3) return "☁️"; // bewolkt
+  if (code <= 48) return "🌫️"; // mist
+  if (code <= 57) return "🌦️"; // motregen
+  if (code <= 67) return "🌧️"; // regen
+  if (code <= 77) return "❄️"; // sneeuw
+  if (code <= 82) return "🌧️"; // regenbuien
+  if (code <= 86) return "❄️"; // sneeuwbuien
+  return "⛈️"; // onweer (95-99)
+}
 
 export async function getWeather(
   lon: number,
@@ -13,7 +28,7 @@ export async function getWeather(
   try {
     const url =
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-      `&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
+      `&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode` +
       `&timezone=Europe%2FAmsterdam&forecast_days=5`;
     const res = await fetch(url, { next: { revalidate: 3600 } });
     const d = await res.json();
@@ -22,6 +37,7 @@ export async function getWeather(
       tMax: Math.round(d.daily.temperature_2m_max[i]),
       tMin: Math.round(d.daily.temperature_2m_min[i]),
       rain: d.daily.precipitation_probability_max[i] ?? 0,
+      code: d.daily.weathercode?.[i] ?? 0,
     }));
     if (!days.length) return null;
     const packTip =

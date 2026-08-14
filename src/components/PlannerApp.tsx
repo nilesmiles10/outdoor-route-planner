@@ -15,7 +15,7 @@ import SearchField from "./SearchField";
 import ElevationChart from "./ElevationChart";
 import GradeLegend from "./GradeLegend";
 import { groupWaytypes } from "@/lib/waytypes";
-import type { Weather } from "@/lib/weather";
+import { type Weather, wmoEmoji } from "@/lib/weather";
 import { buildKmMarkers } from "@/lib/kmMarkers";
 import AccountPanel, { type TourPayload } from "./AccountPanel";
 import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
@@ -2621,6 +2621,7 @@ export default function PlannerApp() {
                           weekday: "short",
                         })}
                       </div>
+                      <div className="text-sm leading-none">{wmoEmoji(d.code)}</div>
                       <div className="text-xs font-medium">{d.tMax}°</div>
                       <div className="text-[10px] text-neutral-500">{d.tMin}°</div>
                       <div className="text-[9px] text-sky-600">💧{d.rain}%</div>
