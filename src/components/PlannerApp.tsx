@@ -1043,12 +1043,25 @@ export default function PlannerApp() {
   );
 
   const handleCopyLink = useCallback(async () => {
+    const url = window.location.href;
+    // Mobiel: native share-sheet (zoals de tourpagina, GEN-143); desktop/
+    // fallback: link naar het klembord + "Gekopieerd!"-bevestiging. Voorheen
+    // alleen klembord — op mobiel is de native share-sheet (WhatsApp, Berichten,
+    // …) veel bruikbaarder dan een stille kopie.
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: document.title, url });
+        return;
+      } catch {
+        // gebruiker annuleerde of share faalde → val terug op kopiëren
+      }
+    }
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // clipboard unavailable — ignore
+      // klembord niet beschikbaar — negeren
     }
   }, []);
 
