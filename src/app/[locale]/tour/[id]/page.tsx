@@ -6,32 +6,7 @@ import { getWeather } from "@/lib/weather";
 import { difficulty } from "@/lib/difficulty";
 import { CATEGORY_EMOJI } from "@/lib/highlights";
 import TourView from "@/components/TourView";
-
-type TourRow = {
-  id: string;
-  owner: string;
-  name: string;
-  visibility: "private" | "close_friends" | "followers" | "public";
-  sport: string;
-  waypoints: { name: string; lon: number; lat: number }[];
-  geometry: GeoJSON.LineString;
-  elevation: number[];
-  stats: { distanceM: number; timeS: number; ascendM: number; descendM: number };
-  surfaces: { buckets: { paved: number; unpaved: number; unknown: number } };
-  updated_at: string;
-  // GEN-117 activity columns (null on planned tours)
-  kind: "planned" | "completed";
-  recorded_at: string | null;
-  duration_s: number | null;
-  moving_s: number | null;
-  max_speed_kmh: number | null;
-  time_offsets: number[] | null;
-  // Author attribution (Komoot teardown): joined via tours_owner_profiles_fkey.
-  profile: { display_name: string | null; avatar_url: string | null } | null;
-  // GEN-143: turn-instructies (null bij oude tours/uploads).
-  turns: { i: number; t: string; exit?: number }[] | null;
-  waytypes: Record<string, number> | null;
-};
+import { getTour, type TourRow } from "./data";
 
 function haversineKm(aLon: number, aLat: number, bLon: number, bLat: number) {
   const R = 6371;
@@ -43,20 +18,6 @@ function haversineKm(aLon: number, aLat: number, bLon: number, bLat: number) {
       Math.cos((bLat * Math.PI) / 180) *
       Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
-}
-
-async function getTour(id: string): Promise<TourRow | null> {
-  // Session-aware server client: anonymous visitors only see public rows;
-  // a logged-in owner also sees their own private rows (RLS).
-  const sb = supabaseServer();
-  const { data } = await sb
-    .from("tours")
-    .select(
-      "id,owner,name,visibility,sport,waypoints,geometry,elevation,stats,surfaces,waytypes,updated_at,kind,recorded_at,duration_s,moving_s,max_speed_kmh,time_offsets,turns,profile:profiles!tours_owner_profiles_fkey(display_name,avatar_url)",
-    )
-    .eq("id", id)
-    .maybeSingle();
-  return (data as unknown as TourRow) ?? null;
 }
 
 // Komoot-style auto description (GEN-132), templated from difficulty +
