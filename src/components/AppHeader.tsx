@@ -250,6 +250,17 @@ export default function AppHeader() {
                 <span className="ml-2 text-xs text-neutral-500">{h.sub}</span>
               </a>
             ))}
+            {/* De dropdown toont max 4 trails; met 4.4k officiële routes wil je
+                de rest kunnen zien. Link naar de volledige, filterbare /trails-
+                index met dezelfde naam-query. */}
+            {trailHits.length > 0 && (
+              <a
+                href={`/${locale}/trails?q=${encodeURIComponent(q.trim())}`}
+                className="block px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-neutral-50"
+              >
+                {t("seeAllTrails", { q: q.trim() })} →
+              </a>
+            )}
             {personHits.length > 0 && (
               <div className="px-3 pt-2 text-[10px] font-semibold uppercase text-neutral-400">
                 {t("people")}
@@ -437,6 +448,15 @@ export default function AppHeader() {
                     <span className="ml-2 text-xs text-neutral-500">{h.sub}</span>
                   </a>
                 ))}
+                {trailHits.length > 0 && (
+                  <a
+                    href={`/${locale}/trails?q=${encodeURIComponent(q.trim())}`}
+                    onClick={() => setMobileOpen(false)}
+                    className="block px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-neutral-50"
+                  >
+                    {t("seeAllTrails", { q: q.trim() })} →
+                  </a>
+                )}
                 {personHits.length > 0 && (
                   <div className="px-3 pt-2 text-[10px] font-semibold uppercase text-neutral-400">
                     {t("people")}
