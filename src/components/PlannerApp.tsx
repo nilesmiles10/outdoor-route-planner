@@ -954,13 +954,21 @@ export default function PlannerApp() {
   // --- Share URL: restore on mount, write on change (GEN-108) ---
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    // Header place-search: ?at=lon,lat&atn=Name → prefill start point
+    // ?at=lon,lat&atn=Name → prefill één punt. Standaard als START
+    // (header-plaatszoek: "plan vanaf hier"). Met atrole=dest komt het punt in
+    // de BESTEMMING — dat is wat de highlight-knop "Breng me hierheen / Take me
+    // there" bedoelt: navigeer NAAR de POI, de gebruiker vult zelf het startpunt
+    // in. Voorheen belandde de POI in het startveld, precies omgekeerd.
     const at = params.get("at");
     if (at) {
       const [lon, lat] = at.split(",").map(Number);
       if (Number.isFinite(lon) && Number.isFinite(lat)) {
         const name = params.get("atn") ?? coordName(lon, lat);
-        dispatch({ type: "load", slots: [{ name, lon, lat }, null] });
+        const asDest = params.get("atrole") === "dest";
+        dispatch({
+          type: "load",
+          slots: asDest ? [null, { name, lon, lat }] : [{ name, lon, lat }, null],
+        });
       }
     }
     const w = params.get("w");

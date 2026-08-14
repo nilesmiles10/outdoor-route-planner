@@ -213,7 +213,9 @@ export default async function HighlightPage({
   );
 
   const storageBase = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/highlight-photos/`;
-  const plannerHref = `/${locale}?at=${hl.lon.toFixed(5)},${hl.lat.toFixed(5)}&atn=${encodeURIComponent(hl.name)}`;
+  // atrole=dest: "Breng me hierheen" zet de POI als BESTEMMING (navigeer
+  // ernaartoe), niet als startpunt.
+  const plannerHref = `/${locale}?at=${hl.lon.toFixed(5)},${hl.lat.toFixed(5)}&atn=${encodeURIComponent(hl.name)}&atrole=dest`;
 
   return (
     <main className="mx-auto min-h-dvh max-w-4xl px-4 pb-16 pt-16">
