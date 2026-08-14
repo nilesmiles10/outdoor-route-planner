@@ -159,6 +159,14 @@ export default async function TrailsPage({
       : Promise.resolve({ data: [] }),
   ]);
   const trails = (data as TrailRow[]) ?? [];
+  // Natuurlijke sortering voor A–Z: OSM-netwerken met genummerde namen ("1.",
+  // "2." … "10.") sorteren in Postgres lexicaal (1, 10, 14, 2) — verwarrend.
+  // localeCompare met numeric groepeert cijfers menselijk (1, 2, … 10). Alleen
+  // op de naam-sort; Kortst/Langst/Meeste-klim komen al numeriek uit de DB. De
+  // DB-order bepaalt nog wélke 200 (bij een gefilterde regio < 200 = alle).
+  if (sort === "name") {
+    trails.sort((a, b) => a.name.localeCompare(b.name, locale, { numeric: true }));
+  }
   // RPC levert land + aantal, gesorteerd op aantal (meeste content eerst).
   const countries = (countriesQ.data as { country: string; n: number }[] | null) ?? [
     { country: "NL", n: 0 },
