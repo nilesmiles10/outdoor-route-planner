@@ -2301,7 +2301,29 @@ export default function PlannerApp() {
             />
           </div>
           {rtOpen && (
-            <div className="flex items-center gap-2 rounded-lg bg-neutral-50 p-2">
+            <div className="flex flex-wrap items-center gap-2 rounded-lg bg-neutral-50 p-2">
+              {/* Snelkeuze-afstanden: scheelt typen (vooral op mobiel). Sport-
+                  bewust — te voet korter dan op de fiets. Vult het km-veld. */}
+              {((["hike", "run"] as string[]).includes(sport)
+                ? [5, 10, 20]
+                : [20, 40, 80]
+              ).map((km) => (
+                <button
+                  key={km}
+                  type="button"
+                  onClick={() => {
+                    setRtEdited(true);
+                    setRtTargetKm(km);
+                  }}
+                  className={`rounded-full px-2 py-0.5 text-[11px] ${
+                    rtTargetKm === km
+                      ? "bg-emerald-700 text-white"
+                      : "border border-neutral-200 bg-white text-neutral-600 hover:bg-emerald-50"
+                  }`}
+                >
+                  {km}
+                </button>
+              ))}
               <input
                 type="number"
                 min={5}
