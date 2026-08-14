@@ -693,10 +693,47 @@ export default function PlannerApp() {
     return m;
   }, [hlRows]);
 
+  // Laatst-bekeken camera herstellen (planner-only). Eén keer bij mount gelezen;
+  // MapView gebruikt het alleen als er geen route-bounds zijn. SSR-veilig (guard
+  // op window) en tolerant voor corrupte/oude waarden.
+  const initialMapView = useMemo<{ center: [number, number]; zoom: number } | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("tarnoo.mapview");
+      if (!raw) return null;
+      const v = JSON.parse(raw) as { lon?: unknown; lat?: unknown; zoom?: unknown };
+      if (
+        typeof v.lon === "number" &&
+        typeof v.lat === "number" &&
+        typeof v.zoom === "number" &&
+        Number.isFinite(v.lon) &&
+        Number.isFinite(v.lat) &&
+        v.zoom >= 1 &&
+        v.zoom <= 20
+      ) {
+        return { center: [v.lon, v.lat], zoom: v.zoom };
+      }
+    } catch {
+      /* corrupte JSON — val terug op de default */
+    }
+    return null;
+  }, []);
+
   // Alleen bijwerken bij een merkbare verschuiving, anders triggert elke
   // micro-move (en het moveend na een fitBounds) een nieuwe fetch.
   const handleViewportChange = useCallback(
     (b: { w: number; s: number; e: number; n: number }, zoom: number) => {
+      // Persisteer de laatst-bekeken camera zodat een terugkerende bezoeker
+      // verdergaat waar hij was (zie initialMapView). Center = bounds-midpoint;
+      // ruim genoeg voor een camera-herstel. localStorage-fout stil negeren.
+      try {
+        localStorage.setItem(
+          "tarnoo.mapview",
+          JSON.stringify({ lon: (b.w + b.e) / 2, lat: (b.s + b.n) / 2, zoom }),
+        );
+      } catch {
+        /* private-mode / quota — herstel is een nice-to-have, geen must */
+      }
       setViewport((prev) => {
         if (
           prev &&
@@ -1416,6 +1453,7 @@ export default function PlannerApp() {
     <main className="relative h-dvh w-full">
       <MapView
         route={route?.geometry ?? null}
+        initialView={initialMapView}
         waypoints={plan.slots}
         hoverPoint={hoverPoint}
         onRouteHover={setHoverIdx}

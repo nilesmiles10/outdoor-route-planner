@@ -27,6 +27,11 @@ export function waypointColor(i: number, count: number) {
 
 type Props = {
   route: GeoJSON.Feature | null;
+  // Planner-only: laatst-bekeken camera (uit localStorage) zodat een terugkerende
+  // gebruiker verdergaat waar hij was i.p.v. elke keer op de Utrecht-default te
+  // landen. Alleen gebruikt bij mount én alleen wanneer er geen route-bounds zijn
+  // (tour/trail overschrijven dit met fitBounds op de eigen geometrie).
+  initialView?: { center: [number, number]; zoom: number } | null;
   waypoints: (Waypoint | null)[];
   hoverPoint: GeoJSON.Position | null;
   // Cursor over de route-lijn → dichtstbijzijnde route-index (of null bij
@@ -72,6 +77,7 @@ type Props = {
 
 export default function MapView({
   route,
+  initialView,
   waypoints,
   hoverPoint,
   onRouteHover,
@@ -149,7 +155,9 @@ export default function MapView({
       style: mapStyle(),
       ...(initBounds
         ? { bounds: initBounds, fitBoundsOptions: { padding: 60 } }
-        : { center: [5.1214, 52.0907], zoom: 8 }), // Utrecht (planner-default)
+        : initialView
+          ? { center: initialView.center, zoom: initialView.zoom } // hervat laatst-bekeken
+          : { center: [5.1214, 52.0907], zoom: 8 }), // Utrecht (planner-default)
     });
     // Surface style/source failures instead of silently showing a blank map —
     // the OpenFreeMap stalls and the pmtiles switch both failed this way.
