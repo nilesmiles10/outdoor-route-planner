@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@supabase/supabase-js";
@@ -10,6 +11,29 @@ import { getSiteSettings } from "@/lib/siteSettings";
 // tours can ever render here — RLS enforces that server-side too.
 
 export const revalidate = 3600;
+
+// Zonder dit is de <title> leeg: een direct geopende/gedeelde embed-URL toont
+// dan de kale UUID in de browsertab. Geef de route-naam als titel (noindex
+// blijft via de layout-metadata gelden, dus dit is puur voor de tab/preview).
+export async function generateMetadata({
+  params,
+}: {
+  params: { id: string };
+}): Promise<Metadata> {
+  const sb = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
+  const { data } = await sb
+    .from("tours")
+    .select("name")
+    .eq("id", params.id)
+    .eq("visibility", "public")
+    .maybeSingle();
+  const site = await getSiteSettings();
+  const name = (data as { name: string } | null)?.name;
+  return { title: name ? `${name} · ${site.site_name}` : site.site_name };
+}
 
 type TourRow = {
   id: string;
