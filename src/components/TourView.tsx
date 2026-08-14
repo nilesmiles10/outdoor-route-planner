@@ -196,7 +196,12 @@ export default function TourView({
     [activity, geometry],
   );
   const total = header.buckets.paved + header.buckets.unpaved + header.buckets.unknown;
-  const plannerHref = `/?w=${plannerWaypointsFrom(waypoints, geometry.coordinates)
+  // Locale-prefix i.p.v. kaal `/?w=`: zonder prefix moet de next-intl-middleware
+  // de taal alsnog raden. Zonder NEXT_LOCALE-cookie/nl-Accept-Language landde een
+  // NL-bezoeker via een 307 op /en — "Open in planner" wisselde de taal. Mét
+  // prefix gaat het direct naar de huidige taal (geen redirect), consistent met
+  // alle andere links.
+  const plannerHref = `/${locale}?w=${plannerWaypointsFrom(waypoints, geometry.coordinates)
     .map(([lon, lat]) => `${lon.toFixed(5)},${lat.toFixed(5)}`)
     .join(";")}&sport=${header.sport}`;
 
