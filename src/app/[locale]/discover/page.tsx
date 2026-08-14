@@ -110,6 +110,12 @@ export default function DiscoverPage() {
       .select("id,name,sport,stats,waypoints,geometry")
       .eq("visibility", "public")
       .eq("kind", "planned")
+      // Nieuwste eerst: zonder expliciete order gaf `.limit(100)` een willekeurige
+      // 100 in willekeurige volgorde. Nu er 21 publieke tours zijn valt dat niet
+      // op, maar zodra het er >100 worden zouden nieuwe tours onzichtbaar kunnen
+      // blijven op /discover. created_at desc = deterministisch + verse content
+      // bovenaan (de "Dichtstbij"-fallback zonder locatie volgt deze volgorde).
+      .order("created_at", { ascending: false })
       .limit(100)
       .then(({ data }) => {
         setRows((data as Row[]) ?? []);
