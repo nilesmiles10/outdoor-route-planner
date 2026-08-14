@@ -118,7 +118,8 @@
         "cafe": "Café",
         "monument": "Monument",
         "nature": "Nature",
-        "other": "Other"
+        "other": "Other",
+        "gravel": "Gravel segment"
       }
     },
     "roundTrip": "Round trip",

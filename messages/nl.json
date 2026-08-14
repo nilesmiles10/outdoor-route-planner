@@ -118,7 +118,8 @@
         "cafe": "Café",
         "monument": "Monument",
         "nature": "Natuur",
-        "other": "Overig"
+        "other": "Overig",
+        "gravel": "Gravelsegment"
       }
     },
     "roundTrip": "Rondje",
