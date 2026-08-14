@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { CATEGORY_EMOJI } from "@/lib/highlights";
 import { difficulty } from "@/lib/difficulty";
+import { fmtDuration } from "@/lib/activity";
 import SiteFooter from "@/components/SiteFooter";
 import MiniMap from "@/components/MiniMap";
 
@@ -13,7 +14,7 @@ type Row = {
   id: string;
   name: string;
   sport: string;
-  stats: { distanceM: number; ascendM: number };
+  stats: { distanceM: number; ascendM: number; timeS: number };
   waypoints: { lon: number; lat: number }[];
   // Route-vorm-thumbnail (Komoot-stijl): geometry-coords voor de MiniMap.
   geometry: { coordinates: [number, number][] } | null;
@@ -77,7 +78,7 @@ export default function DiscoverPage() {
       name: string;
       sport: string;
       region: string | null;
-      stats: { distanceM: number; ascendM: number };
+      stats: { distanceM: number; ascendM: number; timeS: number };
       geometry: { coordinates: [number, number][] } | null;
     }[]
   >([]);
@@ -302,7 +303,7 @@ export default function DiscoverPage() {
                   <div className="mt-1 flex items-center gap-1.5 text-xs text-neutral-500">
                     {diffBadge(r.sport, r.stats.distanceM, r.stats.ascendM)}
                     <span className="truncate">
-                      {(r.stats.distanceM / 1000).toFixed(1)} km · ↗ {r.stats.ascendM} m · {ts(r.sport as never)}
+                      {(r.stats.distanceM / 1000).toFixed(1)} km · {fmtDuration(r.stats.timeS)} h · ↗ {r.stats.ascendM} m · {ts(r.sport as never)}
                     </span>
                   </div>
                 </div>
@@ -335,7 +336,7 @@ export default function DiscoverPage() {
                   <div className="mt-1 flex items-center gap-1.5 text-xs text-neutral-500">
                     {diffBadge(r.sport, r.stats.distanceM, r.stats.ascendM)}
                     <span className="truncate">
-                      {(r.stats.distanceM / 1000).toFixed(1)} km · ↗ {r.stats.ascendM} m · {ts(r.sport as never)}
+                      {(r.stats.distanceM / 1000).toFixed(1)} km · {fmtDuration(r.stats.timeS)} h · ↗ {r.stats.ascendM} m · {ts(r.sport as never)}
                       {r.region ? ` · ${r.region}` : ""}
                     </span>
                   </div>
@@ -545,7 +546,8 @@ export default function DiscoverPage() {
               })()}
             </div>
             <div className="mt-1 text-xs text-neutral-500">
-              {(r.stats.distanceM / 1000).toFixed(1)} km · ↗ {r.stats.ascendM} m ·{" "}
+              {(r.stats.distanceM / 1000).toFixed(1)} km ·{" "}
+              {fmtDuration(r.stats.timeS)} h · ↗ {r.stats.ascendM} m ·{" "}
               <span className="capitalize">{ts(r.sport as never)}</span>
               {r.distKm !== null && (
                 <span> · {Math.round(r.distKm)} km {t("away")}</span>
