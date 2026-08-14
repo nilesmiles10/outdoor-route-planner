@@ -74,7 +74,13 @@ export async function generateMetadata({
     title: pageTitle(await getSiteSettings(), name),
     description: bio,
     // Entity-specifieke OG i.p.v. de generieke layout-OG bij gedeelde links.
-    openGraph: { title: name, description: bio },
+    // `images` expliciet: door openGraph te zetten verdwijnt de geërfde site-
+    // OG-afbeelding, dus verwijs 'm terug (merk-kaart via metadataBase).
+    openGraph: {
+      title: name,
+      description: bio,
+      images: [`/${params.locale}/opengraph-image`],
+    },
     twitter: { title: name, description: bio },
   };
 }

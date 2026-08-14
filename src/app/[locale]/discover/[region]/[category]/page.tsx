@@ -122,8 +122,14 @@ export async function generateMetadata({
     },
     // Zonder eigen openGraph erfde een gedeelde link de generieke layout-OG
     // ("Tarnoo"), niet de pagina-titel. Deze 7,25k SEO-pagina's tonen nu
-    // "Toppen in Aargau" e.d. in de preview i.p.v. de merknaam.
-    openGraph: { title: ogTitle, description: desc },
+    // "Toppen in Aargau" e.d. in de preview i.p.v. de merknaam. `images` moet
+    // expliciet mee: door openGraph te zetten verdwijnt de geërfde site-OG-
+    // afbeelding, dus verwijs 'm terug (merk-kaart via metadataBase).
+    openGraph: {
+      title: ogTitle,
+      description: desc,
+      images: [`/${params.locale}/opengraph-image`],
+    },
     twitter: { title: ogTitle, description: desc },
   };
 }
