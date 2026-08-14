@@ -2123,7 +2123,30 @@ export default function PlannerApp() {
                   badge={badge}
                   badgeColor={badgeColor}
                   value={slot}
-                  onSelect={(wp) => dispatch({ type: "set", index: i, wp })}
+                  onSelect={(wp) => {
+                    dispatch({ type: "set", index: i, wp });
+                    // Feedback bij het plaatsen van het EERSTE punt: zonder tweede
+                    // waypoint berekent er nog geen route, dus MapView's
+                    // fitBounds-op-route springt niet aan en belandt de gekozen
+                    // plaats buiten beeld (de kaart herstelt de laatst-bekeken
+                    // camera). Vlieg er dan zelf heen via het bestaande
+                    // focusReq→focusPoint-pad. Zodra er ≥2 punten staan wint de
+                    // route-fitBounds, dus niet focussen om dubbele animatie te
+                    // vermijden.
+                    if (
+                      wp &&
+                      Number.isFinite(wp.lon) &&
+                      Number.isFinite(wp.lat) &&
+                      plan.slots.filter((s, idx) => (idx === i ? wp : s) != null)
+                        .length < 2
+                    ) {
+                      setFocusReq((prev) => ({
+                        lon: wp.lon,
+                        lat: wp.lat,
+                        n: (prev?.n ?? 0) + 1,
+                      }));
+                    }
+                  }}
                   onRemove={
                     plan.slots.length > 2 || slot !== null
                       ? () => dispatch({ type: "remove", index: i })
