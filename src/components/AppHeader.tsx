@@ -40,6 +40,27 @@ export default function AppHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Sluit het account-menu bij een klik erbuiten of Escape. Robuuster dan
+  // onBlur op de knop (miste een klik op niet-focusbare ruimte) én
+  // toetsenbord-vriendelijk — samen met onClick-items i.p.v. onMouseDown,
+  // zodat taalwissel/uitloggen ook met Enter/Space werken.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: PointerEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   // Taalwissel: bewaart de HUIDIGE pagina (de oude link ging altijd naar de
   // homepage) en zet NEXT_LOCALE, zodat next-intl bij een volgend bezoek de
@@ -274,11 +295,12 @@ export default function AppHeader() {
 
       {/* Account-menu (avatar als ingelogd, anders een icoon): bevat óók de
           taalkeuze — op desktop én mobiel dezelfde plek. */}
-      <div className="relative ml-auto md:ml-0">
+      <div ref={menuRef} className="relative ml-auto md:ml-0">
         <button
           type="button"
           onClick={() => { setMobileOpen(false); setMenuOpen((v) => !v); }}
-          onBlur={() => setTimeout(() => setMenuOpen(false), 150)}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
           className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
             email
               ? "bg-emerald-700 text-white"
@@ -322,7 +344,7 @@ export default function AppHeader() {
             <div className="my-1 border-t border-neutral-100" />
             <button
               type="button"
-              onMouseDown={switchLocale}
+              onClick={switchLocale}
               className="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm text-neutral-700 hover:bg-neutral-50"
             >
               <span>🌐 {t("language")}</span>
@@ -333,7 +355,7 @@ export default function AppHeader() {
             {email && (
               <button
                 type="button"
-                onMouseDown={() => sb.auth.signOut()}
+                onClick={() => sb.auth.signOut()}
                 className="block w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-neutral-50"
               >
                 {t("logout")}
