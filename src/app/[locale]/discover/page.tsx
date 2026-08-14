@@ -255,12 +255,12 @@ export default function DiscoverPage() {
                   <MiniMap coords={r.geometry?.coordinates} className="h-full w-full" />
                 </div>
                 <div className="px-4 py-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="truncate text-sm font-medium text-neutral-900">{r.name}</div>
+                  <div className="truncate text-sm font-medium text-neutral-900">{r.name}</div>
+                  <div className="mt-1 flex items-center gap-1.5 text-xs text-neutral-500">
                     {diffBadge(r.sport, r.stats.distanceM, r.stats.ascendM)}
-                  </div>
-                  <div className="mt-0.5 text-xs text-neutral-500">
-                    {(r.stats.distanceM / 1000).toFixed(1)} km · ↗ {r.stats.ascendM} m · {ts(r.sport as never)}
+                    <span className="truncate">
+                      {(r.stats.distanceM / 1000).toFixed(1)} km · ↗ {r.stats.ascendM} m · {ts(r.sport as never)}
+                    </span>
                   </div>
                 </div>
               </a>
@@ -284,13 +284,13 @@ export default function DiscoverPage() {
                 href={`/${locale}/trail/${r.id}`}
                 className="w-56 shrink-0 rounded-xl border border-emerald-200 bg-emerald-50/50 px-4 py-3 hover:border-emerald-300"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="truncate text-sm font-medium text-neutral-900">{r.name}</div>
+                <div className="truncate text-sm font-medium text-neutral-900">{r.name}</div>
+                <div className="mt-1 flex items-center gap-1.5 text-xs text-neutral-500">
                   {diffBadge(r.sport, r.stats.distanceM, r.stats.ascendM)}
-                </div>
-                <div className="mt-0.5 text-xs text-neutral-500">
-                  {(r.stats.distanceM / 1000).toFixed(1)} km · ↗ {r.stats.ascendM} m · {ts(r.sport as never)}
-                  {r.region ? ` · ${r.region}` : ""}
+                  <span className="truncate">
+                    {(r.stats.distanceM / 1000).toFixed(1)} km · ↗ {r.stats.ascendM} m · {ts(r.sport as never)}
+                    {r.region ? ` · ${r.region}` : ""}
+                  </span>
                 </div>
               </a>
             ))}
