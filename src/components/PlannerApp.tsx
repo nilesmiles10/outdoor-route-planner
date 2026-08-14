@@ -15,6 +15,7 @@ import SearchField from "./SearchField";
 import ElevationChart from "./ElevationChart";
 import GradeLegend from "./GradeLegend";
 import { groupWaytypes } from "@/lib/waytypes";
+import type { Weather } from "@/lib/weather";
 import { buildKmMarkers } from "@/lib/kmMarkers";
 import AccountPanel, { type TourPayload } from "./AccountPanel";
 import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
@@ -371,6 +372,10 @@ export default function PlannerApp() {
   // dezelfde uitleg geeft als tour/trail — de kale badge zei niet wat "Zwaar"
   // betekent (afstand + klim, niet technische zwaarte).
   const tAuto = useTranslations("tourPage.autoDesc");
+  // Weer-strip bij de route (zelfde bron + strings als de tour/trail-detail):
+  // titel uit tourPage, pak-tips uit highlightPage.
+  const tTour = useTranslations("tourPage");
+  const tPack = useTranslations("highlightPage");
   const locale = useLocale();
   const [plan, dispatch] = useReducer(planReducer, {
     slots: [null, null],
@@ -379,6 +384,7 @@ export default function PlannerApp() {
   });
   const [sport, setSport] = useState<Sport>("touring");
   const [route, setRoute] = useState<RouteResult | null>(null);
+  const [weather, setWeather] = useState<Weather | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -1012,6 +1018,32 @@ export default function PlannerApp() {
   useEffect(() => {
     fetchRoute();
   }, [fetchRoute]);
+
+  // Weer bij het startpunt zodra er een route is (parity met tour/trail-detail).
+  // Op ~1 km afgerond zodat kleine route-tweaks niet telkens Open-Meteo raken;
+  // faalt stil naar null (net als getWeather) → de strip verdwijnt gewoon.
+  const start = filled[0];
+  const startKey =
+    route && start ? `${start.lon.toFixed(2)},${start.lat.toFixed(2)}` : null;
+  useEffect(() => {
+    if (!startKey) {
+      setWeather(null);
+      return;
+    }
+    let cancelled = false;
+    const [lon, lat] = startKey.split(",");
+    fetch(`/api/weather?lon=${lon}&lat=${lat}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((w: Weather | null) => {
+        if (!cancelled) setWeather(w?.days?.length ? w : null);
+      })
+      .catch(() => {
+        if (!cancelled) setWeather(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [startKey]);
 
   // Keyboard: undo/redo + Esc closes the click balloon
   useEffect(() => {
@@ -2501,6 +2533,36 @@ export default function PlannerApp() {
                     {Math.round((buckets.unknown / totalSurface) * 100)}%
                   </span>
                 </div>
+              </div>
+            )}
+
+            {weather && weather.days.length > 0 && (
+              <div>
+                <div className="mb-1 text-xs font-medium text-neutral-700">
+                  {tTour("weather")}
+                </div>
+                <div className="flex gap-1.5">
+                  {weather.days.map((d) => (
+                    <div
+                      key={d.date}
+                      className="flex flex-1 flex-col items-center rounded-lg bg-neutral-50 py-1"
+                    >
+                      <div className="text-[10px] text-neutral-500">
+                        {new Date(d.date).toLocaleDateString(locale, {
+                          weekday: "short",
+                        })}
+                      </div>
+                      <div className="text-xs font-medium">{d.tMax}°</div>
+                      <div className="text-[10px] text-neutral-500">{d.tMin}°</div>
+                      <div className="text-[9px] text-sky-600">💧{d.rain}%</div>
+                    </div>
+                  ))}
+                </div>
+                {weather.packTip && (
+                  <p className="mt-1 text-[10px] text-neutral-500">
+                    {tPack(`pack.${weather.packTip}` as never)}
+                  </p>
+                )}
               </div>
             )}
 
