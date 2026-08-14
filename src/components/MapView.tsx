@@ -144,6 +144,38 @@ export default function MapView({
     map.on("error", (e) => {
       console.error("[map]", (e as { error?: Error }).error?.message ?? e);
     });
+    // Compacte attributie op smalle schermen inklappen tot de ⓘ-knop. MapLibre
+    // _updateCompact() voegt op mobiel (<=640px) automatisch `compact-show` toe
+    // (uitgeklapt); die 2-regelige tekst overlapte de bottom-sheet (Tip-regel
+    // onleesbaar). We kunnen niet op 'load'/'idle' wachten — bij stallende
+    // tiles komen die events nooit — dus een kortlevende observer haalt
+    // `compact-show` weg zodra MapLibre 'm (opnieuw) zet, tot de gebruiker de
+    // ⓘ zelf opent of de load/resize-churn is uitgewerkt. Juridisch correct:
+    // tik op ⓘ toont de volledige bronvermelding.
+    const attribRoot = map.getContainer();
+    let attribPinned = false; // true zodra de gebruiker de attributie opent
+    const minimizeAttrib = () => {
+      // Alleen op smalle (mobiele) viewports inklappen — op desktop is er ruimte
+      // voor de volledige bronvermelding, dus laat die met rust. 640px matcht
+      // MapLibre's eigen compact-drempel.
+      if (attribPinned || window.innerWidth > 640) return;
+      attribRoot
+        .querySelector(".maplibregl-ctrl-attrib.maplibregl-compact-show")
+        ?.classList.remove("maplibregl-compact-show");
+    };
+    const attribObs = new MutationObserver(minimizeAttrib);
+    attribObs.observe(attribRoot, { subtree: true, attributeFilter: ["class"] });
+    minimizeAttrib();
+    const onAttribPointerDown = (e: Event) => {
+      if ((e.target as HTMLElement).closest?.(".maplibregl-ctrl-attrib-button")) {
+        attribPinned = true;
+        attribObs.disconnect();
+      }
+    };
+    attribRoot.addEventListener("pointerdown", onAttribPointerDown, true);
+    // Vangnet: stop de observer na de churn zodat hij niet eeuwig op elke
+    // class-mutatie in de kaart draait (opgeruimd in de effect-cleanup).
+    const attribObsStop = setTimeout(() => attribObs.disconnect(), 6000);
     map.addControl(
       new maplibregl.NavigationControl({ visualizePitch: true }),
       "top-right",
@@ -738,6 +770,9 @@ export default function MapView({
     return () => {
       cancelAnimationFrame(raf);
       resizeObs?.disconnect();
+      attribObs.disconnect();
+      clearTimeout(attribObsStop);
+      attribRoot.removeEventListener("pointerdown", onAttribPointerDown, true);
       map.remove();
       mapRef.current = null;
       setReady(false);
