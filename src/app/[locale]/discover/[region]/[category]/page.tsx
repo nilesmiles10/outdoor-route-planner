@@ -92,6 +92,28 @@ async function siblingCategories(
     .sort((a, b) => b.n - a.n);
 }
 
+// Aantal officiële routes in deze regio → cross-link naar de trails-catalogus
+// (highlights ↔ routes verbinden per regio). country=eq + region=eq matchen de
+// trails-filter (regionamen zijn dezelfde OSM-bron). Alleen tonen als er echt
+// routes zijn: sommige regio's hebben wél highlights maar géén trails, en dan
+// zou de link op een lege lijst uitkomen. count=exact via content-range, zoals
+// robots/sitemap.
+async function trailsInRegion(country: string | null, region: string): Promise<number> {
+  if (!country) return 0;
+  try {
+    const res = await fetch(
+      `${REST}/trails?select=id&country=eq.${country}&region=eq.${encodeURIComponent(region)}&limit=1`,
+      {
+        headers: { ...HEADERS, Prefer: "count=exact" },
+        next: { revalidate: 3600, tags: ["trails"] },
+      },
+    );
+    return parseInt((res.headers.get("content-range") ?? "*/0").split("/")[1] ?? "0", 10) || 0;
+  } catch {
+    return 0;
+  }
+}
+
 // Empty list: do not prerender hundreds of pages at build time, but declaring
 // it makes the route ISR-eligible instead of plain SSR (x-vercel-cache: MISS).
 export async function generateStaticParams() {
@@ -145,7 +167,10 @@ export default async function RegionCategoryPage({
   const { locale, category } = params;
   const t = await getTranslations("regionPage");
   const cat = t(`catPlural.${category}` as never);
-  const siblings = await siblingCategories(resolved.region, resolved.country, category);
+  const [siblings, routeCount] = await Promise.all([
+    siblingCategories(resolved.region, resolved.country, category),
+    trailsInRegion(resolved.country, resolved.region),
+  ]);
 
   return (
     <main className="mx-auto min-h-dvh max-w-3xl px-4 pb-16 pt-16">
@@ -207,6 +232,21 @@ export default async function RegionCategoryPage({
         <p className="mt-4 rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-500">
           {t("capHint", { shown: items.length, total })}
         </p>
+      )}
+
+      {/* Cross-link naar de routecatalogus: van "hoogtepunten in X" naar
+          "officiële routes in X". Alleen als er routes zijn (zie trailsInRegion). */}
+      {routeCount > 0 && (
+        <section className="mt-8">
+          <a
+            href={`/${locale}/trails?country=${resolved.country}&region=${encodeURIComponent(
+              resolved.region,
+            )}`}
+            className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 transition hover:bg-emerald-100"
+          >
+            🥾 {t("routesInRegion", { count: routeCount, region: label })}
+          </a>
+        </section>
       )}
 
       {siblings.length > 0 && (

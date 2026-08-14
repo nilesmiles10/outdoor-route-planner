@@ -417,7 +417,8 @@
       "gravel": "Gravel segments"
     },
     "capHint": "Showing {shown} of {total, number} — sorted alphabetically.",
-    "alsoIn": "Also in {region}"
+    "alsoIn": "Also in {region}",
+    "routesInRegion": "Browse {count, number} official routes in {region}"
   },
   "profile": {
     "anonymous": "Adventurer",
