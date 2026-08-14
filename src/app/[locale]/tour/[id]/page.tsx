@@ -6,6 +6,7 @@ import { getWeather } from "@/lib/weather";
 import { buildAutoDesc } from "@/lib/autoDesc";
 import { CATEGORY_EMOJI } from "@/lib/highlights";
 import TourView from "@/components/TourView";
+import { SITE_URL } from "@/app/sitemap";
 import { getTour } from "./data";
 
 function haversineKm(aLon: number, aLat: number, bLon: number, bLat: number) {
@@ -65,6 +66,7 @@ export default async function TourPage({
   const t = await getTranslations("tourPage");
   const tHl = await getTranslations("highlightPage");
   const ts = await getTranslations("planner.sports");
+  const tNav = await getTranslations("nav");
 
   const km = (tour.stats.distanceM / 1000).toFixed(1);
   const h = Math.floor(tour.stats.timeS / 3600);
@@ -215,6 +217,10 @@ export default async function TourPage({
       ? (tour.stats.distanceM / 1000 / (tour.moving_s / 3600)).toFixed(1)
       : null;
 
+  // Community-tours worden ontdekt via /discover → breadcrumb "Ontdekken › naam".
+  // Eén bron voor de zichtbare breadcrumb én de BreadcrumbList-JSON-LD.
+  const crumbs = [{ label: tNav("discover"), href: `/${locale}/discover` }];
+
   return (
     <main className="relative h-dvh w-full">
       <script
@@ -234,7 +240,31 @@ export default async function TourPage({
           }),
         }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              ...crumbs.map((c, i) => ({
+                "@type": "ListItem",
+                position: i + 1,
+                name: c.label,
+                item: `${SITE_URL}${c.href}`,
+              })),
+              {
+                "@type": "ListItem",
+                position: crumbs.length + 1,
+                name: tour.name,
+                item: `${SITE_URL}/${locale}/tour/${params.id}`,
+              },
+            ],
+          }),
+        }}
+      />
       <TourView
+        breadcrumb={crumbs}
         geometry={tour.geometry}
         elevation={tour.elevation}
         waypoints={tour.waypoints}
