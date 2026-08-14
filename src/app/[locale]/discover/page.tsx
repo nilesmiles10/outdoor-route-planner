@@ -221,6 +221,20 @@ export default function DiscoverPage() {
       }
     });
 
+  // "Alle officiële routes →" behoudt de actieve sport/afstand-filters, zodat de
+  // gebruiker met dezelfde context doorbrowst op /trails i.p.v. op de volledige,
+  // ongefilterde lijst te belanden. Sport alleen meesturen als /trails 'm kent
+  // (run/road/ebike bestaan daar niet → weglaten geeft een schone URL i.p.v. een
+  // stille terugval op "all"). De diff-filter kan niet mee: /trails filtert niet
+  // op moeilijkheid (afgeleide, geen kolom).
+  const trailSportSet = ["hike", "touring", "gravel", "mtb"];
+  const officialParams = new URLSearchParams();
+  if (trailSportSet.includes(sport)) officialParams.set("sport", sport);
+  if (band !== "all") officialParams.set("band", band);
+  const officialHref = `/${locale}/trails${
+    officialParams.toString() ? `?${officialParams}` : ""
+  }`;
+
   // Gedeelde moeilijkheidsbadge (zelfde formule + kleuren als de grid-kaarten),
   // zodat je op featured én officiële routes ook op easy/hard kunt scannen.
   const diffBadge = (sport: string, distanceM: number, ascendM: number) => {
@@ -279,7 +293,7 @@ export default function DiscoverPage() {
         <section className="mt-4">
           <h2 className="mb-2 flex items-baseline justify-between text-sm font-semibold text-neutral-700">
             <span>✓ {t("trailsTitle")}</span>
-            <a href={`/${locale}/trails`} className="text-xs font-normal text-emerald-700 hover:underline">
+            <a href={officialHref} className="text-xs font-normal text-emerald-700 hover:underline">
               {t("trailsMore")}
             </a>
           </h2>
