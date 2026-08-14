@@ -243,16 +243,17 @@ export default function DiscoverPage() {
       }
     });
 
-  // "Alle officiële routes →" behoudt de actieve sport/afstand-filters, zodat de
-  // gebruiker met dezelfde context doorbrowst op /trails i.p.v. op de volledige,
-  // ongefilterde lijst te belanden. Sport alleen meesturen als /trails 'm kent
-  // (run/road/ebike bestaan daar niet → weglaten geeft een schone URL i.p.v. een
-  // stille terugval op "all"). De diff-filter kan niet mee: /trails filtert niet
-  // op moeilijkheid (afgeleide, geen kolom).
+  // "Alle officiële routes →" behoudt de actieve sport/afstand/moeilijkheid-
+  // filters, zodat de gebruiker met dezelfde context doorbrowst op /trails i.p.v.
+  // op de volledige, ongefilterde lijst te belanden. Sport alleen meesturen als
+  // /trails 'm kent (run/road/ebike bestaan daar niet → weglaten geeft een schone
+  // URL i.p.v. een stille terugval op "all"). Moeilijkheid gebruikt dezelfde
+  // easy/moderate/hard-waarden als de trails-filter (generated column).
   const trailSportSet = ["hike", "touring", "gravel", "mtb"];
   const officialParams = new URLSearchParams();
   if (trailSportSet.includes(sport)) officialParams.set("sport", sport);
   if (band !== "all") officialParams.set("band", band);
+  if (diff !== "all") officialParams.set("diff", diff);
   const officialHref = `/${locale}/trails${
     officialParams.toString() ? `?${officialParams}` : ""
   }`;
