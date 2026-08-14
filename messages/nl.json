@@ -17,6 +17,7 @@
     "paved": "Verhard",
     "unpaved": "Onverhard",
     "unknown": "Onbekend",
+    "unknownNote": "Onbekend = ondergrond niet getagd in OpenStreetMap — geen oordeel over de kwaliteit van het pad.",
     "sports": {
       "hike": "Wandelen",
       "run": "Hardlopen",

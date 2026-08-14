@@ -17,6 +17,7 @@
     "paved": "Paved",
     "unpaved": "Unpaved",
     "unknown": "Unknown",
+    "unknownNote": "Unknown = surface not tagged in OpenStreetMap — not a judgement of the path's quality.",
     "sports": {
       "hike": "Hiking",
       "run": "Running",

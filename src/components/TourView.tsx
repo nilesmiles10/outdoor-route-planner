@@ -568,6 +568,16 @@ export default function TourView({
                 </span>
               )}
             </div>
+            {/* Veel (vooral NL-)routes hebben een groot "onbekend"-aandeel omdat
+                de ondergrond niet in OSM is getagd. Zonder uitleg leest die grijze
+                balk als een gebrek aan de route; daarom een subtiele noot zodra
+                onbekend een substantieel deel is (≥25%). Hover-only title= zou
+                mobiel (de meerderheid) niks doen, dus zichtbare tekst. */}
+            {header.buckets.unknown / total >= 0.25 && (
+              <p className="text-[11px] leading-snug text-neutral-400">
+                {t("unknownNote")}
+              </p>
+            )}
           </div>
         )}
         {/* Wegtype-uitsplitsing (Komoot "Way types"): wélke wegen/paden de
