@@ -20,7 +20,12 @@ export async function generateMetadata({
     metadataBase: new URL(SITE_URL),
     title: s.site_name,
     description: desc,
-    alternates: { languages: { nl: "/nl", en: "/en" } },
+    // GEEN alternates.languages hier: die zetten op layout-niveau een STATISCHE
+    // hreflang naar de homepage (/nl, /en) op ÉLKE pagina — dus /nl/trail/x
+    // claimde dat zijn Engelse variant de homepage is. next-intl's middleware
+    // stuurt al correcte, pagina-specifieke hreflang via de HTTP Link-header
+    // (en/nl/x-default naar de échte URL); twee tegenstrijdige signalen laten
+    // Google hreflang mogelijk negeren. Alleen de Link-header laten staan.
     openGraph: {
       siteName: s.site_name,
       title: s.site_name,
