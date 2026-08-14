@@ -394,7 +394,8 @@
     },
     "loopsOnly": "Alleen rondjes",
     "geoLoading": "Locatie bepalen…",
-    "geoHint": "Sta locatie toe om op afstand te sorteren"
+    "geoHint": "Sta locatie toe om op afstand te sorteren",
+    "diffAll": "Elke moeilijkheid"
   },
   "regionPage": {
     "breadcrumbDiscover": "Ontdekken",

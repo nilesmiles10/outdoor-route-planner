@@ -34,6 +34,10 @@ const BANDS: [string, number, number][] = [
 // Sorteeropties voor de browse-lijst. "nearest" = het bestaande gedrag
 // (proximity via geolocatie; zonder locatie een stabiele volgorde).
 const SORTS = ["nearest", "shortest", "longest", "climbing"] as const;
+// Moeilijkheidsfilter: dezelfde drie niveaus als de badge (lib/difficulty).
+// "all" = geen filter. Beginners willen op easy kunnen filteren, niet alleen
+// per-kaart de badge zien.
+const DIFFS = ["all", "easy", "moderate", "hard"] as const;
 
 function haversineKm(a: [number, number], b: [number, number]) {
   const R = 6371;
@@ -72,6 +76,7 @@ export default function DiscoverPage() {
   >([]);
   const [sport, setSport] = useState("all");
   const [band, setBand] = useState("all");
+  const [diff, setDiff] = useState<string>("all");
   const [sortBy, setSortBy] = useState<(typeof SORTS)[number]>("nearest");
   const [loopOnly, setLoopOnly] = useState(false);
   const [pos, setPos] = useState<[number, number] | null>(null);
@@ -145,6 +150,8 @@ export default function DiscoverPage() {
     if (s && SPORTS.includes(s)) setSport(s);
     const b = p.get("band");
     if (b && BANDS.some(([k]) => k === b)) setBand(b);
+    const df = p.get("diff");
+    if (df && (DIFFS as readonly string[]).includes(df)) setDiff(df);
     const so = p.get("sort");
     if (so && (SORTS as readonly string[]).includes(so))
       setSortBy(so as (typeof SORTS)[number]);
@@ -160,16 +167,20 @@ export default function DiscoverPage() {
     band?: string;
     sort?: string;
     loop?: boolean;
+    diff?: string;
   }) {
     const sp = next.sport ?? sport;
     const bd = next.band ?? band;
     const so = next.sort ?? sortBy;
     const lp = next.loop ?? loopOnly;
+    const df = next.diff ?? diff;
     const url = new URL(window.location.href);
     if (sp !== "all") url.searchParams.set("sport", sp);
     else url.searchParams.delete("sport");
     if (bd !== "all") url.searchParams.set("band", bd);
     else url.searchParams.delete("band");
+    if (df !== "all") url.searchParams.set("diff", df);
+    else url.searchParams.delete("diff");
     if (so !== "nearest") url.searchParams.set("sort", so);
     else url.searchParams.delete("sort");
     if (lp) url.searchParams.set("loop", "1");
@@ -181,6 +192,11 @@ export default function DiscoverPage() {
   const filtered = rows
     .filter((r) => sport === "all" || r.sport === sport)
     .filter((r) => r.stats.distanceM >= lo && r.stats.distanceM < hi)
+    .filter(
+      (r) =>
+        diff === "all" ||
+        difficulty(r.sport, r.stats.distanceM, r.stats.ascendM) === diff,
+    )
     .filter((r) => !loopOnly || isLoopRoute(r.geometry))
     .map((r) => ({
       ...r,
@@ -308,6 +324,39 @@ export default function DiscoverPage() {
           🔁 {t("loopsOnly")}
         </button>
       </div>
+      {/* Moeilijkheidsfilter: zelfde drie niveaus + kleuren als de badge, zodat
+          je bijv. als beginner direct alleen easy-routes overhoudt. Actieve
+          chip krijgt de badge-kleur, "all" blijft neutraal. */}
+      <div className="mt-2 flex flex-wrap gap-1">
+        {DIFFS.map((d) => {
+          const active = diff === d;
+          const activeColor =
+            d === "easy"
+              ? "bg-emerald-700 text-white"
+              : d === "moderate"
+                ? "bg-amber-600 text-white"
+                : d === "hard"
+                  ? "bg-red-700 text-white"
+                  : "bg-neutral-800 text-white";
+          return (
+            <button
+              key={d}
+              type="button"
+              onClick={() => {
+                setDiff(d);
+                syncUrl({ diff: d });
+              }}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                active
+                  ? activeColor
+                  : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+              }`}
+            >
+              {d === "all" ? t("diffAll") : tdiff(d)}
+            </button>
+          );
+        })}
+      </div>
       {/* Sorteren: label vóór de chips zodat het niet als extra filter leest.
           "nearest" (default) = het oude proximity-gedrag. */}
       <div className="mt-2 flex flex-wrap items-center gap-1">
@@ -372,14 +421,15 @@ export default function DiscoverPage() {
             <p className="text-sm text-neutral-400">{t("empty")}</p>
             {/* Reset-knop alleen tonen als er daadwerkelijk een filter actief
                 is — anders helpt wissen niet en is de knop misleidend. */}
-            {(sport !== "all" || band !== "all" || loopOnly) && (
+            {(sport !== "all" || band !== "all" || diff !== "all" || loopOnly) && (
               <button
                 type="button"
                 onClick={() => {
                   setSport("all");
                   setBand("all");
+                  setDiff("all");
                   setLoopOnly(false);
-                  syncUrl({ sport: "all", band: "all", loop: false });
+                  syncUrl({ sport: "all", band: "all", diff: "all", loop: false });
                 }}
                 className="text-sm font-medium text-emerald-700 hover:underline"
               >

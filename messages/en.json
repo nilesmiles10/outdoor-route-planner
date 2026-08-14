@@ -394,7 +394,8 @@
     },
     "loopsOnly": "Loops only",
     "geoLoading": "Getting your location…",
-    "geoHint": "Allow location to sort by distance"
+    "geoHint": "Allow location to sort by distance",
+    "diffAll": "Any difficulty"
   },
   "regionPage": {
     "breadcrumbDiscover": "Discover",
