@@ -107,17 +107,24 @@ export async function generateMetadata({
   if (!resolved) return { title: "Not found" };
   const t = await getTranslations("regionPage");
   const cat = t(`catPlural.${params.category}` as never);
+  const ogTitle = `${cat} in ${resolved.label}`;
+  const desc = t("metaDescription", {
+    count: resolved.items.length,
+    category: cat.toLowerCase(),
+    region: resolved.label,
+  });
   return {
-    title: pageTitle(await getSiteSettings(), `${cat} in ${resolved.label}`),
-    description: t("metaDescription", {
-      count: resolved.items.length,
-      category: cat.toLowerCase(),
-      region: resolved.label,
-    }),
+    title: pageTitle(await getSiteSettings(), ogTitle),
+    description: desc,
     // Self-canonical op de resolved slug (region kan een land-suffix hebben).
     alternates: {
       canonical: `/${params.locale}/discover/${params.region}/${params.category}`,
     },
+    // Zonder eigen openGraph erfde een gedeelde link de generieke layout-OG
+    // ("Tarnoo"), niet de pagina-titel. Deze 7,25k SEO-pagina's tonen nu
+    // "Toppen in Aargau" e.d. in de preview i.p.v. de merknaam.
+    openGraph: { title: ogTitle, description: desc },
+    twitter: { title: ogTitle, description: desc },
   };
 }
 
