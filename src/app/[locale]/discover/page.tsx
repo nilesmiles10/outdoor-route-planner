@@ -72,7 +72,14 @@ export default function DiscoverPage() {
   const [featured, setFeatured] = useState<Row[]>([]);
   // GEN-145: officiële routes (OSM-import) — kleine rail met doorlink.
   const [trails, setTrails] = useState<
-    { id: string; name: string; sport: string; region: string | null; stats: { distanceM: number; ascendM: number } }[]
+    {
+      id: string;
+      name: string;
+      sport: string;
+      region: string | null;
+      stats: { distanceM: number; ascendM: number };
+      geometry: { coordinates: [number, number][] } | null;
+    }[]
   >([]);
   const [sport, setSport] = useState("all");
   const [band, setBand] = useState("all");
@@ -130,7 +137,10 @@ export default function DiscoverPage() {
       .limit(10)
       .then(({ data }) => setFeatured((data as Row[]) ?? []));
     sb.from("trails")
-      .select("id,name,sport,region,stats")
+      // geometry mee: de officiële-routes-kaartjes tonen nu een route-vorm-
+      // thumbnail (MiniMap), consistent met featured + de browse-grid. 10 trail-
+      // geometrieën ≈ 62 KB (gzip ~20 KB), verwaarloosbaar naast de grid.
+      .select("id,name,sport,region,stats,geometry")
       .limit(10)
       .then(({ data }) => setTrails((data as typeof trails) ?? []));
     // Tellen over `highlights` zelf ging mis: .limit(2000) leverde door de
@@ -302,15 +312,20 @@ export default function DiscoverPage() {
               <a
                 key={r.id}
                 href={`/${locale}/trail/${r.id}`}
-                className="w-56 shrink-0 rounded-xl border border-emerald-200 bg-emerald-50/50 px-4 py-3 hover:border-emerald-300"
+                className="w-56 shrink-0 overflow-hidden rounded-xl border border-emerald-200 bg-emerald-50/50 hover:border-emerald-300"
               >
-                <div className="truncate text-sm font-medium text-neutral-900">{r.name}</div>
-                <div className="mt-1 flex items-center gap-1.5 text-xs text-neutral-500">
-                  {diffBadge(r.sport, r.stats.distanceM, r.stats.ascendM)}
-                  <span className="truncate">
-                    {(r.stats.distanceM / 1000).toFixed(1)} km · ↗ {r.stats.ascendM} m · {ts(r.sport as never)}
-                    {r.region ? ` · ${r.region}` : ""}
-                  </span>
+                <div className="flex h-20 items-center justify-center border-b border-emerald-100 bg-white/60 p-2">
+                  <MiniMap coords={r.geometry?.coordinates} className="h-full w-full" />
+                </div>
+                <div className="px-4 py-3">
+                  <div className="truncate text-sm font-medium text-neutral-900">{r.name}</div>
+                  <div className="mt-1 flex items-center gap-1.5 text-xs text-neutral-500">
+                    {diffBadge(r.sport, r.stats.distanceM, r.stats.ascendM)}
+                    <span className="truncate">
+                      {(r.stats.distanceM / 1000).toFixed(1)} km · ↗ {r.stats.ascendM} m · {ts(r.sport as never)}
+                      {r.region ? ` · ${r.region}` : ""}
+                    </span>
+                  </div>
                 </div>
               </a>
             ))}
