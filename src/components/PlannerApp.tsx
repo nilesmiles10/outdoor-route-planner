@@ -221,6 +221,21 @@ const OFFGRID_SPEED: Record<Sport, number> = {
   ebike: 21,
 };
 
+// Zinvolle standaard-afstand voor een rondje per sport: 40 km voor élke sport
+// was absurd voor wandelen (een marathon+). Ongeveer ~2 uur activiteit.
+const ROUND_DEFAULT_KM: Record<Sport, number> = {
+  hike: 10,
+  run: 12,
+  touring: 40,
+  gravel: 40,
+  mtb: 30,
+  road: 60,
+  ebike: 50,
+};
+function defaultRoundKm(sport: Sport): number {
+  return ROUND_DEFAULT_KM[sport];
+}
+
 function haversineM(a: Waypoint, b: Waypoint): number {
   const R = 6371000;
   const dLat = ((b.lat - a.lat) * Math.PI) / 180;
@@ -424,10 +439,19 @@ export default function PlannerApp() {
     hoverIdx !== null && routeCoords ? routeCoords[hoverIdx] ?? null : null;
 
   const [rtOpen, setRtOpen] = useState(false);
-  const [rtTargetKm, setRtTargetKm] = useState(40);
+  const [rtTargetKm, setRtTargetKm] = useState(() => defaultRoundKm(sport));
+  // Volgt de sport-afhankelijke standaard-rondje-afstand totdat de gebruiker het
+  // veld zelf aanpast; daarna blijft de gekozen waarde staan.
+  const [rtEdited, setRtEdited] = useState(false);
   const [rtBusy, setRtBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sport-wissel → standaard-rondje-afstand mee laten bewegen, zolang de
+  // gebruiker het veld niet zelf heeft aangepast.
+  useEffect(() => {
+    if (!rtEdited) setRtTargetKm(defaultRoundKm(sport));
+  }, [sport, rtEdited]);
 
   // --- Highlights layer (GEN-115) ---
   const sb: SupabaseClient = useMemo(() => supabaseBrowser(), []);
@@ -2133,7 +2157,10 @@ export default function PlannerApp() {
                 min={5}
                 max={200}
                 value={rtTargetKm}
-                onChange={(e) => setRtTargetKm(Number(e.target.value))}
+                onChange={(e) => {
+                  setRtEdited(true);
+                  setRtTargetKm(Number(e.target.value));
+                }}
                 className="w-16 rounded border border-neutral-200 px-2 py-1 text-xs"
               />
               <span className="text-xs text-neutral-500">km</span>
