@@ -1070,15 +1070,20 @@ export default function PlannerApp() {
         const data = (await res.json()) as RouteResult;
         return { p1, p2, distanceM: data.stats.distanceM };
       };
-      // Probeer meerdere richtingen i.p.v. één willekeurige: bij een start aan
-      // water/rand (kust, meer, doodlopende hoek) kunnen de via's van één
-      // richting onberijdbaar zijn → BRouter faalt en de hele generatie klapte
-      // stuk. We roteren vanaf een willekeurig punt over de kompasroos tot er
-      // één richting routeert. De happy-path (eerste richting lukt) is
-      // ongewijzigd: één meting + optionele schaal-refine, dan stop.
+      // Probeer meerdere richtingen en kies de BESTE i.p.v. de eerste die
+      // routeert. Bij een start aan water/rand (kust, meer) legt loopVias de
+      // via's in zee; BRouter faalt daar niet maar snapt ze naar de dichtstbij-
+      // zijnde kustweg → een vervormde, veel te lange lus (bv. 98 km i.p.v.
+      // 40). "Eerste die routeert" pakte dan die monsterlus. Nu scoren we op
+      // afstand-tot-doel en houden de dichtstbijzijnde. Happy-path blijft snel:
+      // zodra een richting binnen tolerantie (15%) valt, stoppen we meteen —
+      // dat is doorgaans de eerste, dus in de regel één richting.
       const base = Math.floor(Math.random() * 360);
-      const bearings = [0, 90, 180, 270].map((d) => (base + d) % 360);
-      let attempt: Awaited<ReturnType<typeof measure>> | null = null;
+      const bearings = [0, 60, 120, 180, 240, 300].map((d) => (base + d) % 360);
+      const tolerM = 0.15 * targetM;
+      let best:
+        | (Awaited<ReturnType<typeof measure>> & { errM: number })
+        | null = null;
       for (const bearing of bearings) {
         try {
           let a = await measure(bearing, 1);
@@ -1090,14 +1095,15 @@ export default function PlannerApp() {
               // geschaalde via's onberijdbaar → houd de ongeschaalde meting
             }
           }
-          attempt = a;
-          break;
+          const errM = Math.abs(a.distanceM - targetM);
+          if (!best || errM < best.errM) best = { ...a, errM };
+          if (errM <= tolerM) break; // goed genoeg — niet verder zoeken
         } catch {
           // onberijdbare richting → probeer de volgende
         }
       }
-      if (!attempt) throw new Error("no_route");
-      const { p1, p2 } = attempt;
+      if (!best) throw new Error("no_route");
+      const { p1, p2 } = best;
       dispatch({
         type: "load",
         slots: [
