@@ -5,6 +5,7 @@ import { difficulty } from "@/lib/difficulty";
 import { fmtDuration } from "@/lib/activity";
 import SiteFooter from "@/components/SiteFooter";
 import RegionFilterSelect from "@/components/RegionFilterSelect";
+import MiniMap from "@/components/MiniMap";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 
 // Boven dit aantal regio's wordt de chip-rij een onbruikbare muur (GB heeft er
@@ -26,6 +27,7 @@ type TrailRow = {
   stats: { distanceM: number; timeS: number; ascendM: number };
   is_gravel: boolean;
   gravel_m: number;
+  thumb_coords: [number, number][] | null;
 };
 
 // Gravel is géén eigen OSM-sport — route=gravel bestaat niet als relatie, dus
@@ -142,7 +144,9 @@ export default async function TrailsPage({
   const TRAIL_LIMIT = 200;
   let query = sb
     .from("trails")
-    .select("id,name,sport,region,roundtrip,stats,is_gravel,gravel_m")
+    .select(
+      "id,name,sport,region,roundtrip,stats,is_gravel,gravel_m,thumb_coords",
+    )
     .order(TRAIL_SORTS[sort].col, { ascending: TRAIL_SORTS[sort].asc })
     .limit(TRAIL_LIMIT);
   if (sport === "gravel") query = query.eq("is_gravel", true);
@@ -459,8 +463,18 @@ export default async function TrailsPage({
               // min-w-0 óók op de grid-cel zelf: grid-items hebben net als
               // flex-items min-width:auto, dus een lange naam maakte de kaart
               // breder dan zijn kolom (gemeten: 673px in een 358px-track).
-              className="min-w-0 rounded-xl border border-neutral-100 bg-white px-4 py-3 shadow-sm transition hover:border-emerald-200 hover:shadow"
+              className="min-w-0 overflow-hidden rounded-xl border border-neutral-100 bg-white shadow-sm transition hover:border-emerald-200 hover:shadow"
             >
+              {/* Route-vorm-thumbnail (gedownsamplede coords, geen MapLibre-
+                  canvas) — geeft de lijst dezelfde visuele herkenbaarheid als
+                  /discover: lus vs. lijn, compact vs. uitgestrekt in één blik. */}
+              <div className="flex h-16 items-center justify-center border-b border-neutral-100 bg-neutral-50/60 p-1.5">
+                <MiniMap
+                  coords={tr.thumb_coords ?? undefined}
+                  className="h-full w-full"
+                />
+              </div>
+              <div className="px-4 py-3">
               <div className="flex items-center justify-between gap-2">
                 {/* min-w-0: flex-items hebben min-width:auto, waardoor lange
                     namen (Duitse HWW-etappes) truncate negeerden en de kaart
@@ -497,6 +511,7 @@ export default async function TrailsPage({
                   : ""}
                 {tr.roundtrip ? " · 🔁" : ""}
                 {tr.region ? ` · ${tr.region}` : ""}
+              </div>
               </div>
             </a>
           ))}
