@@ -185,9 +185,15 @@ export default async function TrailsPage({
     // de u-vlag op een literal vereist een hogere TS-target (TS1501).
     const leadPunct = new RegExp("^[^\\p{L}\\p{N}]+", "u");
     const key = (s: string) => s.replace(leadPunct, "") || s;
-    trails.sort((a, b) =>
-      key(a.name).localeCompare(key(b.name), locale, { numeric: true }),
-    );
+    // Cijfer-namen (OSM-netwerknummers: "1", "01 - …", "103 …") ná letter-namen,
+    // exact zoals de generated kolom name_sort in de DB — anders schoof deze
+    // client-hersortering de cijferroutes weer bovenaan binnen de opgehaalde 200.
+    const digitLed = (s: string) => (/^[0-9]/.test(key(s)) ? 1 : 0);
+    trails.sort((a, b) => {
+      const t = digitLed(a.name) - digitLed(b.name);
+      if (t !== 0) return t;
+      return key(a.name).localeCompare(key(b.name), locale, { numeric: true });
+    });
   }
   // RPC levert land + aantal, gesorteerd op aantal (meeste content eerst).
   const countries = (countriesQ.data as { country: string; n: number }[] | null) ?? [
