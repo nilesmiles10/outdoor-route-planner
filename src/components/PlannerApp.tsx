@@ -2332,6 +2332,14 @@ export default function PlannerApp() {
                 )}
               </div>
             </div>
+            {/* Mobiel: de hover-tooltip op de badge werkt niet met touch, dus
+                toon de moeilijkheidsuitleg als tekst — parity met de tour/trail-
+                detailpagina's. Desktop houdt de compacte badge + tooltip. */}
+            <p className="-mt-1 text-xs leading-snug text-neutral-500 md:hidden">
+              {tAuto(
+                difficulty(sport, route.stats.distanceM, route.stats.ascendM),
+              )}
+            </p>
             <div className="grid grid-cols-4 gap-2 text-center">
               <div>
                 <div className="text-base font-semibold">
