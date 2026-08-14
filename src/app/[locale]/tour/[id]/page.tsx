@@ -131,6 +131,26 @@ export default async function TourPage({
         .slice(0, 4))
     : [];
 
+  // Route-vorm-thumbnails: haal alléén de geometrie van de 4 getoonde routes op
+  // (niet van alle 100 kandidaten) — id→coords-map voor de MiniMap in TourView.
+  const relatedGeo = new Map<string, [number, number][]>();
+  if (relatedTours.length) {
+    const { data: geos } = await sb
+      .from("tours")
+      .select("id,geometry")
+      .in(
+        "id",
+        relatedTours.map((tr) => tr.id),
+      );
+    for (const g of (geos as {
+      id: string;
+      geometry: GeoJSON.LineString | null;
+    }[]) ?? []) {
+      const c = g.geometry?.coordinates as [number, number][] | undefined;
+      if (c) relatedGeo.set(g.id, c);
+    }
+  }
+
   type Hl = { id: string; name: string; category: string; lon: number; lat: number };
   const relatedHls = start
     ? (((hlQ.data as Hl[]) ?? [])
@@ -346,6 +366,7 @@ export default async function TourPage({
             href: `/${locale}/tour/${tr.id}`,
             name: tr.name,
             meta: `${(tr.stats.distanceM / 1000).toFixed(1)} km · ↗ ${tr.stats.ascendM} m · ${ts(tr.sport as never)} · ${Math.round(tr.distKm)} km ${t("away")}`,
+            coords: relatedGeo.get(tr.id),
           })),
           passedTitle: t("activity.onRoute"),
           passed: passed.map((hl) => {
