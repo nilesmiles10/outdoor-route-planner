@@ -185,6 +185,17 @@ export default async function TrailPage({
     ? await getRelatedTrails(trail.region, trail.country, trail.id)
     : [];
 
+  // Hoogtepunten die de route passeert (al opgehaald voor de kaart-pins) ook als
+  // tekst-links: elk POI → zijn highlight-pagina, met de categorie als meta.
+  const passedHl = highlightPins.features.map((f) => {
+    const p = (f.properties ?? {}) as { id: string; name: string; category: string };
+    return {
+      href: `/${locale}/highlight/${p.id}`,
+      name: p.name,
+      meta: tHl(`cat.${p.category}` as never),
+    };
+  });
+
   return (
     <main className="relative h-dvh w-full">
       <script
@@ -223,7 +234,7 @@ export default async function TrailPage({
         turns={null}
         waytypes={trail.waytypes}
         related={
-          relatedTrails.length > 0
+          relatedTrails.length > 0 || passedHl.length > 0
             ? {
                 toursTitle: t("moreInRegion", { region: trail.region ?? "" }),
                 tours: relatedTrails.map((tr) => ({
@@ -233,8 +244,8 @@ export default async function TrailPage({
                     (tr.is_gravel ? "gravel" : tr.sport) as never,
                   )}`,
                 })),
-                highlightsTitle: "",
-                highlights: [],
+                highlightsTitle: t("highlightsOnRoute"),
+                highlights: passedHl,
               }
             : undefined
         }

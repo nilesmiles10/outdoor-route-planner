@@ -566,7 +566,8 @@
       "lcn": "Lokaal fietsnetwerk",
       "mtb": "MTB-netwerk"
     },
-    "moreInRegion": "Meer routes in {region}"
+    "moreInRegion": "Meer routes in {region}",
+    "highlightsOnRoute": "Hoogtepunten langs de route"
   },
   "notFound": {
     "title": "Pagina niet gevonden",
