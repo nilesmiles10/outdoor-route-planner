@@ -246,7 +246,8 @@
       "mixed": "Afwisselend verhard en onverhard."
     },
     "embed": "Insluiten",
-    "embedCopied": "Gekopieerd!"
+    "embedCopied": "Gekopieerd!",
+    "inCollections": "In collectie"
   },
   "highlightPage": {
     "breadcrumbDiscover": "Ontdekken",

@@ -63,6 +63,10 @@ type Props = {
     href: string;        // OSM-relatie-URL
     linkText: string;    // "Bekijk op OpenStreetMap"
   } | null;
+  // Publieke collecties waar deze route in zit — terug-link naar de curatie-
+  // context (collecties linken naar routes; dit sluit de graaf de andere kant op).
+  collections?: { id: string; title: string; href: string }[];
+  collectionsLabel?: string; // "In collectie"
   // Tour page v2 (GEN-132): all strings pre-translated server-side.
   autoDesc?: string;
   weather?: {
@@ -143,6 +147,8 @@ export default function TourView({
   turns,
   waytypes,
   source,
+  collections,
+  collectionsLabel,
 }: Props) {
   const t = useTranslations("planner");
   const locale = useLocale();
@@ -310,6 +316,22 @@ export default function TourView({
                 </div>
               </div>
             </>
+          )}
+          {collections && collections.length > 0 && (
+            <div className="mb-1.5 text-[11px] text-neutral-500">
+              {collectionsLabel}{" "}
+              {collections.map((c, i) => (
+                <span key={c.id}>
+                  {i > 0 && " · "}
+                  <a
+                    href={c.href}
+                    className="text-emerald-800 hover:underline"
+                  >
+                    📚 {c.title}
+                  </a>
+                </span>
+              ))}
+            </div>
           )}
           {source && (
             <div className="mb-1.5">

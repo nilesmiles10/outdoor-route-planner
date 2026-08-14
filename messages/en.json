@@ -246,7 +246,8 @@
       "mixed": "A mix of paved and unpaved surfaces."
     },
     "embed": "Embed",
-    "embedCopied": "Copied!"
+    "embedCopied": "Copied!",
+    "inCollections": "In collection"
   },
   "highlightPage": {
     "breadcrumbDiscover": "Discover",

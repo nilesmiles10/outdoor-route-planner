@@ -127,7 +127,7 @@ export default async function TourPage({
   const start = tour.waypoints[0];
 
   const sb = supabaseServer();
-  const [weather, toursQ, hlQ] = await Promise.all([
+  const [weather, toursQ, hlQ, collQ] = await Promise.all([
     start ? getWeather(start.lon, start.lat) : null,
     sb
       .from("tours")
@@ -155,6 +155,13 @@ export default async function TourPage({
         .lte("lat", Math.max(...lats) + PAD)
         .limit(1000);
     })(),
+    // Publieke collecties waar deze route in zit — terug-link naar de curatie.
+    // RLS beperkt al tot zichtbare collecties; visibility filteren we alsnog in
+    // JS zodat een gedeelde route nooit naar een niet-publieke collectie linkt.
+    sb
+      .from("collection_items")
+      .select("collections(id,title,visibility)")
+      .eq("tour_id", tour.id),
   ]);
 
   type TourLite = {
@@ -242,6 +249,16 @@ export default async function TourPage({
   }
 
   const autoDesc = buildAutoDesc(t, tour);
+  type CollRow = {
+    collections: { id: string; title: string; visibility: string } | null;
+  };
+  const tourCollections = ((collQ.data as CollRow[] | null) ?? [])
+    .map((r) => r.collections)
+    .filter(
+      (c): c is { id: string; title: string; visibility: string } =>
+        !!c && c.visibility === "public",
+    )
+    .map((c) => ({ id: c.id, title: c.title, href: `/${locale}/collection/${c.id}` }));
   const authorName = tour.profile?.display_name ?? t("anonymous");
   const authorDate = new Date(
     tour.kind === "completed" && tour.recorded_at ? tour.recorded_at : tour.updated_at,
@@ -308,6 +325,8 @@ export default async function TourPage({
           label: t(tour.kind === "completed" ? "authorCompleted" : "authorPlanned"),
           dateLabel: authorDate,
         }}
+        collections={tourCollections}
+        collectionsLabel={t("inCollections")}
         autoDesc={autoDesc}
         social={{ tourId: tour.id, tourOwner: tour.owner }}
         activity={
