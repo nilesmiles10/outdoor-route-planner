@@ -544,7 +544,7 @@
       "mtb": "MTB trail",
       "gravel": "gravel route"
     },
-    "gravelBadge": "Gravel · {km} km unpaved"
+    "gravelBadge": "Gravel · {km} km gravel"
   },
   "notFound": {
     "title": "Page not found",

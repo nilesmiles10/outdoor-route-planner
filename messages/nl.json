@@ -544,7 +544,7 @@
       "mtb": "MTB-route",
       "gravel": "gravelroute"
     },
-    "gravelBadge": "Gravel · {km} km onverhard"
+    "gravelBadge": "Gravel · {km} km grind"
   },
   "notFound": {
     "title": "Pagina niet gevonden",
