@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -8,6 +8,14 @@ import { SiteSettingsProvider } from "@/components/SiteSettingsProvider";
 import { getFooterPages, getSiteSettings, tagline } from "@/lib/siteSettings";
 import { SITE_URL } from "@/app/sitemap";
 import "../globals.css";
+
+// Merk-kleur voor de mobiele browser-chrome (adresbalk/statusbalk) — matcht de
+// manifest theme_color en het logo. Alleen themeColor gezet; Next houdt de
+// default viewport (width=device-width, initial-scale=1), dus geen effect op
+// pinch-zoom of de kaart.
+export const viewport: Viewport = {
+  themeColor: "#047857",
+};
 
 export async function generateMetadata({
   params,
