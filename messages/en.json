@@ -565,7 +565,8 @@
       "rcn": "Regional cycling network",
       "lcn": "Local cycling network",
       "mtb": "MTB network"
-    }
+    },
+    "moreInRegion": "More routes in {region}"
   },
   "notFound": {
     "title": "Page not found",

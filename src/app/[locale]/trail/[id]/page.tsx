@@ -26,6 +26,7 @@ type Trail = {
   name: string;
   sport: "hike" | "touring" | "mtb";
   region: string | null;
+  country: string | null;
   operator: string | null;
   // OSM-netwerkclassificatie: i/n/r/l + wn (wandel) of cn (fiets), of een
   // benoemd netwerk. Zegt wat vóór een officiële route: lokaal/regionaal/etc.
@@ -50,7 +51,7 @@ type Trail = {
 // Vercel account over its limit. A plain anon PostgREST fetch keeps the route
 // static so Next can cache it (same pattern as lib/siteSettings + sitemaps).
 const SELECT =
-  "id,osm_id,name,sport,region,operator,network,roundtrip,geometry,elevation,stats,surfaces,waytypes,source_url,is_gravel,gravel_m";
+  "id,osm_id,name,sport,region,country,operator,network,roundtrip,geometry,elevation,stats,surfaces,waytypes,source_url,is_gravel,gravel_m";
 
 // OSM-standaard netwerkcodes → vertaalsleutel. Named networks (met spatie)
 // tonen we letterlijk; onbekende korte codes (bv. "lcn-old") slaan we over
@@ -76,6 +77,38 @@ async function getTrail(id: string): Promise<Trail | null> {
   const rows = (await res.json()) as Trail[];
   // fetch ok + geen rij = de trail bestaat écht niet → notFound (juist, cachebaar).
   return rows[0] ?? null;
+}
+
+type RelatedTrail = {
+  id: string;
+  name: string;
+  sport: string;
+  is_gravel: boolean;
+  stats: { distanceM: number; ascendM: number };
+};
+
+// Andere officiële routes in dezelfde regio (+ land, om regionaam-botsingen als
+// Limburg NL/BE te scheiden) — cross-navigatie op de 30k trail-pagina's.
+// I.t.t. getTrail throwt dit NIET bij een blip: het related-blok is niet-
+// kritisch, dus [] → gewoon geen blok, de trail zelf blijft renderen.
+async function getRelatedTrails(
+  region: string,
+  country: string | null,
+  excludeId: string,
+): Promise<RelatedTrail[]> {
+  const q =
+    `select=id,name,sport,is_gravel,stats&region=eq.${encodeURIComponent(region)}` +
+    (country ? `&country=eq.${encodeURIComponent(country)}` : "") +
+    `&id=neq.${excludeId}&order=name&limit=6`;
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/trails?${q}`,
+    {
+      headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! },
+      next: { revalidate: 86400, tags: ["trails"] },
+    },
+  );
+  if (!res.ok) return [];
+  return (await res.json()) as RelatedTrail[];
 }
 
 export async function generateMetadata({
@@ -146,6 +179,12 @@ export default async function TrailPage({
   // statisch cachebaar, zie getTrail).
   const highlightPins = await passedHighlightPins(trail.geometry.coordinates);
 
+  // Cross-navigatie: andere officiële routes in dezelfde regio.
+  const tsport = await getTranslations("planner.sports");
+  const relatedTrails = trail.region
+    ? await getRelatedTrails(trail.region, trail.country, trail.id)
+    : [];
+
   return (
     <main className="relative h-dvh w-full">
       <script
@@ -183,6 +222,22 @@ export default async function TrailPage({
         durationS={trail.stats.timeS}
         turns={null}
         waytypes={trail.waytypes}
+        related={
+          relatedTrails.length > 0
+            ? {
+                toursTitle: t("moreInRegion", { region: trail.region ?? "" }),
+                tours: relatedTrails.map((tr) => ({
+                  href: `/${locale}/trail/${tr.id}`,
+                  name: tr.name,
+                  meta: `${(tr.stats.distanceM / 1000).toFixed(1)} km · ↗${tr.stats.ascendM} m · ${tsport(
+                    (tr.is_gravel ? "gravel" : tr.sport) as never,
+                  )}`,
+                })),
+                highlightsTitle: "",
+                highlights: [],
+              }
+            : undefined
+        }
         source={{
           badge: [
             t("official"),
