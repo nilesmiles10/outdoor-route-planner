@@ -2271,7 +2271,13 @@ export default function PlannerApp() {
               )}
             </div>
           )}
-          <p className="text-[11px] text-neutral-400">{t("mapHint")}</p>
+          {/* Onboarding-hint alleen tonen zolang er nog geen route is: zodra je
+              er een hebt, ken je de interactie al en is de tip redundant. Op
+              mobiel duwt hij anders het resultaat (hoogteprofiel/ondergrond/
+              export) verder onder de 45dvh-vouw. */}
+          {!route && (
+            <p className="text-[11px] text-neutral-400">{t("mapHint")}</p>
+          )}
         </div>
 
         {loading && (
