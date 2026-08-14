@@ -65,6 +65,11 @@ export async function generateMetadata({
     description: ogDesc,
     openGraph: { title: ogTitle, description: ogDesc },
     twitter: { title: ogTitle, description: ogDesc },
+    // Een publieke collectie zonder zichtbare routes (alle leden privé) is
+    // thin content — niet indexeren, zoals de thin-content-gate op de
+    // region-pagina's. Voor een crawler (anoniem) filtert RLS de privé-routes
+    // weg → tours.length 0; de eigenaar ziet ze wél.
+    ...(tours.length === 0 ? { robots: { index: false } } : {}),
   };
 }
 
