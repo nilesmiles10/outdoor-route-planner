@@ -89,6 +89,8 @@ export default async function TrailsPage({
   const region = searchParams.region ?? "all";
   const q = searchParams.q?.trim() ?? "";
   const loopOnly = searchParams.loop === "1";
+  const filtersActive =
+    sport !== "all" || country !== "all" || region !== "all" || q !== "" || loopOnly;
   const sort: TrailSort =
     searchParams.sort && searchParams.sort in TRAIL_SORTS
       ? (searchParams.sort as TrailSort)
@@ -314,14 +316,17 @@ export default async function TrailsPage({
 
       {trails.length === 0 ? (
         <div className="mt-8 flex flex-col items-start gap-2">
-          <p className="text-sm text-neutral-400">{t("empty")}</p>
+          {/* Zonder actief filter kan de lijst niet "leeg door filters" zijn
+              (er zijn duizenden routes) → dat is een laadprobleem, geen
+              filter-mismatch. Toon dan een andere boodschap dan "geen routes
+              met deze filters". */}
+          <p className="text-sm text-neutral-400">
+            {filtersActive ? t("empty") : t("emptyNoFilters")}
+          </p>
           {/* Reset alleen tonen als er echt een filter/zoekterm actief is —
               anders helpt wissen niet. Link naar de kale /trails (server-
               component, dus geen client-state om te resetten). */}
-          {(sport !== "all" ||
-            country !== "all" ||
-            region !== "all" ||
-            q !== "") && (
+          {filtersActive && (
             <a
               href={`/${locale}/trails`}
               className="text-sm font-medium text-emerald-700 hover:underline"

@@ -516,6 +516,7 @@
     "allRegions": "All regions",
     "searchPlaceholder": "Search by name…",
     "empty": "No trails match these filters.",
+    "emptyNoFilters": "Couldn't load routes — please try again.",
     "attribution": "Trail data © OpenStreetMap contributors (ODbL).",
     "allCountries": "All countries",
     "gravelMeta": "{km} km gravel",

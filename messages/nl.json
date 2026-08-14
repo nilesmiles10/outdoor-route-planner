@@ -516,6 +516,7 @@
     "allRegions": "Alle regio's",
     "searchPlaceholder": "Zoek op naam…",
     "empty": "Geen routes gevonden met deze filters.",
+    "emptyNoFilters": "Kon geen routes laden — probeer het opnieuw.",
     "attribution": "Routegegevens © OpenStreetMap-bijdragers (ODbL).",
     "allCountries": "Alle landen",
     "gravelMeta": "{km} km gravel",
