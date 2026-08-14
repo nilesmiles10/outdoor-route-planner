@@ -47,7 +47,31 @@ type TourLite = {
   sport: string;
   stats: { distanceM: number; timeS: number; ascendM: number };
   waypoints: { lon: number; lat: number }[];
+  geometry: GeoJSON.LineString | null;
 };
+
+// Kortste afstand (km) van een punt tot de route-geometrie, i.p.v. alleen tot
+// het startpunt. Een highlight kan MIDDEN op een route liggen terwijl het
+// startpunt ver weg is (loop/lineaire route) — met start-afstand werd zo'n
+// route gemist én kreeg een on-route highlight een misleidend "X km
+// hiervandaan" (Beau Site ligt óp de route maar toonde "15 km"). Sampling
+// (≤~400 punten) houdt lange routes goedkoop; valt terug op het startpunt als
+// er geen geometrie is.
+function minDistKmToRoute(lon: number, lat: number, tr: TourLite): number {
+  const coords = tr.geometry?.coordinates;
+  if (coords && coords.length) {
+    const step = Math.max(1, Math.floor(coords.length / 400));
+    let best = Infinity;
+    for (let i = 0; i < coords.length; i += step) {
+      const d = haversineKm(lon, lat, coords[i][0], coords[i][1]);
+      if (d < best) best = d;
+    }
+    return best;
+  }
+  return tr.waypoints[0]
+    ? haversineKm(lon, lat, tr.waypoints[0].lon, tr.waypoints[0].lat)
+    : Infinity;
+}
 
 function haversineKm(aLon: number, aLat: number, bLon: number, bLat: number) {
   const R = 6371;
@@ -157,7 +181,7 @@ export default async function HighlightPage({
         .limit(9),
       sb
         .from("tours")
-        .select("id,name,sport,stats,waypoints")
+        .select("id,name,sport,stats,waypoints,geometry")
         .eq("visibility", "public")
         .eq("kind", "planned")
         .limit(100),
@@ -193,12 +217,15 @@ export default async function HighlightPage({
     bySport.set(key, e);
   }
 
+  // Geometrie blijft server-side (alleen voor de afstandsmeting); we dragen 'm
+  // niet mee in het resultaat dat naar de client gaat.
   const nearTours = (((toursQ.data as TourLite[]) ?? [])
     .map((tr) => ({
-      ...tr,
-      distKm: tr.waypoints[0]
-        ? haversineKm(hl.lon, hl.lat, tr.waypoints[0].lon, tr.waypoints[0].lat)
-        : Infinity,
+      id: tr.id,
+      name: tr.name,
+      sport: tr.sport,
+      stats: tr.stats,
+      distKm: minDistKmToRoute(hl.lon, hl.lat, tr),
     }))
     .filter((tr) => tr.distKm <= 30)
     .sort((a, b) => a.distKm - b.distKm)
