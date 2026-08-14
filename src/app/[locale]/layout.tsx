@@ -58,6 +58,16 @@ export default async function LocaleLayout({
   return (
     <html lang={locale}>
       <body className="antialiased">
+        {/* Zet vroeg DNS + TLS op naar de kaart-tegel-host. MapLibre haalt de
+            style én de vector-tiles van tiles.openfreemap.org; de connectie-
+            setup was een merkbaar deel van de trage eerste kaartweergave. Deze
+            preconnect scheelt die round-trips op élke kaart (planner/tour/
+            trail). crossOrigin omdat de tiles met CORS worden opgehaald. */}
+        <link
+          rel="preconnect"
+          href="https://tiles.openfreemap.org"
+          crossOrigin="anonymous"
+        />
         <NextIntlClientProvider>
           <SiteSettingsProvider value={{ ...settings, footer_pages: footerPages }}>
             <AppHeader />
