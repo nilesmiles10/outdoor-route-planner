@@ -65,7 +65,9 @@ export async function generateMetadata({
     description: ogDesc,
     alternates: { canonical: `/${params.locale}/collection/${params.id}` },
     openGraph: { title: ogTitle, description: ogDesc },
-    twitter: { title: ogTitle, description: ogDesc },
+    // summary_large_image: de collectie heeft een route-vorm-OG-afbeelding, dus
+    // een grote preview i.p.v. een kleine thumbnail (consistent met tours).
+    twitter: { card: "summary_large_image", title: ogTitle, description: ogDesc },
     // Een publieke collectie zonder zichtbare routes (alle leden privé) is
     // thin content — niet indexeren, zoals de thin-content-gate op de
     // region-pagina's. Voor een crawler (anoniem) filtert RLS de privé-routes

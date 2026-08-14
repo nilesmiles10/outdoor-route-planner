@@ -151,7 +151,9 @@ export async function generateMetadata({
     // ?utm) naar de schone route-URL. hreflang blijft via next-intl's Link-header.
     alternates: { canonical: `/${params.locale}/trail/${params.id}` },
     openGraph: { title: ogTitle, description: metaDesc },
-    twitter: { title: ogTitle, description: metaDesc },
+    // summary_large_image: de trail heeft een route-vorm-OG-afbeelding, dus een
+    // grote preview i.p.v. een kleine thumbnail (consistent met tours).
+    twitter: { card: "summary_large_image", title: ogTitle, description: metaDesc },
   };
 }
 
