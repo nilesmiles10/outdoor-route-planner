@@ -1985,10 +1985,15 @@ export default function PlannerApp() {
         >
           <span className="h-1.5 w-10 rounded-full bg-neutral-300" />
         </button>
-        {/* Ingeklapte peek: toon de kerncijfers van de berekende route, zodat je
-            de kaart kunt verkennen zónder afstand/tijd/klim/moeilijkheid kwijt te
-            raken. Alleen mobiel + alleen ingeklapt + alleen met route. */}
-        {sheetCollapsed && route && (
+        {/* Kerncijfer-strip bovenaan de sheet (mobiel). Toont afstand/tijd/klim/
+            moeilijkheid van de berekende route. Getoond zodra er een route is —
+            zowel ingeklapt (de peek) als uitgeklapt. Reden voor "ook uitgeklapt":
+            op mobiel staat het volledige resultaat (stats + hoogteprofiel +
+            ondergrond + export) ~371px diep, nét onder de 45dvh-vouw, ónder de
+            sport-kiezer + inputs + tip. Zonder deze strip zag je na het plannen
+            geen enkel routegetal zonder eerst te scrollen. Desktop (md+) heeft de
+            hoge zijbalk en toont het resultaat direct → daar verborgen. */}
+        {route && (
           <div className="flex items-center gap-2 text-xs md:hidden">
             <span className="shrink-0 font-semibold text-neutral-900">
               {fmtKm(route.stats.distanceM)} km
