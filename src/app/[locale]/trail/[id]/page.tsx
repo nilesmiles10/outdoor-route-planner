@@ -58,20 +58,24 @@ const SELECT =
 const NETWORK_CODES = ["iwn", "nwn", "rwn", "lwn", "icn", "ncn", "rcn", "lcn", "mtb"];
 
 async function getTrail(id: string): Promise<Trail | null> {
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/trails?id=eq.${encodeURIComponent(id)}&select=${SELECT}`,
-      {
-        headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! },
-        next: { revalidate: 86400, tags: ["trails"] },
-      },
-    );
-    if (!res.ok) return null;
-    const rows = (await res.json()) as Trail[];
-    return rows[0] ?? null;
-  } catch {
-    return null;
-  }
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/trails?id=eq.${encodeURIComponent(id)}&select=${SELECT}`,
+    {
+      headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! },
+      next: { revalidate: 86400, tags: ["trails"] },
+    },
+  );
+  // Zelfde reden als de regio-categoriepagina (be72b0e): !res.ok is een infra-
+  // fout, geen "trail bestaat niet". null teruggeven zou notFound() → een 404
+  // cachen — en hier mét revalidate=86400, dus een transiënte Supabase-blip zet
+  // een geldige trail (30k in de sitemap) een héle dag op 404 (Google
+  // deindexeert 404, retryt 5xx). Throw i.p.v.: Next cachet de render niet en
+  // probeert de volgende request opnieuw. Network-errors propageren nu ook
+  // (geen try/catch die ze tot null slikt).
+  if (!res.ok) throw new Error(`trails REST ${res.status} for id ${id}`);
+  const rows = (await res.json()) as Trail[];
+  // fetch ok + geen rij = de trail bestaat écht niet → notFound (juist, cachebaar).
+  return rows[0] ?? null;
 }
 
 export async function generateMetadata({
