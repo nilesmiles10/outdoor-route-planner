@@ -6,6 +6,9 @@ import { ImageResponse } from "next/og";
 
 export const OG_SIZE = { width: 1200, height: 630 };
 
+// Fallback-OG voor een verwijderde/ontbrekende route: dezelfde merk-huisstijl
+// als siteOgCard (emerald-gradient + logo + wordmark) i.p.v. een kale donkere
+// kaart, zodat een dode share-link nog steeds herkenbaar Tarnoo is.
 export function notFoundOgCard() {
   return new ImageResponse(
     (
@@ -16,12 +19,21 @@ export function notFoundOgCard() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#0f172a",
-          color: "#fff",
-          fontSize: 48,
+          gap: 28,
+          background: "linear-gradient(135deg, #ecfdf5 0%, #a7f3d0 100%)",
+          fontFamily: "sans-serif",
         }}
       >
-        Tarnoo
+        <svg width="120" height="120" viewBox="0 0 512 512">
+          <rect width="512" height="512" rx="116" fill="#047857" />
+          <path d="M232 316 L330 188 L430 316 Z" fill="#6ee7b7" />
+          <path d="M96 316 L212 150 L318 316 Z" fill="#ffffff" />
+          <rect x="150" y="352" width="150" height="12" rx="6" fill="#ffffff" />
+          <rect x="118" y="386" width="90" height="12" rx="6" fill="#a7f3d0" />
+        </svg>
+        <div style={{ fontSize: 96, fontWeight: 800, color: "#065f46", letterSpacing: -3 }}>
+          Tarnoo
+        </div>
       </div>
     ),
     OG_SIZE,

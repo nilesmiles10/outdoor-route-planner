@@ -27,7 +27,7 @@
     },
     "errors": {
       "no_route": "Geen route gevonden — verplaats je punten dichter naar een weg of pad.",
-      "router_unavailable": "Route-service is tijdelijk niet beschikbaar.",
+      "router_unavailable": "Route-service is even niet bereikbaar — probeer het zo opnieuw.",
       "generic": "Er ging iets mis. Probeer opnieuw.",
       "gpx_invalid": "Kon dit GPX-bestand niet lezen.",
       "roundtrip_needs_start": "Kies eerst een startpunt (A).",
