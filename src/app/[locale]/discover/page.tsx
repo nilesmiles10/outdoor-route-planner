@@ -94,8 +94,9 @@ export default function DiscoverPage() {
   // GEN-116: region × category combos with enough content for a page.
   const [combos, setCombos] = useState<Combo[]>([]);
 
-  // Vraag de locatie op voor de "Dichtstbij"-sortering — bij mount én zodra de
-  // gebruiker die sortering expliciet kiest zonder dat we al een positie hebben.
+  // Vraag de locatie op voor de "Dichtstbij"-sortering. Aangeroepen op expliciete
+  // actie (Dichtstbij-chip / locatie-knop) en bij mount alléén als de permissie
+  // al is verleend (zie het mount-effect; anders geen ongevraagde popup).
   const requestLocation = useCallback(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       setGeoState("off");
@@ -152,7 +153,18 @@ export default function DiscoverPage() {
       .then((r) => (r.ok ? r.json() : []))
       .then((c: Combo[]) => setCombos(c))
       .catch(() => {});
-    requestLocation();
+    // Bij mount NIET ongevraagd een geolocatie-permissie-popup tonen — dat is
+    // intrusief bij page-load (voor de gebruiker iets doet) en kost grants.
+    // Alleen automatisch de positie ophalen als 'ie al eerder is toegestaan
+    // (dan is getCurrentPosition stil, geen prompt). Nog niet toegestaan →
+    // wachten op expliciete actie (Dichtstbij-chip of de locatie-knop). De
+    // Permissions API ontbreekt op sommige oudere browsers → dan niets doen.
+    navigator.permissions
+      ?.query({ name: "geolocation" as PermissionName })
+      .then((res) => {
+        if (res.state === "granted") requestLocation();
+      })
+      .catch(() => {});
   }, [sb, requestLocation]);
 
   // Filters uit de URL herstellen (deelbaar/bladwijzerbaar, overleeft refresh
