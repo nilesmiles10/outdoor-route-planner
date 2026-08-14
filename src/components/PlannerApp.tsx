@@ -1047,6 +1047,15 @@ export default function PlannerApp() {
           type: "load",
           slots: asDest ? [null, { name, lon, lat }] : [{ name, lon, lat }, null],
         });
+        // Vlieg de kaart naar het punt. Eén losse waypoint berekent nog geen
+        // route, dus MapView's fitBounds-op-route springt niet aan — zonder deze
+        // focus stond de gekozen plaats (header-zoek / "Breng me hierheen")
+        // buiten beeld, zeker sinds de kaart de laatst-bekeken camera herstelt
+        // (initialMapView). Niet doen als er óók een `w`-route is: die wint met
+        // z'n eigen fitBounds. Hergebruikt het bestaande focusReq→focusPoint-pad.
+        if (!params.get("w")) {
+          setFocusReq((prev) => ({ lon, lat, n: (prev?.n ?? 0) + 1 }));
+        }
       }
     }
     const w = params.get("w");
