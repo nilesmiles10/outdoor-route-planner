@@ -13,6 +13,7 @@ import ShareButton from "@/components/ShareButton";
 import Avatar from "@/components/Avatar";
 import SiteFooter from "@/components/SiteFooter";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
+import { SITE_URL } from "@/app/sitemap";
 
 // GEN-138 — highlight detail page. Anatomy copied from Komoot's highlight
 // pages (torn down live 2026-07-20): photo grid, per-sport ratings, tips,
@@ -292,6 +293,30 @@ export default async function HighlightPage({
             description: blurb ?? undefined,
             geo: { "@type": "GeoCoordinates", latitude: hl.lat, longitude: hl.lon },
             ...(place ? { address: place } : {}),
+          }),
+        }}
+      />
+      {/* BreadcrumbList voor Google rich results (matcht de zichtbare breadcrumb):
+          Ontdekken → regio-categorie → hoogtepunt. De middelste crumb bestaat
+          alleen als er een regio-categoriepagina is (regionCrumb). */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { name: t("breadcrumbDiscover"), url: `${SITE_URL}/${locale}/discover` },
+              ...(regionCrumb
+                ? [{ name: regionCrumb.label, url: `${SITE_URL}${regionCrumb.href}` }]
+                : []),
+              { name: hl.name, url: `${SITE_URL}/${locale}/highlight/${params.id}` },
+            ].map((c, i) => ({
+              "@type": "ListItem",
+              position: i + 1,
+              name: c.name,
+              item: c.url,
+            })),
           }),
         }}
       />
