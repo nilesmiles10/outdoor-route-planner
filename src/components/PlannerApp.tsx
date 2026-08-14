@@ -1054,9 +1054,8 @@ export default function PlannerApp() {
     setRtBusy(true);
     setError(null);
     try {
-      const bearing = Math.floor(Math.random() * 360);
       const targetM = rtTargetKm * 1000;
-      const measure = async (scale: number) => {
+      const measure = async (bearing: number, scale: number) => {
         const [p1, p2] = loopVias([start.lon, start.lat], targetM, bearing, scale);
         const points = [
           `${start.lon},${start.lat}`,
@@ -1071,11 +1070,33 @@ export default function PlannerApp() {
         const data = (await res.json()) as RouteResult;
         return { p1, p2, distanceM: data.stats.distanceM };
       };
-      let attempt = await measure(1);
-      const ratio = targetM / attempt.distanceM;
-      if (Math.abs(1 - ratio) > 0.15) {
-        attempt = await measure(ratio);
+      // Probeer meerdere richtingen i.p.v. één willekeurige: bij een start aan
+      // water/rand (kust, meer, doodlopende hoek) kunnen de via's van één
+      // richting onberijdbaar zijn → BRouter faalt en de hele generatie klapte
+      // stuk. We roteren vanaf een willekeurig punt over de kompasroos tot er
+      // één richting routeert. De happy-path (eerste richting lukt) is
+      // ongewijzigd: één meting + optionele schaal-refine, dan stop.
+      const base = Math.floor(Math.random() * 360);
+      const bearings = [0, 90, 180, 270].map((d) => (base + d) % 360);
+      let attempt: Awaited<ReturnType<typeof measure>> | null = null;
+      for (const bearing of bearings) {
+        try {
+          let a = await measure(bearing, 1);
+          const ratio = targetM / a.distanceM;
+          if (Math.abs(1 - ratio) > 0.15) {
+            try {
+              a = await measure(bearing, ratio);
+            } catch {
+              // geschaalde via's onberijdbaar → houd de ongeschaalde meting
+            }
+          }
+          attempt = a;
+          break;
+        } catch {
+          // onberijdbare richting → probeer de volgende
+        }
       }
+      if (!attempt) throw new Error("no_route");
       const { p1, p2 } = attempt;
       dispatch({
         type: "load",
