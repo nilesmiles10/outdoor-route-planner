@@ -923,8 +923,14 @@ export default function PlannerApp() {
     } finally {
       if (seq === seqRef.current) setLoading(false);
     }
+    // Alleen op de ROUTE-relevante velden (coördinaten + off-grid), niet op de
+    // hele waypoint (die ook de naam bevat). Reverse-geocoding patcht namen ná
+    // het laden → met JSON.stringify(filled) triggerde elke naam-update een
+    // nieuwe fetchRoute-run; die runs liepen concurrent vóór de leg-cache
+    // gevuld was, dus dezelfde legs werden 4× bij BRouter opgehaald. fetchRoute
+    // gebruikt van filled alleen lon/lat/offGrid, dus namen weglaten is veilig.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(filled), sport]);
+  }, [filled.map((f) => `${f.lon},${f.lat},${f.offGrid ? 1 : 0}`).join(";"), sport]);
 
   useEffect(() => {
     fetchRoute();
