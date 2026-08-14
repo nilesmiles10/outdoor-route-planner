@@ -114,6 +114,10 @@ export async function generateMetadata({
       category: cat.toLowerCase(),
       region: resolved.label,
     }),
+    // Self-canonical op de resolved slug (region kan een land-suffix hebben).
+    alternates: {
+      canonical: `/${params.locale}/discover/${params.region}/${params.category}`,
+    },
   };
 }
 

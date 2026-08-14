@@ -138,6 +138,9 @@ export async function generateMetadata({
       `${trail.name} | ${km} km ${sportNoun}`,
     ),
     description: metaDesc,
+    // Self-canonical: consolideer eventuele tracking-param-varianten (?fbclid,
+    // ?utm) naar de schone route-URL. hreflang blijft via next-intl's Link-header.
+    alternates: { canonical: `/${params.locale}/trail/${params.id}` },
     openGraph: { title: ogTitle, description: metaDesc },
     twitter: { title: ogTitle, description: metaDesc },
   };

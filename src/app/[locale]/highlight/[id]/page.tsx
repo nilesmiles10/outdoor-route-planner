@@ -139,6 +139,7 @@ export async function generateMetadata({
   return {
     title: pageTitle(await getSiteSettings(), `${hl.name} – ${titleSuffix}`),
     description: hlDesc,
+    alternates: { canonical: `/${params.locale}/highlight/${params.id}` },
     // Entity-specifieke OG i.p.v. de generieke layout-OG bij gedeelde links.
     openGraph: { title: hl.name, description: hlDesc },
     twitter: { title: hl.name, description: hlDesc },

@@ -48,7 +48,7 @@ async function getCollection(id: string): Promise<Coll | null> {
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: { id: string; locale: string };
 }): Promise<Metadata> {
   const c = await getCollection(params.id);
   if (!c) return { title: "Collection not found" };
@@ -63,6 +63,7 @@ export async function generateMetadata({
   return {
     title: `${c.title} | ${tours.length} routes · ${(agg.distanceM / 1000).toFixed(0)} km`,
     description: ogDesc,
+    alternates: { canonical: `/${params.locale}/collection/${params.id}` },
     openGraph: { title: ogTitle, description: ogDesc },
     twitter: { title: ogTitle, description: ogDesc },
     // Een publieke collectie zonder zichtbare routes (alle leden privé) is

@@ -104,6 +104,8 @@ export async function generateMetadata({
   return {
     title: `${tour.name} | ${km} km ${sportLabel}`,
     description: `${ogDesc} · ${t("byline", { name: authorName })}`,
+    // Self-canonical: tracking-param-varianten consolideren naar de schone URL.
+    alternates: { canonical: `/${params.locale}/tour/${params.id}` },
     openGraph: { title: ogTitle, description: ogDesc },
     twitter: { card: "summary_large_image", title: ogTitle, description: ogDesc },
   };
