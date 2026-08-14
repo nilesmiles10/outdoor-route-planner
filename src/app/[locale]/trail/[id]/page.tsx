@@ -27,6 +27,9 @@ type Trail = {
   sport: "hike" | "touring" | "mtb";
   region: string | null;
   operator: string | null;
+  // OSM-netwerkclassificatie: i/n/r/l + wn (wandel) of cn (fiets), of een
+  // benoemd netwerk. Zegt wat vóór een officiële route: lokaal/regionaal/etc.
+  network: string | null;
   roundtrip: boolean;
   geometry: GeoJSON.LineString;
   elevation: number[];
@@ -47,7 +50,12 @@ type Trail = {
 // Vercel account over its limit. A plain anon PostgREST fetch keeps the route
 // static so Next can cache it (same pattern as lib/siteSettings + sitemaps).
 const SELECT =
-  "id,osm_id,name,sport,region,operator,roundtrip,geometry,elevation,stats,surfaces,waytypes,source_url,is_gravel,gravel_m";
+  "id,osm_id,name,sport,region,operator,network,roundtrip,geometry,elevation,stats,surfaces,waytypes,source_url,is_gravel,gravel_m";
+
+// OSM-standaard netwerkcodes → vertaalsleutel. Named networks (met spatie)
+// tonen we letterlijk; onbekende korte codes (bv. "lcn-old") slaan we over
+// i.p.v. cryptische ruis te tonen.
+const NETWORK_CODES = ["iwn", "nwn", "rwn", "lwn", "icn", "ncn", "rcn", "lcn", "mtb"];
 
 async function getTrail(id: string): Promise<Trail | null> {
   try {
@@ -121,6 +129,15 @@ export default async function TrailPage({
     ? [{ name: t("start"), lon: start[0], lat: start[1] }]
     : [];
 
+  // Netwerk-badge: gestandaardiseerde code → leesbaar label, benoemd netwerk
+  // letterlijk (gecapt), onbekende korte codes weggelaten.
+  const netCode = trail.network?.toLowerCase() ?? "";
+  const networkBadge = NETWORK_CODES.includes(netCode)
+    ? t(`networks.${netCode}` as never)
+    : trail.network && /\s/.test(trail.network)
+      ? trail.network.slice(0, 40)
+      : null;
+
   // Highlights langs de route als kaart-pins (plain fetch → route blijft
   // statisch cachebaar, zie getTrail).
   const highlightPins = await passedHighlightPins(trail.geometry.coordinates);
@@ -165,6 +182,7 @@ export default async function TrailPage({
         source={{
           badge: [
             t("official"),
+            networkBadge,
             trail.roundtrip ? t("roundtrip") : null,
             trail.is_gravel
               ? t("gravelBadge", { km: (trail.gravel_m / 1000).toFixed(1) })

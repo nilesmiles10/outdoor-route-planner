@@ -552,7 +552,18 @@
       "mtb": "MTB-route",
       "gravel": "gravelroute"
     },
-    "gravelBadge": "Gravel · {km} km grind"
+    "gravelBadge": "Gravel · {km} km grind",
+    "networks": {
+      "iwn": "Internationaal wandelnetwerk",
+      "nwn": "Nationaal wandelnetwerk",
+      "rwn": "Regionaal wandelnetwerk",
+      "lwn": "Lokaal wandelnetwerk",
+      "icn": "Internationaal fietsnetwerk",
+      "ncn": "Nationaal fietsnetwerk",
+      "rcn": "Regionaal fietsnetwerk",
+      "lcn": "Lokaal fietsnetwerk",
+      "mtb": "MTB-netwerk"
+    }
   },
   "notFound": {
     "title": "Pagina niet gevonden",

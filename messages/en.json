@@ -552,7 +552,18 @@
       "mtb": "MTB trail",
       "gravel": "gravel route"
     },
-    "gravelBadge": "Gravel · {km} km gravel"
+    "gravelBadge": "Gravel · {km} km gravel",
+    "networks": {
+      "iwn": "International walking network",
+      "nwn": "National walking network",
+      "rwn": "Regional walking network",
+      "lwn": "Local walking network",
+      "icn": "International cycling network",
+      "ncn": "National cycling network",
+      "rcn": "Regional cycling network",
+      "lcn": "Local cycling network",
+      "mtb": "MTB network"
+    }
   },
   "notFound": {
     "title": "Page not found",
