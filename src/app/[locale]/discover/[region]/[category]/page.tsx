@@ -73,7 +73,23 @@ async function resolve(regionSlug: string, category: string) {
       `&order=name&limit=${ITEM_LIMIT}`,
   );
   if (items.length < MIN_ITEMS) return null;
-  return { region: match.region, label, items, total: match.n };
+  return { region: match.region, country: match.country, label, items, total: match.n };
+}
+
+// Andere categorieën in dezélfde regio die de ≥8-poort halen — cross-navigatie
+// (SEO-linkmesh + verkennen). Slug via withRegionSlugs zodat het nooit naar een
+// 404 wijst; ambiguïteit (regionaam over landen) wordt per categorie bepaald.
+async function siblingCategories(
+  region: string,
+  country: string | null,
+  currentCategory: string,
+) {
+  const rows = await rest<RegionCombo>(
+    `highlight_regions?select=region,country,category,n&region=eq.${encodeURIComponent(region)}&n=gte.${MIN_ITEMS}`,
+  );
+  return withRegionSlugs(rows)
+    .filter((r) => r.country === country && r.category !== currentCategory)
+    .sort((a, b) => b.n - a.n);
 }
 
 // Empty list: do not prerender hundreds of pages at build time, but declaring
@@ -112,6 +128,7 @@ export default async function RegionCategoryPage({
   const { locale, category } = params;
   const t = await getTranslations("regionPage");
   const cat = t(`catPlural.${category}` as never);
+  const siblings = await siblingCategories(resolved.region, resolved.country, category);
 
   return (
     <main className="mx-auto min-h-dvh max-w-3xl px-4 pb-16 pt-16">
@@ -173,6 +190,27 @@ export default async function RegionCategoryPage({
         <p className="mt-4 rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-500">
           {t("capHint", { shown: items.length, total })}
         </p>
+      )}
+
+      {siblings.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-2 text-sm font-semibold text-neutral-700">
+            {t("alsoIn", { region: label })}
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {siblings.map((s) => (
+              <a
+                key={s.category}
+                href={`/${locale}/discover/${s.slug}/${s.category}`}
+                className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-200"
+              >
+                {CATEGORY_EMOJI[s.category]}{" "}
+                {t(`catPlural.${s.category}` as never)}{" "}
+                <span className="text-neutral-400">{s.n}</span>
+              </a>
+            ))}
+          </div>
+        </section>
       )}
 
       <SiteFooter />

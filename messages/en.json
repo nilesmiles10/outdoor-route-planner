@@ -413,7 +413,8 @@
       "other": "Places",
       "gravel": "Gravel segments"
     },
-    "capHint": "Showing {shown} of {total, number} — sorted alphabetically."
+    "capHint": "Showing {shown} of {total, number} — sorted alphabetically.",
+    "alsoIn": "Also in {region}"
   },
   "profile": {
     "anonymous": "Adventurer",

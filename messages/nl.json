@@ -413,7 +413,8 @@
       "other": "Plekken",
       "gravel": "Gravelsegmenten"
     },
-    "capHint": "{shown} van {total, number} getoond — alfabetisch gesorteerd."
+    "capHint": "{shown} van {total, number} getoond — alfabetisch gesorteerd.",
+    "alsoIn": "Ook in {region}"
   },
   "profile": {
     "anonymous": "Avonturier",
