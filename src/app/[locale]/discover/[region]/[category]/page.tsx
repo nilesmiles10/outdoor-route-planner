@@ -31,16 +31,20 @@ const REST = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1`;
 const HEADERS = { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! };
 
 async function rest<T>(path: string): Promise<T[]> {
-  try {
-    const res = await fetch(`${REST}/${path}`, {
-      headers: HEADERS,
-      next: { revalidate: 3600, tags: ["highlights"] },
-    });
-    if (!res.ok) return [];
-    return (await res.json()) as T[];
-  } catch {
-    return [];
-  }
+  // Gooi bij een infra-fout i.p.v. [] terug te geven. resolve() interpreteert
+  // een lege lijst anders als "regio bestaat niet" → notFound(), en dat 404
+  // wordt MÉT revalidate gecacht (x-vercel-cache HIT): één transiënte Supabase-
+  // blip zou een geldige SEO-regiopagina zo tot een uur (of tot toevallige
+  // revalidatie) op 404 vastzetten. Een throw laat Next de render niet cachen
+  // en probeert de volgende request opnieuw; een 5xx zegt "tijdelijk weg"
+  // (Google retryt) i.p.v. 404 "bestaat niet" (deindex). Een échte lege uitkomst
+  // (fetch ok, 0 rijen) blijft gewoon → notFound, zoals bedoeld.
+  const res = await fetch(`${REST}/${path}`, {
+    headers: HEADERS,
+    next: { revalidate: 3600, tags: ["highlights"] },
+  });
+  if (!res.ok) throw new Error(`highlights REST ${res.status} on ${path}`);
+  return (await res.json()) as T[];
 }
 
 async function resolve(regionSlug: string, category: string) {
