@@ -15,6 +15,7 @@ import { difficulty } from "@/lib/difficulty";
 import { fmtDuration } from "@/lib/activity";
 import SiteFooter from "@/components/SiteFooter";
 import { getSiteSettings } from "@/lib/siteSettings";
+import { SITE_URL } from "@/app/sitemap";
 
 type TourLite = {
   id: string;
@@ -87,6 +88,7 @@ export default async function CollectionPage({
   const t = await getTranslations("collections");
   const tdiff = await getTranslations("planner.difficultyLabels");
   const tsport = await getTranslations("planner.sports");
+  const tNav = await getTranslations("nav");
   const { locale } = params;
 
   const sb = supabaseServer();
@@ -136,6 +138,44 @@ export default async function CollectionPage({
           }),
         }}
       />
+      {/* BreadcrumbList voor Google rich results (matcht de zichtbare breadcrumb):
+          Collecties → collectienaam, met absolute URLs. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              {
+                "@type": "ListItem",
+                position: 1,
+                name: tNav("collections"),
+                item: `${SITE_URL}/${locale}/collections`,
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: c.title,
+                item: `${SITE_URL}/${locale}/collection/${params.id}`,
+              },
+            ],
+          }),
+        }}
+      />
+
+      {/* Breadcrumb terug naar de collectie-lijst (community-collecties worden
+          daar ontdekt) — navigatie + intern SEO-linkmesh, zoals trail/tour. */}
+      <nav
+        aria-label="Breadcrumb"
+        className="mt-2 flex flex-wrap items-center gap-x-1 text-xs text-neutral-400"
+      >
+        <a href={`/${locale}/collections`} className="hover:underline">
+          {tNav("collections")}
+        </a>
+        <span aria-hidden>/</span>
+        <span className="text-neutral-600">{c.title}</span>
+      </nav>
 
       <div
         className={`relative mt-2 flex h-40 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br ${gradientFor(coverSport)}`}
