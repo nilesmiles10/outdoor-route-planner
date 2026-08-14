@@ -215,6 +215,25 @@ export default function DiscoverPage() {
       }
     });
 
+  // Gedeelde moeilijkheidsbadge (zelfde formule + kleuren als de grid-kaarten),
+  // zodat je op featured én officiële routes ook op easy/hard kunt scannen.
+  const diffBadge = (sport: string, distanceM: number, ascendM: number) => {
+    const d = difficulty(sport, distanceM, ascendM);
+    return (
+      <span
+        className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+          d === "easy"
+            ? "bg-emerald-100 text-emerald-800"
+            : d === "moderate"
+              ? "bg-amber-100 text-amber-800"
+              : "bg-red-100 text-red-800"
+        }`}
+      >
+        {tdiff(d)}
+      </span>
+    );
+  };
+
   return (
     <main className="mx-auto min-h-dvh max-w-4xl px-4 pb-16 pt-20">
       <h1 className="text-xl font-semibold text-neutral-900">{t("title")}</h1>
@@ -236,7 +255,10 @@ export default function DiscoverPage() {
                   <MiniMap coords={r.geometry?.coordinates} className="h-full w-full" />
                 </div>
                 <div className="px-4 py-3">
-                  <div className="truncate text-sm font-medium text-neutral-900">{r.name}</div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="truncate text-sm font-medium text-neutral-900">{r.name}</div>
+                    {diffBadge(r.sport, r.stats.distanceM, r.stats.ascendM)}
+                  </div>
                   <div className="mt-0.5 text-xs text-neutral-500">
                     {(r.stats.distanceM / 1000).toFixed(1)} km · ↗ {r.stats.ascendM} m · {ts(r.sport as never)}
                   </div>
@@ -262,7 +284,10 @@ export default function DiscoverPage() {
                 href={`/${locale}/trail/${r.id}`}
                 className="w-56 shrink-0 rounded-xl border border-emerald-200 bg-emerald-50/50 px-4 py-3 hover:border-emerald-300"
               >
-                <div className="truncate text-sm font-medium text-neutral-900">{r.name}</div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="truncate text-sm font-medium text-neutral-900">{r.name}</div>
+                  {diffBadge(r.sport, r.stats.distanceM, r.stats.ascendM)}
+                </div>
                 <div className="mt-0.5 text-xs text-neutral-500">
                   {(r.stats.distanceM / 1000).toFixed(1)} km · ↗ {r.stats.ascendM} m · {ts(r.sport as never)}
                   {r.region ? ` · ${r.region}` : ""}
