@@ -12,6 +12,7 @@ import {
   SPORT_EMOJI,
 } from "@/lib/collections";
 import { difficulty } from "@/lib/difficulty";
+import { fmtDuration } from "@/lib/activity";
 import SiteFooter from "@/components/SiteFooter";
 import { getSiteSettings } from "@/lib/siteSettings";
 
@@ -19,7 +20,7 @@ type TourLite = {
   id: string;
   name: string;
   sport: string;
-  stats: { distanceM: number; ascendM: number };
+  stats: { distanceM: number; ascendM: number; timeS: number };
   geometry: GeoJSON.LineString | null;
 };
 type Item = { position: number; note: string | null; tours: TourLite | null };
@@ -245,7 +246,8 @@ export default async function CollectionPage({
                   })()}
                 </div>
                 <div className="text-xs text-neutral-500">
-                  {(tr.stats.distanceM / 1000).toFixed(1)} km · ↗ {tr.stats.ascendM} m ·{" "}
+                  {(tr.stats.distanceM / 1000).toFixed(1)} km ·{" "}
+                  {fmtDuration(tr.stats.timeS)} h · ↗ {tr.stats.ascendM} m ·{" "}
                   <span>
                     {SPORT_EMOJI[tr.sport] ?? ""} {tsport(tr.sport as never)}
                   </span>
