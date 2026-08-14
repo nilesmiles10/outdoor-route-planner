@@ -210,14 +210,33 @@ export default async function UserPage({
       : `https://${p.website}`
     : null;
 
-  const indexRow = (emoji: string, label: string, count: number) => (
-    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 text-sm">
-      <span className="text-neutral-700">
-        {emoji} {label}
-      </span>
-      <span className="font-semibold text-neutral-900">{count}</span>
-    </div>
-  );
+  // Met `href` wordt de telling een sprong-link naar de bijbehorende sectie —
+  // handig omdat de collecties ónder een (mogelijk lange) timeline staan en
+  // anders alleen met veel scrollen te vinden zijn.
+  const indexRow = (
+    emoji: string,
+    label: string,
+    count: number,
+    href?: string,
+  ) => {
+    const inner = (
+      <>
+        <span className="text-neutral-700">
+          {emoji} {label}
+        </span>
+        <span className="font-semibold text-neutral-900">{count}</span>
+      </>
+    );
+    const cls =
+      "flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 text-sm";
+    return href ? (
+      <a href={href} className={`${cls} hover:bg-neutral-100`}>
+        {inner}
+      </a>
+    ) : (
+      <div className={cls}>{inner}</div>
+    );
+  };
 
   return (
     <main className="mx-auto min-h-dvh max-w-5xl px-4 pb-16 pt-20">
@@ -293,7 +312,12 @@ export default async function UserPage({
             <div className="mt-5 flex flex-col gap-1.5">
               {indexRow("🗺", t("routesRow"), tours.length - completed.length)}
               {indexRow("🏁", t("activitiesRow"), completed.length)}
-              {indexRow("📚", t("collectionsRow"), collections.length)}
+              {indexRow(
+                "📚",
+                t("collectionsRow"),
+                collections.length,
+                collections.length > 0 ? "#profile-collections" : undefined,
+              )}
             </div>
           )}
 
@@ -357,7 +381,7 @@ export default async function UserPage({
               <ProfileTimeline items={timelineItems} />
 
               {collections.length > 0 && (
-                <section className="mt-8">
+                <section id="profile-collections" className="mt-8 scroll-mt-20">
                   <h2 className="mb-2 text-sm font-semibold text-neutral-700">
                     {t("collections")} ({collections.length})
                   </h2>
