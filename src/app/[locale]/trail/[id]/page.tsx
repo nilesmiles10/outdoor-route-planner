@@ -302,6 +302,16 @@ export default async function TrailPage({
           relatedTrails.length > 0 || passedHl.length > 0
             ? {
                 toursTitle: t("moreInRegion", { region: trail.region ?? "" }),
+                // Maak de "Meer routes in <regio>"-kop een link naar de volledige,
+                // filterbare /trails-lijst voor die regio (zichtbaarder dan de
+                // breadcrumb-crumb). Alleen als er een regio is.
+                ...(trail.region
+                  ? {
+                      toursHref: trail.country
+                        ? `/${locale}/trails?country=${trail.country}&region=${encodeURIComponent(trail.region)}`
+                        : `/${locale}/trails?region=${encodeURIComponent(trail.region)}`,
+                    }
+                  : {}),
                 tours: relatedTrails.map((tr) => ({
                   href: `/${locale}/trail/${tr.id}`,
                   name: tr.name,

@@ -89,6 +89,7 @@ type Props = {
   } | null;
   related?: {
     toursTitle: string;
+    toursHref?: string;
     tours: {
       href: string;
       name: string;
@@ -686,7 +687,16 @@ export default function TourView({
         {related && related.tours.length > 0 && (
           <div>
             <div className="text-xs font-medium text-neutral-700">
-              {related.toursTitle}
+              {related.toursHref ? (
+                <a
+                  href={related.toursHref}
+                  className="hover:text-emerald-800 hover:underline"
+                >
+                  {related.toursTitle} →
+                </a>
+              ) : (
+                related.toursTitle
+              )}
             </div>
             <div className="mt-1 flex flex-col gap-1">
               {related.tours.map((tr) => (
