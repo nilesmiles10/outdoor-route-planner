@@ -140,7 +140,14 @@ export default async function TourPage({
             : Infinity,
         }))
         .filter((tr) => tr.distKm <= 40)
-        .sort((a, b) => a.distKm - b.distKm)
+        // Zelfde sport eerst, dan op afstand: een fietser die naar een fiets-
+        // route kijkt heeft meer aan nabije fietsroutes dan aan de dichtstbij-
+        // zijnde wandelroute. Reordert alleen (geen filter) → sectie blijft vol.
+        .sort(
+          (a, b) =>
+            (a.sport === tour.sport ? 0 : 1) - (b.sport === tour.sport ? 0 : 1) ||
+            a.distKm - b.distKm,
+        )
         .slice(0, 4))
     : [];
 
@@ -163,7 +170,14 @@ export default async function TourPage({
           distKm: haversineKm(start.lon, start.lat, tr.start_lon, tr.start_lat),
         }))
         .filter((tr) => tr.distKm <= 40)
-        .sort((a, b) => a.distKm - b.distKm)
+        // Zelfde sport eerst, dan op afstand: een fietser die naar een fiets-
+        // route kijkt heeft meer aan nabije fietsroutes dan aan de dichtstbij-
+        // zijnde wandelroute. Reordert alleen (geen filter) → sectie blijft vol.
+        .sort(
+          (a, b) =>
+            (a.sport === tour.sport ? 0 : 1) - (b.sport === tour.sport ? 0 : 1) ||
+            a.distKm - b.distKm,
+        )
         .slice(0, Math.max(0, 6 - relatedTours.length)))
     : [];
 
@@ -194,6 +208,8 @@ export default async function TourPage({
           ...hl,
           distKm: haversineKm(start.lon, start.lat, hl.lon, hl.lat),
         }))
+        // Highlights zijn sport-neutraal (een kasteel is voor elke sport
+        // interessant) → puur op afstand.
         .sort((a, b) => a.distKm - b.distKm)
         .slice(0, 6))
     : [];
