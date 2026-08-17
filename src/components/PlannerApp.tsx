@@ -2652,23 +2652,29 @@ export default function PlannerApp() {
                   <div className="mb-1 font-medium text-neutral-600">
                     {t("waytypes")}
                   </div>
-                  {groupWaytypes(route.waytypes).map(([k, v]) => (
-                    <div key={k} className="flex justify-between text-neutral-600">
-                      <span>{t(`wt.${k}` as never)}</span>
-                      <span>{fmtKm(v)} km</span>
-                    </div>
-                  ))}
+                  {/* Groepen < 50 m weglaten: die tonen als "0.0 km" (bv. een
+                      paar meter trap) en zijn ruis — zelfde filter als TourView. */}
+                  {groupWaytypes(route.waytypes)
+                    .filter(([, v]) => v >= 50)
+                    .map(([k, v]) => (
+                      <div key={k} className="flex justify-between text-neutral-600">
+                        <span>{t(`wt.${k}` as never)}</span>
+                        <span>{fmtKm(v)} km</span>
+                      </div>
+                    ))}
                 </div>
                 <div>
                   <div className="mb-1 font-medium text-neutral-600">
                     {t("surfacesDetail")}
                   </div>
-                  {groupSurfaces(route.surfaces.detailM).map(([k, v]) => (
-                    <div key={k} className="flex justify-between text-neutral-600">
-                      <span>{t(`sf.${k}` as never)}</span>
-                      <span>{fmtKm(v)} km</span>
-                    </div>
-                  ))}
+                  {groupSurfaces(route.surfaces.detailM)
+                    .filter(([, v]) => v >= 50)
+                    .map(([k, v]) => (
+                      <div key={k} className="flex justify-between text-neutral-600">
+                        <span>{t(`sf.${k}` as never)}</span>
+                        <span>{fmtKm(v)} km</span>
+                      </div>
+                    ))}
                 </div>
               </div>
             </details>
