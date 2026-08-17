@@ -90,11 +90,13 @@ type Props = {
   related?: {
     toursTitle: string;
     toursHref?: string;
+    officialLabel?: string;
     tours: {
       href: string;
       name: string;
       meta: string;
       coords?: [number, number][];
+      official?: boolean;
     }[];
     passedTitle?: string;
     passed?: {
@@ -711,8 +713,22 @@ export default function TourView({
                     </div>
                   )}
                   <div className="min-w-0">
-                    <div className="truncate text-xs font-medium text-neutral-800">
-                      {tr.name}
+                    <div className="flex items-center gap-1">
+                      {/* ✓ = officiële (OSM-bewegwijzerde) route, consistent met
+                          de "✓ Officiële routes"-sectie op /discover; onderscheidt
+                          ze van community-tours in dezelfde lijst. */}
+                      {tr.official && (
+                        <span
+                          className="shrink-0 text-[10px] font-bold text-emerald-600"
+                          title={related.officialLabel}
+                          aria-label={related.officialLabel}
+                        >
+                          ✓
+                        </span>
+                      )}
+                      <span className="truncate text-xs font-medium text-neutral-800">
+                        {tr.name}
+                      </span>
                     </div>
                     <div className="text-[10px] text-neutral-500">{tr.meta}</div>
                   </div>

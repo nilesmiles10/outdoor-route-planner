@@ -398,6 +398,7 @@ export default async function TourPage({
         }
         related={{
           toursTitle: t("relatedTours"),
+          officialLabel: t("officialRoute"),
           tours: [
             ...relatedTours.map((tr) => ({
               href: `/${locale}/tour/${tr.id}`,
@@ -410,6 +411,7 @@ export default async function TourPage({
               name: tr.name,
               meta: `${(tr.stats.distanceM / 1000).toFixed(1)} km · ↗ ${tr.stats.ascendM} m · ${ts(tr.sport as never)} · ${Math.round(tr.distKm)} km ${t("away")}`,
               coords: tr.thumb_coords ?? undefined,
+              official: true,
             })),
           ],
           passedTitle: t("activity.onRoute"),

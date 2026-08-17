@@ -240,6 +240,7 @@
     "anonymous": "Adventurer",
     "weather": "Weather at the start",
     "relatedTours": "You might also like",
+    "officialRoute": "Official route",
     "relatedHighlights": "Highlights nearby",
     "away": "away",
     "autoDesc": {
