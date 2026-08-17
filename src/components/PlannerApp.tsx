@@ -2088,7 +2088,10 @@ export default function PlannerApp() {
               {fmtKm(route.stats.distanceM)} km
             </span>
             <span className="shrink-0 text-neutral-500">
-              {fmtTime(route.stats.timeS)}
+              {/* " h"-suffix zoals overal elders (trails/discover/collecties):
+                  in de terse peek-strip ontbreekt het label onder het getal,
+                  dus zonder eenheid was "2:45" dubbelzinnig. */}
+              {fmtTime(route.stats.timeS)} h
             </span>
             <span className="shrink-0 text-neutral-500">
               ↗ {route.stats.ascendM} m
