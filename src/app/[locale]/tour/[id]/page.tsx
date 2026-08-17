@@ -74,7 +74,7 @@ export default async function TourPage({
   const start = tour.waypoints[0];
 
   const sb = supabaseServer();
-  const [weather, toursQ, hlQ, collQ] = await Promise.all([
+  const [weather, toursQ, hlQ, collQ, trailsQ] = await Promise.all([
     start ? getWeather(start.lon, start.lat) : null,
     sb
       .from("tours")
@@ -109,6 +109,19 @@ export default async function TourPage({
       .from("collection_items")
       .select("collections(id,title,visibility)")
       .eq("tour_id", tour.id),
+    // Nabije officiële trails (start binnen een bbox rond de route-start) —
+    // vult de vaak schaarse community-"Ook interessant" (≈24 tours) aan met de
+    // 4.4k-trails-dataset. Start-gebaseerde nabijheid, net als relatedTours.
+    start
+      ? sb
+          .from("trails")
+          .select("id,name,sport,stats,thumb_coords,start_lon,start_lat")
+          .gte("start_lon", start.lon - 0.5)
+          .lte("start_lon", start.lon + 0.5)
+          .gte("start_lat", start.lat - 0.5)
+          .lte("start_lat", start.lat + 0.5)
+          .limit(60)
+      : null,
   ]);
 
   type TourLite = {
@@ -129,6 +142,29 @@ export default async function TourPage({
         .filter((tr) => tr.distKm <= 40)
         .sort((a, b) => a.distKm - b.distKm)
         .slice(0, 4))
+    : [];
+
+  // Nabije officiële trails, aanvullend op de (schaarse) community-tours zodat
+  // de "Ook interessant"-sectie ook op tour-pagina's echt vult. Start-afstand,
+  // ≤40 km, en samen met de community-tours gecapt op 6 kaarten.
+  type TrailLite = {
+    id: string;
+    name: string;
+    sport: string;
+    stats: { distanceM: number; ascendM: number };
+    thumb_coords: [number, number][] | null;
+    start_lon: number;
+    start_lat: number;
+  };
+  const nearbyTrails = start
+    ? (((trailsQ?.data as TrailLite[]) ?? [])
+        .map((tr) => ({
+          ...tr,
+          distKm: haversineKm(start.lon, start.lat, tr.start_lon, tr.start_lat),
+        }))
+        .filter((tr) => tr.distKm <= 40)
+        .sort((a, b) => a.distKm - b.distKm)
+        .slice(0, Math.max(0, 6 - relatedTours.length)))
     : [];
 
   // Route-vorm-thumbnails: haal alléén de geometrie van de 4 getoonde routes op
@@ -362,12 +398,20 @@ export default async function TourPage({
         }
         related={{
           toursTitle: t("relatedTours"),
-          tours: relatedTours.map((tr) => ({
-            href: `/${locale}/tour/${tr.id}`,
-            name: tr.name,
-            meta: `${(tr.stats.distanceM / 1000).toFixed(1)} km · ↗ ${tr.stats.ascendM} m · ${ts(tr.sport as never)} · ${Math.round(tr.distKm)} km ${t("away")}`,
-            coords: relatedGeo.get(tr.id),
-          })),
+          tours: [
+            ...relatedTours.map((tr) => ({
+              href: `/${locale}/tour/${tr.id}`,
+              name: tr.name,
+              meta: `${(tr.stats.distanceM / 1000).toFixed(1)} km · ↗ ${tr.stats.ascendM} m · ${ts(tr.sport as never)} · ${Math.round(tr.distKm)} km ${t("away")}`,
+              coords: relatedGeo.get(tr.id),
+            })),
+            ...nearbyTrails.map((tr) => ({
+              href: `/${locale}/trail/${tr.id}`,
+              name: tr.name,
+              meta: `${(tr.stats.distanceM / 1000).toFixed(1)} km · ↗ ${tr.stats.ascendM} m · ${ts(tr.sport as never)} · ${Math.round(tr.distKm)} km ${t("away")}`,
+              coords: tr.thumb_coords ?? undefined,
+            })),
+          ],
           passedTitle: t("activity.onRoute"),
           passed: passed.map((hl) => {
             const tip = tipByHighlight.get(hl.id);
