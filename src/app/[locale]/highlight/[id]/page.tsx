@@ -8,6 +8,7 @@ import { CATEGORY_EMOJI, CATEGORY_COLOR } from "@/lib/highlights";
 import { gradientFor } from "@/lib/collections";
 import { regionSlugFor } from "@/lib/regionSlug";
 import HighlightMap from "@/components/HighlightMap";
+import MiniMap from "@/components/MiniMap";
 import HighlightActions from "@/components/HighlightActions";
 import ShareButton from "@/components/ShareButton";
 import Avatar from "@/components/Avatar";
@@ -87,6 +88,17 @@ function haversineKm(aLon: number, aLat: number, bLon: number, bLat: number) {
       Math.cos((bLat * Math.PI) / 180) *
       Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+// Downsample een route-lijn tot ~max punten voor een lichte MiniMap-thumbnail
+// (i.p.v. de volledige geometry naar de client te dragen — ≤6 kaarten × 24 pt).
+function thinCoords(
+  coords: [number, number][] | undefined,
+  max = 24,
+): [number, number][] | undefined {
+  if (!coords || coords.length <= max) return coords;
+  const step = Math.ceil(coords.length / max);
+  return coords.filter((_, i) => i % step === 0);
 }
 
 async function getHighlight(id: string): Promise<Highlight | null> {
@@ -227,7 +239,7 @@ export default async function HighlightPage({
       // 4.4k-trails-dataset. Start-nabijheid via de generated start_lon/start_lat.
       sb
         .from("trails")
-        .select("id,name,sport,stats,start_lon,start_lat")
+        .select("id,name,sport,stats,start_lon,start_lat,thumb_coords")
         .gte("start_lon", hl.lon - 0.25)
         .lte("start_lon", hl.lon + 0.25)
         .gte("start_lat", hl.lat - 0.25)
@@ -258,6 +270,7 @@ export default async function HighlightPage({
       sport: tr.sport,
       stats: tr.stats,
       distKm: minDistKmToRoute(hl.lon, hl.lat, tr),
+      coords: thinCoords(tr.geometry?.coordinates as [number, number][] | undefined),
     }))
     .filter((tr) => tr.distKm <= 30)
     .sort((a, b) => a.distKm - b.distKm)
@@ -273,6 +286,7 @@ export default async function HighlightPage({
     stats: { distanceM: number; ascendM: number };
     start_lon: number;
     start_lat: number;
+    thumb_coords: [number, number][] | null;
   };
   const nearTrails = (((trailsQ?.data as TrailLite[]) ?? [])
     .map((tr) => ({
@@ -281,6 +295,7 @@ export default async function HighlightPage({
       sport: tr.sport,
       stats: tr.stats,
       distKm: haversineKm(hl.lon, hl.lat, tr.start_lon, tr.start_lat),
+      coords: tr.thumb_coords ?? undefined,
     }))
     .filter((tr) => tr.distKm <= 20)
     .sort((a, b) => a.distKm - b.distKm)
@@ -517,17 +532,24 @@ export default async function HighlightPage({
                 <a
                   key={tr.id}
                   href={tr.href}
-                  className="rounded-xl border border-neutral-100 bg-white p-3 shadow-sm transition hover:shadow-md"
+                  className="flex items-center gap-3 rounded-xl border border-neutral-100 bg-white p-3 shadow-sm transition hover:shadow-md"
                 >
-                  <div className="font-medium text-neutral-900">
-                    <span className="mr-1 text-neutral-400">#{i + 1}</span>
-                    {tr.name}
-                  </div>
-                  <div className="mt-0.5 text-xs text-neutral-500">
-                    {(tr.stats.distanceM / 1000).toFixed(1)} km · ↗{" "}
-                    {tr.stats.ascendM} m ·{" "}
-                    <span className="capitalize">{ts(tr.sport as never)}</span> ·{" "}
-                    {Math.round(tr.distKm)} km {t("away")}
+                  {tr.coords && tr.coords.length > 1 && (
+                    <div className="h-12 w-16 shrink-0 overflow-hidden rounded-lg border border-neutral-100 bg-neutral-50/60 p-0.5">
+                      <MiniMap coords={tr.coords} className="h-full w-full" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <div className="truncate font-medium text-neutral-900">
+                      <span className="mr-1 text-neutral-400">#{i + 1}</span>
+                      {tr.name}
+                    </div>
+                    <div className="mt-0.5 text-xs text-neutral-500">
+                      {(tr.stats.distanceM / 1000).toFixed(1)} km · ↗{" "}
+                      {tr.stats.ascendM} m ·{" "}
+                      <span className="capitalize">{ts(tr.sport as never)}</span> ·{" "}
+                      {Math.round(tr.distKm)} km {t("away")}
+                    </div>
                   </div>
                 </a>
               ))}
