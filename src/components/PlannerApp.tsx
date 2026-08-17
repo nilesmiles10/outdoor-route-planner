@@ -2602,6 +2602,13 @@ export default function PlannerApp() {
                     {Math.round((buckets.unknown / totalSurface) * 100)}%
                   </span>
                 </div>
+                {/* Zelfde uitleg als op de detailpagina's: een groot grijs
+                    "onbekend"-aandeel is een OSM-taghiaat, geen padgebrek. */}
+                {buckets.unknown / totalSurface >= 0.25 && (
+                  <p className="mt-1 text-[10px] leading-snug text-neutral-400">
+                    {t("unknownNote")}
+                  </p>
+                )}
               </div>
             )}
 
