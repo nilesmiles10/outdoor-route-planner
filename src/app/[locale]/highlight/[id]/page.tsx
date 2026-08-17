@@ -170,7 +170,7 @@ export default async function HighlightPage({
   const tr = await getTranslations("regionPage");
 
   const sb = supabaseServer();
-  const [votesQ, tipsQ, photosQ, toursQ, nearbyQ, place, weather, regionQ] =
+  const [votesQ, tipsQ, photosQ, toursQ, nearbyQ, place, weather, regionQ, trailsQ] =
     await Promise.all([
       sb.from("highlight_votes").select("value,sport").eq("highlight_id", hl.id),
       sb
@@ -222,6 +222,17 @@ export default async function HighlightPage({
             .eq("category", hl.category)
             .gte("n", 8)
         : Promise.resolve({ data: [] as { country: string | null }[] }),
+      // Nabije officiële trails (start binnen een bbox rond dit punt) — vult de
+      // vaak lege "routes in de buurt" (community-tours zijn schaars, ~24) met de
+      // 4.4k-trails-dataset. Start-nabijheid via de generated start_lon/start_lat.
+      sb
+        .from("trails")
+        .select("id,name,sport,stats,start_lon,start_lat")
+        .gte("start_lon", hl.lon - 0.25)
+        .lte("start_lon", hl.lon + 0.25)
+        .gte("start_lat", hl.lat - 0.25)
+        .lte("start_lat", hl.lat + 0.25)
+        .limit(60),
     ]);
 
   const votes = (votesQ.data as Vote[]) ?? [];
@@ -251,6 +262,34 @@ export default async function HighlightPage({
     .filter((tr) => tr.distKm <= 30)
     .sort((a, b) => a.distKm - b.distKm)
     .slice(0, 5));
+
+  // Nabije officiële trails, aanvullend op de (schaarse) community-tours zodat
+  // "routes in de buurt" ook op de 500k highlight-pagina's echt vult. Start-
+  // nabijheid (start ≤20 km); samen met de tours gecapt op 6.
+  type TrailLite = {
+    id: string;
+    name: string;
+    sport: string;
+    stats: { distanceM: number; ascendM: number };
+    start_lon: number;
+    start_lat: number;
+  };
+  const nearTrails = (((trailsQ?.data as TrailLite[]) ?? [])
+    .map((tr) => ({
+      id: tr.id,
+      name: tr.name,
+      sport: tr.sport,
+      stats: tr.stats,
+      distKm: haversineKm(hl.lon, hl.lat, tr.start_lon, tr.start_lat),
+    }))
+    .filter((tr) => tr.distKm <= 20)
+    .sort((a, b) => a.distKm - b.distKm)
+    .slice(0, Math.max(0, 6 - nearTours.length)));
+
+  const nearRoutes = [
+    ...nearTours.map((tr) => ({ ...tr, href: `/${locale}/tour/${tr.id}` })),
+    ...nearTrails.map((tr) => ({ ...tr, href: `/${locale}/trail/${tr.id}` })),
+  ];
 
   const nearHighlights = (
     ((nearbyQ.data as (Highlight & { category: string })[]) ?? [])
@@ -470,14 +509,14 @@ export default async function HighlightPage({
           <h2 id="nearby" className="mt-8 text-lg font-semibold text-neutral-900">
             {t("nearbyRoutes")}
           </h2>
-          {nearTours.length === 0 ? (
+          {nearRoutes.length === 0 ? (
             <p className="mt-2 text-sm text-neutral-400">{t("noRoutes")}</p>
           ) : (
             <div className="mt-3 flex flex-col gap-2">
-              {nearTours.map((tr, i) => (
+              {nearRoutes.map((tr, i) => (
                 <a
                   key={tr.id}
-                  href={`/${locale}/tour/${tr.id}`}
+                  href={tr.href}
                   className="rounded-xl border border-neutral-100 bg-white p-3 shadow-sm transition hover:shadow-md"
                 >
                   <div className="font-medium text-neutral-900">
