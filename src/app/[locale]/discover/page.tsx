@@ -160,11 +160,21 @@ export default function DiscoverPage() {
       .order("featured_at", { ascending: false })
       .limit(10)
       .then(({ data }) => setFeatured((data as Row[]) ?? []));
-    sb.from("trails")
-      // geometry mee: de officiële-routes-kaartjes tonen nu een route-vorm-
-      // thumbnail (MiniMap), consistent met featured + de browse-grid. 10 trail-
-      // geometrieën ≈ 62 KB (gzip ~20 KB), verwaarloosbaar naast de grid.
-      .select("id,name,sport,region,stats,geometry")
+    // geometry mee: de officiële-routes-kaartjes tonen een route-vorm-thumbnail
+    // (MiniMap), consistent met featured + de browse-grid. 10 trail-geometrieën
+    // ≈ 62 KB (gzip ~20 KB), verwaarloosbaar naast de grid.
+    // NL-doelgroep: voor de nl-locale het sample op NL i.p.v. een willekeurige
+    // Europa-mix (consistent met de NL-default op /trails en de Benelux-bias op
+    // de regio-chips). name_sort-order (letters vóór cijfers) mijdt de OSM-
+    // nummerroutes. Andere locales houden de bestaande arbitraire sample.
+    (locale === "nl"
+      ? sb
+          .from("trails")
+          .select("id,name,sport,region,stats,geometry")
+          .eq("country", "NL")
+          .order("name_sort")
+      : sb.from("trails").select("id,name,sport,region,stats,geometry")
+    )
       .limit(10)
       .then(({ data }) => setTrails((data as typeof trails) ?? []));
     // Tellen over `highlights` zelf ging mis: .limit(2000) leverde door de
@@ -188,7 +198,7 @@ export default function DiscoverPage() {
         if (res.state === "granted") requestLocation();
       })
       .catch(() => {});
-  }, [sb, requestLocation]);
+  }, [sb, requestLocation, locale]);
 
   // Filters uit de URL herstellen (deelbaar/bladwijzerbaar, overleeft refresh
   // en deep-links van elders). Ná mount i.p.v. in de state-init: dan renderen
