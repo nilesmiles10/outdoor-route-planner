@@ -302,8 +302,16 @@ export default async function HighlightPage({
     .slice(0, Math.max(0, 6 - nearTours.length)));
 
   const nearRoutes = [
-    ...nearTours.map((tr) => ({ ...tr, href: `/${locale}/tour/${tr.id}` })),
-    ...nearTrails.map((tr) => ({ ...tr, href: `/${locale}/trail/${tr.id}` })),
+    ...nearTours.map((tr) => ({
+      ...tr,
+      href: `/${locale}/tour/${tr.id}`,
+      official: false,
+    })),
+    ...nearTrails.map((tr) => ({
+      ...tr,
+      href: `/${locale}/trail/${tr.id}`,
+      official: true,
+    })),
   ];
 
   const nearHighlights = (
@@ -542,6 +550,18 @@ export default async function HighlightPage({
                   <div className="min-w-0">
                     <div className="truncate font-medium text-neutral-900">
                       <span className="mr-1 text-neutral-400">#{i + 1}</span>
+                      {/* ✓ = officiële (OSM-bewegwijzerde) route, consistent met
+                          de tour-related-lijst en de "✓ Officiële routes"-sectie
+                          op /discover; onderscheidt ze van community-tours. */}
+                      {tr.official && (
+                        <span
+                          className="mr-1 text-xs font-bold text-emerald-600"
+                          title={t("officialRoute")}
+                          aria-label={t("officialRoute")}
+                        >
+                          ✓
+                        </span>
+                      )}
                       {tr.name}
                     </div>
                     <div className="mt-0.5 text-xs text-neutral-500">
