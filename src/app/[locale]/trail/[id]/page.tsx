@@ -106,20 +106,32 @@ async function getRelatedTrails(
   region: string,
   country: string | null,
   excludeId: string,
+  sport: string,
 ): Promise<RelatedTrail[]> {
-  const q =
+  // Zelfde-regio-fetch stond op order=name → élke trail in een regio toonde
+  // dezelfde 6 alfabetisch-eerste routes, sport-blind (een fietsroute in
+  // Noord-Holland kreeg 6 wandelroutes). Nu: gegarandeerde zelfde-sport-fetch
+  // eerst, any-sport als backfill zodat het (niet-kritische) blok nooit leger
+  // wordt dan voorheen. Zelfde patroon als de tour-pagina.
+  const base =
     `select=id,name,sport,is_gravel,stats,geometry&region=eq.${encodeURIComponent(region)}` +
     (country ? `&country=eq.${encodeURIComponent(country)}` : "") +
     `&id=neq.${excludeId}&order=name&limit=6`;
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/trails?${q}`,
-    {
-      headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! },
-      next: { revalidate: 86400, tags: ["trails"] },
-    },
-  );
-  if (!res.ok) return [];
-  return (await res.json()) as RelatedTrail[];
+  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/trails`;
+  const opts = {
+    headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! },
+    next: { revalidate: 86400, tags: ["trails"] },
+  };
+  const [sameRes, anyRes] = await Promise.all([
+    fetch(`${url}?${base}&sport=eq.${encodeURIComponent(sport)}`, opts),
+    fetch(`${url}?${base}`, opts),
+  ]);
+  const same = sameRes.ok ? ((await sameRes.json()) as RelatedTrail[]) : [];
+  const any = anyRes.ok ? ((await anyRes.json()) as RelatedTrail[]) : [];
+  // Zelfde-sport vooraan (dedup op id); any-sport vult aan tot 6.
+  const byId = new Map<string, RelatedTrail>();
+  for (const tr of [...same, ...any]) if (!byId.has(tr.id)) byId.set(tr.id, tr);
+  return Array.from(byId.values()).slice(0, 6);
 }
 
 export async function generateMetadata({
@@ -203,7 +215,7 @@ export default async function TrailPage({
   // Cross-navigatie: andere officiële routes in dezelfde regio.
   const tsport = await getTranslations("planner.sports");
   const relatedTrails = trail.region
-    ? await getRelatedTrails(trail.region, trail.country, trail.id)
+    ? await getRelatedTrails(trail.region, trail.country, trail.id, trail.sport)
     : [];
 
   // Hoogtepunten die de route passeert (al opgehaald voor de kaart-pins) ook als
