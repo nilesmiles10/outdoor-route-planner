@@ -39,11 +39,20 @@ export async function GET(req: NextRequest) {
         properties: Record<string, string>;
       }) => {
         const p = f.properties;
-        const label = [p.name, p.city && p.city !== p.name ? p.city : null, p.countrycode]
+        const name = p.name ?? p.street ?? p.city ?? p.countrycode ?? "";
+        // Context-only label (stad indien anders dan de naam + landcode). De
+        // naam NIET meenemen: beide UI's (SearchField + AppHeader) tonen de
+        // naam al vet als titel met dit label als subtitel eronder, dus met
+        // p.name erin las het als "Amsterdam · Amsterdam, NL" — naam dubbel.
+        const label = [
+          p.street && p.street !== name ? p.street : null,
+          p.city && p.city !== name ? p.city : null,
+          p.countrycode,
+        ]
           .filter(Boolean)
           .join(", ");
         return {
-          name: p.name ?? p.street ?? label,
+          name,
           label,
           type: p.osm_value ?? "place",
           lon: f.geometry.coordinates[0],
