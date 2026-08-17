@@ -97,10 +97,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.8,
       });
     }
-    // Per-highlight URL's staan in /highlights-sitemap/sitemap/<n>.xml —
-    // met tienduizenden highlights × 2 locales past dat niet in één
-    // sitemap (Google's limiet is 50.000 URL's). De region×category-
-    // combo's hierboven blijven hier: dat zijn er weinig.
+    // Highlight-pagina's zitten bewust NIET in de sitemap: ze zijn (blanket)
+    // noindex zolang het gros dun is — zie robots.index=false in
+    // highlight/[id]/page.tsx en de robots.ts-comment. Een sitemap met
+    // noindex-URL's is een tegenstrijdig signaal. (Er is dus géén
+    // /highlights-sitemap/ — die verwijzing was verouderd.) De region×
+    // category-combo's hierboven blijven hier: dat zijn er weinig.
     for (const c of collections.data ?? []) {
       // Lege collecties (0 zichtbare routes) zijn noindex → overslaan, anders
       // adverteert de sitemap een noindex-pagina (tegenstrijdig signaal).
