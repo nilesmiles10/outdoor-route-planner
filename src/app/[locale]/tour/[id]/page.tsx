@@ -219,17 +219,16 @@ export default async function TourPage({
   if (relatedTours.length) {
     const { data: geos } = await sb
       .from("tours")
-      .select("id,geometry")
+      .select("id,thumb_coords")
       .in(
         "id",
         relatedTours.map((tr) => tr.id),
       );
     for (const g of (geos as {
       id: string;
-      geometry: GeoJSON.LineString | null;
+      thumb_coords: [number, number][] | null;
     }[]) ?? []) {
-      const c = g.geometry?.coordinates as [number, number][] | undefined;
-      if (c) relatedGeo.set(g.id, c);
+      if (g.thumb_coords) relatedGeo.set(g.id, g.thumb_coords);
     }
   }
 

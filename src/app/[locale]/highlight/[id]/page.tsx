@@ -52,7 +52,7 @@ type TourLite = {
   sport: string;
   stats: { distanceM: number; timeS: number; ascendM: number };
   waypoints: { lon: number; lat: number }[];
-  geometry: GeoJSON.LineString | null;
+  thumb_coords: [number, number][] | null;
 };
 
 // Kortste afstand (km) van een punt tot de route-geometrie, i.p.v. alleen tot
@@ -63,7 +63,7 @@ type TourLite = {
 // (≤~400 punten) houdt lange routes goedkoop; valt terug op het startpunt als
 // er geen geometrie is.
 function minDistKmToRoute(lon: number, lat: number, tr: TourLite): number {
-  const coords = tr.geometry?.coordinates;
+  const coords = tr.thumb_coords;
   if (coords && coords.length) {
     const step = Math.max(1, Math.floor(coords.length / 400));
     let best = Infinity;
@@ -88,17 +88,6 @@ function haversineKm(aLon: number, aLat: number, bLon: number, bLat: number) {
       Math.cos((bLat * Math.PI) / 180) *
       Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
-}
-
-// Downsample een route-lijn tot ~max punten voor een lichte MiniMap-thumbnail
-// (i.p.v. de volledige geometry naar de client te dragen — ≤6 kaarten × 24 pt).
-function thinCoords(
-  coords: [number, number][] | undefined,
-  max = 24,
-): [number, number][] | undefined {
-  if (!coords || coords.length <= max) return coords;
-  const step = Math.ceil(coords.length / max);
-  return coords.filter((_, i) => i % step === 0);
 }
 
 async function getHighlight(id: string): Promise<Highlight | null> {
@@ -204,7 +193,7 @@ export default async function HighlightPage({
         .limit(9),
       sb
         .from("tours")
-        .select("id,name,sport,stats,waypoints,geometry")
+        .select("id,name,sport,stats,waypoints,thumb_coords")
         .eq("visibility", "public")
         .eq("kind", "planned")
         .limit(100),
@@ -273,7 +262,7 @@ export default async function HighlightPage({
       sport: tr.sport,
       stats: tr.stats,
       distKm: minDistKmToRoute(hl.lon, hl.lat, tr),
-      coords: thinCoords(tr.geometry?.coordinates as [number, number][] | undefined),
+      coords: tr.thumb_coords ?? undefined,
     }))
     .filter((tr) => tr.distKm <= 30)
     .sort((a, b) => a.distKm - b.distKm)
