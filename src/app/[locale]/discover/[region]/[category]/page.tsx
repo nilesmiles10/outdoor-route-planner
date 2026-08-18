@@ -176,6 +176,20 @@ export default async function RegionCategoryPage({
     trailsInRegion(resolved.country, resolved.region),
   ]);
 
+  // Zelfde-naam-POI's (bv. 4× "Alpenzeiger" in Aargau, elk een aparte OSM-node)
+  // een volgnummer geven: OSM levert voor deze punten geen plaats of omschrijving
+  // om ze te onderscheiden, dus zonder nummer oogt de lijst als een dubbele-
+  // rendering-bug. Alleen nummeren wanneer een naam >1× in de lijst voorkomt.
+  const nameTotals = new Map<string, number>();
+  for (const h of items) nameTotals.set(h.name, (nameTotals.get(h.name) ?? 0) + 1);
+  const nameSeen = new Map<string, number>();
+  const numberedItems = items.map((h) => {
+    if ((nameTotals.get(h.name) ?? 1) <= 1) return { h, label: h.name };
+    const k = (nameSeen.get(h.name) ?? 0) + 1;
+    nameSeen.set(h.name, k);
+    return { h, label: `${h.name} (${k})` };
+  });
+
   return (
     <main className="mx-auto min-h-dvh max-w-3xl px-4 pb-16 pt-16">
       <script
@@ -239,14 +253,14 @@ export default async function RegionCategoryPage({
       </p>
 
       <ul className="mt-6 grid gap-2 sm:grid-cols-2">
-        {items.map((h) => (
+        {numberedItems.map(({ h, label }) => (
           <li key={h.id}>
             <a
               href={`/${locale}/highlight/${h.id}`}
               className="block rounded-xl border border-neutral-100 bg-white p-3 shadow-sm transition hover:shadow-md"
             >
               <div className="truncate font-medium text-neutral-900">
-                {CATEGORY_EMOJI[h.category]} {h.name}
+                {CATEGORY_EMOJI[h.category]} {label}
               </div>
               {h.description && (
                 <div className="mt-0.5 truncate text-xs text-neutral-500">
