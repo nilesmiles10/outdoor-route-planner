@@ -16,8 +16,9 @@ type Row = {
   sport: string;
   stats: { distanceM: number; ascendM: number; timeS: number };
   waypoints: { lon: number; lat: number }[];
-  // Route-vorm-thumbnail (Komoot-stijl): geometry-coords voor de MiniMap.
-  geometry: { coordinates: [number, number][] } | null;
+  // Route-vorm-thumbnail (Komoot-stijl): downsampled coords voor de MiniMap
+  // (thumb_coords, ~24 pt) i.p.v. de volle geometry — scheelt payload op /discover.
+  thumb_coords: [number, number][] | null;
 };
 
 const SPORTS = ["all", "hike", "run", "touring", "gravel", "mtb", "road", "ebike"];
@@ -64,10 +65,10 @@ function haversineKm(a: [number, number], b: [number, number]) {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
-// Rondje = start ≈ eind (< 100 m). Uit de geometry (al opgehaald voor de
-// thumbnails), zelfde regel als de loop-badge op de detailpagina.
-function isLoopRoute(geometry: { coordinates: [number, number][] } | null) {
-  const c = geometry?.coordinates;
+// Rondje = start ≈ eind (< 100 m). Uit de thumb_coords (al opgehaald voor de
+// thumbnails; downsample_line behoudt begin- en eindpunt), zelfde regel als de
+// loop-badge op de detailpagina.
+function isLoopRoute(c: [number, number][] | null) {
   return !!c && c.length >= 2 && haversineKm(c[0], c[c.length - 1]) < 0.1;
 }
 
@@ -115,7 +116,7 @@ export default function DiscoverPage() {
       sport: string;
       region: string | null;
       stats: { distanceM: number; ascendM: number; timeS: number };
-      geometry: { coordinates: [number, number][] } | null;
+      thumb_coords: [number, number][] | null;
     }[]
   >([]);
   const [sport, setSport] = useState("all");
@@ -162,7 +163,7 @@ export default function DiscoverPage() {
 
   useEffect(() => {
     sb.from("tours")
-      .select("id,name,sport,stats,waypoints,geometry")
+      .select("id,name,sport,stats,waypoints,thumb_coords")
       .eq("visibility", "public")
       .eq("kind", "planned")
       // Nieuwste eerst: zonder expliciete order gaf `.limit(100)` een willekeurige
@@ -178,7 +179,7 @@ export default function DiscoverPage() {
       });
     // Fase C admin-curatie: uitgelichte routes bovenaan als aparte rail.
     sb.from("tours")
-      .select("id,name,sport,stats,waypoints,geometry")
+      .select("id,name,sport,stats,waypoints,thumb_coords")
       .eq("visibility", "public")
       .not("featured_at", "is", null)
       .order("featured_at", { ascending: false })
@@ -211,7 +212,7 @@ export default function DiscoverPage() {
         if (!ids.length) return setTrails([]);
         const { data } = await sb
           .from("trails")
-          .select("id,name,sport,region,stats,geometry")
+          .select("id,name,sport,region,stats,thumb_coords")
           .in("id", ids);
         // .in() geeft db-volgorde terug → herstel de diverse round-robin-volgorde.
         const pos = new Map(ids.map((id, i) => [id, i] as const));
@@ -224,7 +225,7 @@ export default function DiscoverPage() {
     } else {
       sb
         .from("trails")
-        .select("id,name,sport,region,stats,geometry")
+        .select("id,name,sport,region,stats,thumb_coords")
         .limit(10)
         .then(({ data }) => setTrails((data as typeof trails) ?? []));
     }
@@ -309,7 +310,7 @@ export default function DiscoverPage() {
         diff === "all" ||
         difficulty(r.sport, r.stats.distanceM, r.stats.ascendM) === diff,
     )
-    .filter((r) => !loopOnly || isLoopRoute(r.geometry))
+    .filter((r) => !loopOnly || isLoopRoute(r.thumb_coords))
     .map((r) => ({
       ...r,
       distKm: pos && r.waypoints[0] ? haversineKm(pos, [r.waypoints[0].lon, r.waypoints[0].lat]) : null,
@@ -379,7 +380,7 @@ export default function DiscoverPage() {
                 className="w-56 shrink-0 overflow-hidden rounded-xl border border-amber-200 bg-amber-50/50 hover:border-amber-300"
               >
                 <div className="flex h-20 items-center justify-center border-b border-amber-100 bg-white/60 p-2">
-                  <MiniMap coords={r.geometry?.coordinates} className="h-full w-full" />
+                  <MiniMap coords={r.thumb_coords ?? undefined} className="h-full w-full" />
                 </div>
                 <div className="px-4 py-3">
                   <div className="truncate text-sm font-medium text-neutral-900">{r.name}</div>
@@ -412,7 +413,7 @@ export default function DiscoverPage() {
                 className="w-56 shrink-0 overflow-hidden rounded-xl border border-emerald-200 bg-emerald-50/50 hover:border-emerald-300"
               >
                 <div className="flex h-20 items-center justify-center border-b border-emerald-100 bg-white/60 p-2">
-                  <MiniMap coords={r.geometry?.coordinates} className="h-full w-full" />
+                  <MiniMap coords={r.thumb_coords ?? undefined} className="h-full w-full" />
                 </div>
                 <div className="px-4 py-3">
                   <div className="truncate text-sm font-medium text-neutral-900">{r.name}</div>
@@ -604,7 +605,7 @@ export default function DiscoverPage() {
             {/* Route-vorm-thumbnail: scan de lijst op vorm/rondje zoals bij
                 Komoot i.p.v. alleen tekst. Lichte SVG-polyline, geen kaart. */}
             <div className="flex h-24 items-center justify-center border-b border-neutral-100 bg-neutral-50 p-2">
-              <MiniMap coords={r.geometry?.coordinates} className="h-full w-full" />
+              <MiniMap coords={r.thumb_coords ?? undefined} className="h-full w-full" />
             </div>
             <div className="p-4">
             <div className="flex items-start justify-between gap-2">
