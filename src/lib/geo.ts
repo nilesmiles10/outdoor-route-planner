@@ -39,6 +39,17 @@ export function isSport(v: string): v is Sport {
   return v in SPORT_PROFILES;
 }
 
+// Sport-families voor relevantie-ranking van gerelateerde routes. Een racefietser
+// vindt een gravel-/mtb-/toerroute in de buurt interessanter dan een wandelroute,
+// ook al ligt die iets verder — en andersom voor een wandelaar. Voet = hike/run,
+// fiets = de rest (touring/gravel/mtb/road/ebike). Gebruikt door de "Ook
+// interessant"-sorts op de tour-/trail-pagina's: exact sport eerst, dan zelfde
+// familie, dan pas de andere familie (elk daarbinnen op afstand).
+const FOOT_SPORTS = new Set<string>(["hike", "run"]);
+export function sportFamily(sport: string): "foot" | "bike" {
+  return FOOT_SPORTS.has(sport) ? "foot" : "bike";
+}
+
 // OSM surface tag → bucket for the breakdown bars (GEN-106).
 const PAVED = new Set([
   "asphalt",

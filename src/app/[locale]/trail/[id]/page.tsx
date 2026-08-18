@@ -7,6 +7,7 @@ import { buildAutoDesc } from "@/lib/autoDesc";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 import { SITE_URL } from "@/app/sitemap";
 import { passedHighlightPins } from "@/lib/passedHighlights";
+import { sportFamily } from "@/lib/geo";
 
 // GEN-145 — detailpagina voor officiële routes (OSM-import). Hergebruikt
 // TourView; auteursblok vervangen door bron-attributie (ODbL).
@@ -128,10 +129,18 @@ async function getRelatedTrails(
   ]);
   const same = sameRes.ok ? ((await sameRes.json()) as RelatedTrail[]) : [];
   const any = anyRes.ok ? ((await anyRes.json()) as RelatedTrail[]) : [];
-  // Zelfde-sport vooraan (dedup op id); any-sport vult aan tot 6.
+  // Zelfde-sport vooraan (dedup op id); any-sport vult aan tot 6. De backfill
+  // krijgt een familie-tier zodat een mtb-trail eerder een toerroute (fiets-
+  // familie) toont dan een wandelroute. Stabiele sort → binnen een tier blijft
+  // de zelfde-sport-eerst-/alfabetische volgorde behouden.
   const byId = new Map<string, RelatedTrail>();
   for (const tr of [...same, ...any]) if (!byId.has(tr.id)) byId.set(tr.id, tr);
-  return Array.from(byId.values()).slice(0, 6);
+  const family = sportFamily(sport);
+  const tier = (s: string) =>
+    s === sport ? 0 : sportFamily(s) === family ? 1 : 2;
+  return Array.from(byId.values())
+    .sort((a, b) => tier(a.sport) - tier(b.sport))
+    .slice(0, 6);
 }
 
 export async function generateMetadata({

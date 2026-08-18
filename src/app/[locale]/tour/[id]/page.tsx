@@ -5,6 +5,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { getWeather } from "@/lib/weather";
 import { buildAutoDesc } from "@/lib/autoDesc";
 import { CATEGORY_EMOJI } from "@/lib/highlights";
+import { sportFamily } from "@/lib/geo";
 import TourView from "@/components/TourView";
 import { SITE_URL } from "@/app/sitemap";
 import { getTour } from "./data";
@@ -150,6 +151,12 @@ export default async function TourPage({
     stats: { distanceM: number; ascendM: number };
     waypoints: { lon: number; lat: number }[];
   };
+  // Relevantie-tier voor gerelateerde routes: 0 = exact zelfde sport,
+  // 1 = zelfde familie (fiets/voet), 2 = andere familie. Zie sportFamily.
+  const tourFamily = sportFamily(tour.sport);
+  const sportTier = (s: string) =>
+    s === tour.sport ? 0 : sportFamily(s) === tourFamily ? 1 : 2;
+
   const relatedTours = start
     ? (((toursQ.data as TourLite[]) ?? [])
         .map((tr) => ({
@@ -159,13 +166,13 @@ export default async function TourPage({
             : Infinity,
         }))
         .filter((tr) => tr.distKm <= 40)
-        // Zelfde sport eerst, dan op afstand: een fietser die naar een fiets-
-        // route kijkt heeft meer aan nabije fietsroutes dan aan de dichtstbij-
-        // zijnde wandelroute. Reordert alleen (geen filter) → sectie blijft vol.
+        // Exact sport eerst, dan zelfde familie (fiets↔fiets / voet↔voet), dan
+        // pas de andere familie — elk daarbinnen op afstand. Een racefietser
+        // heeft meer aan een nabije gravel-/mtb-route dan aan de dichtstbijzijnde
+        // wandelroute. Reordert alleen (geen filter) → sectie blijft vol.
         .sort(
           (a, b) =>
-            (a.sport === tour.sport ? 0 : 1) - (b.sport === tour.sport ? 0 : 1) ||
-            a.distKm - b.distKm,
+            sportTier(a.sport) - sportTier(b.sport) || a.distKm - b.distKm,
         )
         .slice(0, 4))
     : [];
@@ -202,13 +209,11 @@ export default async function TourPage({
           distKm: haversineKm(start.lon, start.lat, tr.start_lon, tr.start_lat),
         }))
         .filter((tr) => tr.distKm <= 40)
-        // Zelfde sport eerst, dan op afstand: een fietser die naar een fiets-
-        // route kijkt heeft meer aan nabije fietsroutes dan aan de dichtstbij-
-        // zijnde wandelroute. Reordert alleen (geen filter) → sectie blijft vol.
+        // Zelfde tier-logica als relatedTours: exact sport → zelfde familie →
+        // andere familie, daarbinnen op afstand.
         .sort(
           (a, b) =>
-            (a.sport === tour.sport ? 0 : 1) - (b.sport === tour.sport ? 0 : 1) ||
-            a.distKm - b.distKm,
+            sportTier(a.sport) - sportTier(b.sport) || a.distKm - b.distKm,
         )
         .slice(0, Math.max(0, 6 - relatedTours.length)))
     : [];
