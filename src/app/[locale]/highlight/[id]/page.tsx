@@ -319,6 +319,14 @@ export default async function HighlightPage({
       .filter((h) => h.id !== hl.id)
       .map((h) => ({ ...h, distKm: haversineKm(hl.lon, hl.lat, h.lon, h.lat) }))
       .sort((a, b) => a.distKm - b.distKm)
+      // Dedup op naam: OSM tagt één gebied vaak met meerdere nodes van dezelfde
+      // naam (bv. "Gelderse Poort" op 1.4 én 2.6 km) → dat oogt als een dubbele
+      // in "Ook in de buurt". Al op afstand gesorteerd, dus de eerste gelijk-
+      // namige is de dichtstbijzijnde; latere vallen weg. Naamloze punten
+      // blijven los (anders zou één null-naam de rest wegdrukken).
+      .filter(
+        (h, i, arr) => !h.name || arr.findIndex((o) => o.name === h.name) === i,
+      )
       .slice(0, 8)
   );
 
