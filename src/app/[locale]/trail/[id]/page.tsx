@@ -4,7 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getWeather } from "@/lib/weather";
 import TourView from "@/components/TourView";
 import { buildAutoDesc } from "@/lib/autoDesc";
-import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
+import { entityMetadata } from "@/lib/seo/entityMetadata";
 import { SITE_URL } from "@/app/sitemap";
 import { trailRegionSlug } from "@/lib/seo/trailRegions";
 import { passedHighlightPins } from "@/lib/passedHighlights";
@@ -167,22 +167,18 @@ export async function generateMetadata({
   });
   // Entity-specifieke OG i.p.v. de generieke layout-OG bij gedeelde links.
   const ogTitle = `${trail.name} · ${km} km ${sportNoun}`;
-  return {
-    title: pageTitle(
-      await getSiteSettings(),
-      // Gravel is de term waar mensen op zoeken; voor die routes wint hij van
-      // het generieke "fietsroute" in de <title>.
-      `${trail.name} | ${km} km ${sportNoun}`,
-    ),
+  // Gravel is de term waar mensen op zoeken; voor die routes wint hij van het
+  // generieke "fietsroute" in de <title>. summary_large_image omdat de trail een
+  // route-vorm-OG-afbeelding heeft (consistent met tours). hreflang blijft via
+  // next-intl's Link-header lopen.
+  return entityMetadata({
+    locale: params.locale,
+    path: `trail/${params.id}`,
+    title: `${trail.name} | ${km} km ${sportNoun}`,
     description: metaDesc,
-    // Self-canonical: consolideer eventuele tracking-param-varianten (?fbclid,
-    // ?utm) naar de schone route-URL. hreflang blijft via next-intl's Link-header.
-    alternates: { canonical: `/${params.locale}/trail/${params.id}` },
-    openGraph: { title: ogTitle, description: metaDesc },
-    // summary_large_image: de trail heeft een route-vorm-OG-afbeelding, dus een
-    // grote preview i.p.v. een kleine thumbnail (consistent met tours).
-    twitter: { card: "summary_large_image", title: ogTitle, description: metaDesc },
-  };
+    socialTitle: ogTitle,
+    largeImage: true,
+  });
 }
 
 export default async function TrailPage({

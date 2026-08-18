@@ -45,7 +45,12 @@ function metadataRoutes(): { rel: string; src: string }[] {
     .sort((a, b) => a.rel.localeCompare(b.rel));
 }
 
-const hasCanonical = (src: string) => /alternates:\s*\{[^}]*canonical/.test(src);
+// Twee manieren om aan de invariant te voldoen: de canonical zelf zetten, of
+// 'm door de gedeelde entityMetadata()-helper laten zetten (die doet het altijd).
+// Zonder die tweede vorm zou deze guard elke migratie naar de gedeelde laag
+// als regressie melden, terwijl dat juist de gewenste richting is.
+const hasCanonical = (src: string) =>
+  /alternates:\s*\{[^}]*canonical/.test(src) || /entityMetadata\(/.test(src);
 const selfNoindex = (src: string) => /robots:\s*(\{[^}]*index:\s*false|page\.noindex)/.test(src);
 
 describe("canonical-invariant op indexeerbare routes", () => {

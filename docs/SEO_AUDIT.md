@@ -111,6 +111,55 @@ count into this table.
   needs a decision: real-user monitoring means an analytics dependency and a
   privacy/consent question. Lab numbers were taken instead (see Done).
 
+**P1-1b · Migrate the remaining routes onto `entityMetadata()`**
+- *What*: `trail/[id]` and `trails/[region]` now build metadata through the
+  shared helper. Still hand-rolled: `tour/[id]`, `collection/[id]`,
+  `highlight/[id]`, `discover/[region]/[category]`, `user/[id]`, `[slug]`,
+  and the hub layouts.
+- *Why the rest is a separate slice*: each has its own quirks (the collection
+  page varies its title by tour count, the highlight page's `robots` depends on
+  a content-richness lookup), so they need migrating one at a time with the same
+  before/after HTML diff — not a bulk sweep.
+- *Acceptance test*: per migrated route, the delivered `<title>`, canonical, OG
+  and Twitter tags are byte-identical to before.
+
+### P2 — meaningful improvements
+
+**P2-2 · Activity-first URL architecture not implemented**
+- *What*: the brief proposes `/hiking/{country}/{region}/{city}`. Today the
+  geographic surface is `/discover/{region}/{category}`.
+- *Why*: potentially large win, but it is a URL-architecture migration with
+  redirect obligations. Needs design in `SEO_PAGE_ARCHITECTURE.md` and a
+  measured count per proposed page type before any build.
+
+**P1-4 · ~~Concurrent agent commits with `git add -A`~~ — CLOSED 2026-08-18: the UX agent has stopped, so the hazard no longer applies. Kept below for the record.**
+- *What*: the UX agent stages the whole worktree. Observed **twice** on
+  2026-08-18: commit `55af66a` swept the private-profile fix, commit `4dd876c`
+  swept the vitest scaffold and privacy test.
+- *Why this is now P1 and not a tidiness issue*: verification techniques
+  require deliberately breaking code for a few seconds — the mutation check
+  for P0-2 ran with `.eq("visibility","public")` **removed** from
+  `src/app/sitemap.ts`. A repo-wide `git add -A` landing in that window would
+  have committed a live privacy regression (every private, followers-only and
+  close-friends route into the public sitemap) under a planner commit message,
+  with a green-looking history. This time HEAD was verified intact:
+  `git show HEAD:src/app/sitemap.ts` still contains both `visibility` filters
+  and the suite passes 9/9 against committed code.
+- *Mitigations on this side (in force from now on)*: run mutation checks on a
+  scratch copy rather than the tracked file wherever possible, and never leave
+  a deliberately-broken tracked file on disk across an await.
+- *Needs Niels*: tell the UX agent to stage explicit paths. This cannot be
+  fixed from inside this loop.
+- *Acceptance test*: n/a — coordination item.
+
+### P3 — optimizations
+
+- **P3-1** `sitemap.ts` `changeFrequency`/`priority` are hand-set constants;
+  Google ignores both. Harmless, low value to remove.
+- **P3-3** LCP/CLS/INP **field** measurement — still no data, and collecting it
+  needs a decision: real-user monitoring means an analytics dependency and a
+  privacy/consent question. Lab numbers were taken instead (see Done).
+
 **P1-1 · SEO logic is scattered across page components** — *invariant done,
 refactor deferred*
 - *What remains*: canonical, title, OG and JSON-LD construction is still
@@ -188,13 +237,43 @@ refactor deferred*
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: P1-1's refactor half (shared SEO layer) is the last structural
-item. Then P2-5 (i18n payload). P3-3 is parked until traffic justifies it.
-A deploy is still needed to confirm P2-4's cache actually HITs.
+**Next up**: P1-1b (migrate the remaining routes onto the helper, one at a time
+with the same diff evidence), then P2-5 (i18n payload). P3-3 is parked until
+traffic justifies it. A deploy is still needed to confirm P2-4's cache HITs.
 
 ---
 
 ## Done
+
+### 2026-08-18 — P1-1 refactor half started: shared `entityMetadata()`
+
+*Change*: new `src/lib/seo/entityMetadata.ts` builds title, description,
+canonical, OpenGraph and Twitter from one place; `trail/[id]` and
+`trails/[region]` migrated onto it. The helper always sets a canonical, so the
+class of bug that produced P1-1 cannot recur in a route that uses it.
+
+*Evidence — byte-identical output, which is the whole point of a refactor*.
+Captured `<title>`, `<link rel=canonical>`, all `og:*`, all `twitter:*` and
+`meta description` from the delivered HTML before and after, then diffed:
+
+| Route | Result |
+|---|---|
+| `/nl/trail/00015b65-…` (16 meta lines) | **IDENTICAL** |
+| `/nl/trails/aargau` (10 meta lines) | **IDENTICAL** |
+| `/en/trails/aargau` (10 meta lines) | **IDENTICAL** |
+| `/nl/collection/c068af01-…` (16 meta lines, not migrated — control) | **IDENTICAL** |
+
+*The canonical guard caught the migration*, correctly: the migrated routes no
+longer contain a literal `alternates: { canonical`, so the invariant failed. It
+now also accepts `entityMetadata(` — otherwise it would flag every migration to
+the shared layer as a regression, which is the opposite of the intent.
+Re-verified it can still fail: a new route using neither form turns it red
+(`zzzcheck/page.tsx`).
+
+*Gates*: `npm test` 37/37 · `next lint` clean · `tsc --noEmit` exit 0 ·
+`npm run build` exit 0 · regression: `/nl`, `/nl/trails`, `/nl/discover`,
+`/nl/collections`, `/nl/trails/aargau`, `/nl/trail/00015b65-…`, `/sitemap.xml`
+all 200, and `/nl/trails/essex` (below the n≥8 threshold) still 404.
 
 ### 2026-08-18 — P1-10 partial: `/discover` payload trimmed 17%
 

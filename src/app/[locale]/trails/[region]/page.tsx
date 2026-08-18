@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import SiteFooter from "@/components/SiteFooter";
-import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
+import { entityMetadata } from "@/lib/seo/entityMetadata";
 import { difficulty } from "@/lib/difficulty";
 import { fmtDuration } from "@/lib/activity";
 import { SITE_URL } from "@/app/sitemap";
@@ -43,18 +43,14 @@ export async function generateMetadata({
   // gecapte lijst — anders claimt elke grote regio het cap-getal.
   const title = t("title", { count: r.n, region: r.label });
   const desc = t("metaDescription", { count: r.n, region: r.label });
-  return {
-    title: pageTitle(await getSiteSettings(), title),
+  // Canonical staat op de resolved slug (die kan een land-suffix dragen).
+  return entityMetadata({
+    locale: params.locale,
+    path: `trails/${params.region}`,
+    title,
     description: desc,
-    // Self-canonical op de resolved slug (die kan een land-suffix dragen).
-    alternates: { canonical: `/${params.locale}/trails/${params.region}` },
-    openGraph: {
-      title,
-      description: desc,
-      images: [`/${params.locale}/opengraph-image`],
-    },
-    twitter: { title, description: desc },
-  };
+    ogImage: `/${params.locale}/opengraph-image`,
+  });
 }
 
 export default async function TrailRegionPage({
