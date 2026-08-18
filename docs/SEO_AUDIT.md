@@ -57,15 +57,20 @@ count into this table.
 
 ### P1 — SEO architecture
 
-**P1-9 · SSR payload on `/discover` carries full geometry**
-- *What*: `/nl/discover` grew 42,341 → 91,151 → **134,161** bytes. Two causes:
-  `waypoints`/`thumb_coords` for 21 tours ride along in the RSC payload, and
-  all 230 combos are serialised although only 60 chips render. The client still
-  refetches both sets afterwards, so it is paid twice.
-- *Why*: fine at today's volumes, but the tour part scales linearly with public
-  route count.
-- *Acceptance test*: the SSR list uses a lighter `select`, or the client skips
-  its initial refetch when server data is present.
+**P1-10 · `/discover` HTML is 134 kB — only reducible by trimming what the UI needs**
+- *What*: the RSC payload carries `waypoints` + `thumb_coords` for 21 tours and
+  all 230 combos (60 chips render). Measured, not guessed: the client genuinely
+  uses `thumb_coords` for the MiniMap thumbnails *and* for `isLoopRoute()`, and
+  `waypoints` for distance sorting — so none of it can simply be dropped without
+  breaking the hub.
+- *Options, none free*: server-side merge the combos down to the rendered 60
+  (needs the locale-aware Benelux merge moved into the shared module), or split
+  the SSR list into a light crawlable list plus a lazily-hydrated interactive
+  one (bigger change, touches UX-owned rendering).
+- *Priority*: P3-ish in effect — it is a payload optimisation on one route, and
+  the double-fetch (the part that was pure waste) is already gone.
+- *Acceptance test*: `/nl/discover` HTML under ~90 kB with 21 tour links and 60
+  region links still present.
 
 **P1-1 · SEO logic is scattered across page components**
 - *What*: canonical, title, OG, JSON-LD and breadcrumb construction are
@@ -205,12 +210,39 @@ count into this table.
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: P1-9 (trim the `/discover` SSR payload — now 134 kB and paid
-twice). Then P1-1 (shared SEO layer) and the P3 list. P1-4 still needs Niels.
+**Next up**: P1-1 (shared SEO layer) is the last structural item; P1-10 is a
+payload optimisation and P1-4 needs Niels. Otherwise only the P3 list remains.
 
 ---
 
 ## Done
+
+### 2026-08-18 — P1-9 the double fetch on `/discover` is gone
+
+After server-rendering the hub, the client still refetched the same tours and
+the same combos immediately after hydration — the data was paid for twice on
+every visit.
+
+*Change*: `DiscoverClient` now skips its initial tours fetch when `initialRows`
+is non-empty, and its `/api/discover/combos` fetch when `initialCombos` is
+non-empty. Both guards fall back to the old behaviour when server data is
+missing (a failed server fetch returns `[]`), so a Supabase blip degrades to
+the previous client-side path rather than an empty page. The server wrapper
+revalidates hourly, so what a visitor sees is exactly as fresh as before.
+
+*Evidence — browser network log, not source reasoning*: loading
+`http://localhost:3231/nl/discover` records only the document and 13 JS/CSS
+chunks. **No `rest/v1/tours` request and no `/api/discover/combos` request.**
+Page text confirms the hub still renders in full — featured rail, sport and
+distance filters, sort control and the route list.
+
+*Honest limit*: this removes the redundant requests, not the payload. HTML is
+unchanged at 134,161 bytes with 21 tour links and 60 region links. Reducing
+that further means trimming data the UI actually uses — filed as P1-10.
+
+*Gates*: `npm test` 33/33 · `next lint` clean (dependency array corrected
+rather than suppressed) · `tsc --noEmit` exit 0 · `npm run build` exit 0 ·
+`/nl/collections` still 200.
 
 ### 2026-08-18 — P1-8 region×category chips are now in the delivered HTML
 

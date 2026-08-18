@@ -182,6 +182,11 @@ export default function DiscoverClient({
   }, []);
 
   useEffect(() => {
+    // Staat de lijst al in de server-HTML, dan is deze fetch pure dubbelop:
+    // dezelfde rijen, direct na hydratie, over dezelfde uur-verse data. De
+    // server-wrapper revalideert elk uur; wat de bezoeker ziet is dus even
+    // vers als voorheen. Zonder server-data (fetch-fout) draait hij gewoon.
+    if (initialRows.length > 0) return;
     sb.from("tours")
       .select("id,name,sport,stats,waypoints,thumb_coords")
       .eq("visibility", "public")
@@ -254,10 +259,13 @@ export default function DiscoverClient({
     // klopten niet én het gros van Europa ontbrak (14 regio's van 1.150).
     // De aggregatie zit nu achter een uur-gecachete route — zie de comment
     // daar voor waarom dit niet rechtstreeks vanuit de browser kan.
-    fetch("/api/discover/combos")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((c: Combo[]) => setCombos(c))
-      .catch(() => {});
+    // Idem: de chips komen al uit de server-render mee.
+    if (initialCombos.length === 0) {
+      fetch("/api/discover/combos")
+        .then((r) => (r.ok ? r.json() : []))
+        .then((c: Combo[]) => setCombos(c))
+        .catch(() => {});
+    }
     // Bij mount NIET ongevraagd een geolocatie-permissie-popup tonen — dat is
     // intrusief bij page-load (voor de gebruiker iets doet) en kost grants.
     // Alleen automatisch de positie ophalen als 'ie al eerder is toegestaan
@@ -270,7 +278,7 @@ export default function DiscoverClient({
         if (res.state === "granted") requestLocation();
       })
       .catch(() => {});
-  }, [sb, requestLocation, locale]);
+  }, [sb, requestLocation, locale, initialRows.length, initialCombos.length]);
 
   // Filters uit de URL herstellen (deelbaar/bladwijzerbaar, overleeft refresh
   // en deep-links van elders). Ná mount i.p.v. in de state-init: dan renderen
