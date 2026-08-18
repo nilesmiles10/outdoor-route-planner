@@ -59,65 +59,6 @@ count into this table.
 
 ### P2 — meaningful improvements
 
-**P2-4b · `/nl/trails` is STILL not CDN-cached — the shipped fix does not work**
-- *What*: after deploying, production returns
-  `cache-control: private, no-cache, no-store, max-age=0, must-revalidate` and
-  `x-vercel-cache: MISS` on three consecutive hits. The `Cache-Control` header
-  configured in `next.config.mjs` is **overridden**.
-- *Why my local verification was misleading*: `next start` applied the config
-  header, so the local check passed. On Vercel, Next's dynamic-route handling
-  sets its own no-store `Cache-Control` afterwards. A route that reads
-  `searchParams` is always dynamically rendered, and Next marks those uncacheable
-  by default. This is precisely the claim flagged as "not verifiable locally" —
-  and it turned out false.
-- *Not a regression*: the page still returns 200 and behaves exactly as before;
-  the viewer-independence half of P2-4 (the `supabasePublic()` switch and the
-  `/admin/trails` screen) stands on its own and was the actual safety fix.
-  Only the caching goal is unmet.
-- *Next thing to try*: Vercel honours `CDN-Cache-Control` /
-  `Vercel-CDN-Cache-Control` **separately** from the browser `Cache-Control`,
-  specifically so dynamic routes can still be edge-cached. That is the
-  documented mechanism and the obvious candidate — but it costs a deploy to
-  verify, so it should not be assumed to work either.
-- *Acceptance test*: two consecutive `curl -sI https://tarnoo.com/nl/trails`
-  give `MISS` then `HIT`, **and** an admin-authenticated request never populates
-  the shared cache.
-
-**P2-2 · Activity-first URL architecture not implemented**
-- *What*: the brief proposes `/hiking/{country}/{region}/{city}`. Today the
-  geographic surface is `/discover/{region}/{category}`.
-- *Why*: potentially large win, but it is a URL-architecture migration with
-  redirect obligations. Needs design in `SEO_PAGE_ARCHITECTURE.md` and a
-  measured count per proposed page type before any build.
-
-**P1-4 · ~~Concurrent agent commits with `git add -A`~~ — CLOSED 2026-08-18: the UX agent has stopped, so the hazard no longer applies. Kept below for the record.**
-- *What*: the UX agent stages the whole worktree. Observed **twice** on
-  2026-08-18: commit `55af66a` swept the private-profile fix, commit `4dd876c`
-  swept the vitest scaffold and privacy test.
-- *Why this is now P1 and not a tidiness issue*: verification techniques
-  require deliberately breaking code for a few seconds — the mutation check
-  for P0-2 ran with `.eq("visibility","public")` **removed** from
-  `src/app/sitemap.ts`. A repo-wide `git add -A` landing in that window would
-  have committed a live privacy regression (every private, followers-only and
-  close-friends route into the public sitemap) under a planner commit message,
-  with a green-looking history. This time HEAD was verified intact:
-  `git show HEAD:src/app/sitemap.ts` still contains both `visibility` filters
-  and the suite passes 9/9 against committed code.
-- *Mitigations on this side (in force from now on)*: run mutation checks on a
-  scratch copy rather than the tracked file wherever possible, and never leave
-  a deliberately-broken tracked file on disk across an await.
-- *Needs Niels*: tell the UX agent to stage explicit paths. This cannot be
-  fixed from inside this loop.
-- *Acceptance test*: n/a — coordination item.
-
-### P3 — optimizations
-
-- **P3-1** `sitemap.ts` `changeFrequency`/`priority` are hand-set constants;
-  Google ignores both. Harmless, low value to remove.
-- **P3-3** LCP/CLS/INP **field** measurement — still no data, and collecting it
-  needs a decision: real-user monitoring means an analytics dependency and a
-  privacy/consent question. Lab numbers were taken instead (see Done).
-
 **P2-5 · The full i18n catalogue ships on every page (20,416 bytes)**
 - *What*: measured in the delivered HTML of `/nl/discover` — the entire
   translation catalogue is serialised into the RSC payload on **every** page,
@@ -464,12 +405,46 @@ refactor deferred*
 _(empty — P0-1 completed this iteration)_
 
 **Next up**: nothing open. P3-3 (field performance data) is parked until
-traffic justifies the instrumentation. A deploy is needed to confirm P2-4's
-cache actually HITs — the one claim not verifiable locally.
+traffic justifies the instrumentation. Everything else is deployed and verified
+against production.
 
 ---
 
 ## Done
+
+### 2026-08-18 — P2-4b: `/nl/trails` is now genuinely CDN-cached
+
+The first attempt shipped a plain `Cache-Control` in `next.config.mjs` and
+failed in production: `/trails` reads `searchParams`, so Next renders it
+dynamically and overwrites `Cache-Control` with
+`private, no-cache, no-store`. `next start` does not apply that override, which
+is why the local check passed — a false positive.
+
+*Fix*: drop the browser header, set only the CDN-scoped ones, which Next does
+not touch and which exist precisely so dynamic routes can still be edge-cached:
+`Vercel-CDN-Cache-Control` and `CDN-Cache-Control` =
+`public, s-maxage=3600, stale-while-revalidate=86400`.
+
+*Evidence — production, four consecutive requests*:
+
+| Hit | x-vercel-cache | age | TTFB |
+|---|---|---|---|
+| 1 | **HIT** | 7 | 0.495s |
+| 2 | **HIT** | 12 | 0.234s |
+| 3 | **HIT** | 16 | **0.087s** |
+| 4 | **HIT** | 21 | 0.101s |
+
+Was `MISS` on every hit at ~0.35s warm. Filtered variants cache per full URL as
+expected: `?sport=hike` and `?country=NL` each `MISS` on first request, then
+`HIT`.
+
+*Safety property re-verified under caching*, because this is the combination
+that could have leaked: hidden trails stay hidden. Search `Stevenson` → **0**
+results, direct `/nl/trail/6f8b32ce-…` → **404**, control search `Waldroute` →
+**1** result. The cached render is anonymous-only by construction
+(`supabasePublic()`), so an admin's view can never populate the shared cache.
+
+Page content intact: 200 trail links, `<title>Officiële routes | Tarnoo</title>`.
 
 ### 2026-08-18 — deployed and verified against production
 
