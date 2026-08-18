@@ -1,6 +1,11 @@
 import DiscoverClient, { type Row } from "./DiscoverClient";
 import { discoverCombos } from "@/lib/seo/discoverCombos";
 import { mergeCombosForLocale } from "@/lib/seo/comboMerge";
+import { SITE_URL } from "@/app/sitemap";
+import { getTranslations } from "next-intl/server";
+
+// Cap op de JSON-LD-lijst, gelijk aan /trails en de regiopagina's.
+const LD_ITEM_CAP = 100;
 
 // Server-wrapper om de discover-hub. Reden: de publieke routes werden alleen
 // in een useEffect opgehaald, dus de geleverde HTML bevatte nul route-links —
@@ -62,11 +67,41 @@ export default async function DiscoverPage({
   // combo's serialiseren kostte ~43 kB terwijl er nooit meer dan MAX_CHIPS
   // getoond worden. De merge is idempotent, dus de client mag 'm herhalen.
   const { comboList } = mergeCombosForLocale(initialCombos, params.locale);
+  const t = await getTranslations({
+    locale: params.locale,
+    namespace: "discover",
+  });
+  const ldItems = initialRows.slice(0, LD_ITEM_CAP);
   return (
-    <DiscoverClient
-      initialRows={initialRows.map(trimForTransport)}
-      initialFeatured={initialFeatured.map(trimForTransport)}
-      initialCombos={comboList}
-    />
+    <>
+      {/* ItemList over de publieke routes die deze hub toont — hetzelfde
+          patroon als /trails en de regiopagina's. Gebouwd in de server-wrapper
+          omdat de hub zelf een client-component is. numberOfItems telt exact de
+          elementen hieronder; alleen naam en URL, allebei echt. */}
+      {ldItems.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "ItemList",
+              name: t("title"),
+              numberOfItems: ldItems.length,
+              itemListElement: ldItems.map((r, i) => ({
+                "@type": "ListItem",
+                position: i + 1,
+                name: r.name,
+                url: `${SITE_URL}/${params.locale}/tour/${r.id}`,
+              })),
+            }),
+          }}
+        />
+      )}
+      <DiscoverClient
+        initialRows={initialRows.map(trimForTransport)}
+        initialFeatured={initialFeatured.map(trimForTransport)}
+        initialCombos={comboList}
+      />
+    </>
   );
 }

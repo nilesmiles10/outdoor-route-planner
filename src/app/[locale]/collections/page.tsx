@@ -1,4 +1,6 @@
 import CollectionsClient, { type Coll } from "./CollectionsClient";
+import { getTranslations } from "next-intl/server";
+import { SITE_URL } from "@/app/sitemap";
 
 // Server-wrapper om de client-hub. Reden: de publieke collecties werden
 // uitsluitend in een useEffect opgehaald, dus de geleverde HTML bevatte nul
@@ -38,6 +40,44 @@ async function publicCollections(): Promise<Coll[]> {
   }
 }
 
-export default async function CollectionsPage() {
-  return <CollectionsClient initialPublic={await publicCollections()} />;
+export default async function CollectionsPage({
+  params,
+}: {
+  params: { locale: string };
+}) {
+  const initialPublic = await publicCollections();
+  const t = await getTranslations({
+    locale: params.locale,
+    namespace: "collections",
+  });
+  // Alleen collecties met minstens één zichtbare route: precies de set die de
+  // hub als "Ontdekken" toont en die in de sitemap staat. Een lege collectie is
+  // noindex, dus die hoort ook niet in de gestructureerde data.
+  const ldItems = initialPublic.filter((c) =>
+    c.collection_items.some((i) => i.tours != null),
+  );
+  return (
+    <>
+      {ldItems.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "ItemList",
+              name: t("title"),
+              numberOfItems: ldItems.length,
+              itemListElement: ldItems.map((c, i) => ({
+                "@type": "ListItem",
+                position: i + 1,
+                name: c.title,
+                url: `${SITE_URL}/${params.locale}/collection/${c.id}`,
+              })),
+            }),
+          }}
+        />
+      )}
+      <CollectionsClient initialPublic={initialPublic} />
+    </>
+  );
 }

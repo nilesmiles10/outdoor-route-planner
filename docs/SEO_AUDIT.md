@@ -143,16 +143,6 @@ count into this table.
 - *Acceptance test*: every visible trail is reachable from at least one indexable
   listing page.
 
-**P3-5 · `/discover` and `/collections` hubs still have no JSON-LD**
-- *What*: both are listing surfaces, and both now server-render their items, but
-  neither emits an `ItemList`. `/trails`, the region pages and the collection
-  pages all do.
-- *Why not done with P2-8*: they render through client components, so the
-  structured data has to be built in the server wrapper from the same
-  `initialRows`/`initialPublic` props — a different shape than the other pages.
-- *Acceptance test*: both emit an `ItemList` whose `numberOfItems` equals the
-  number of `itemListElement` entries, all pointing at real, indexable URLs.
-
 ### P3 — optimizations
 
 - **P3-1** `sitemap.ts` `changeFrequency`/`priority` are hand-set constants;
@@ -507,6 +497,33 @@ against production.
 ---
 
 ## Done
+
+### 2026-08-18 — P3-5: `ItemList` on both hubs, structured data now complete
+
+The last two listing surfaces without JSON-LD. Built in the server wrappers
+(the hubs themselves are client components) from the same props they already
+pass down, so no extra query.
+
+| Page | name | numberOfItems | elements |
+|---|---|---|---|
+| `/nl/discover` | `Ontdek routes` | 21 | 21 |
+| `/en/discover` | `Discover routes` | 21 | 21 |
+| `/nl/collections` | `Collecties` | 5 | 5 |
+
+The collections list filters to collections with at least one visible route —
+the same set the hub shows under "Ontdekken" and the same 5 that are in the
+sitemap. An empty collection is `noindex`, so it has no business in structured
+data either.
+
+*Regression*: `/nl/discover` and `/nl/collections` both 200 with their crawlable
+links untouched (21 tour + 60 region links, 5 collection links).
+
+*Gates*: `npm test` 37/37 · `next lint` clean · `tsc --noEmit` exit 0 ·
+`npm run build` exit 0.
+
+**Structured-data coverage is now complete**: every indexable page type emits
+JSON-LD, and every `ItemList` on the site reports exactly as many elements as
+it claims.
 
 ### 2026-08-18 — P2-8: structured data on the homepage and the trails index
 
