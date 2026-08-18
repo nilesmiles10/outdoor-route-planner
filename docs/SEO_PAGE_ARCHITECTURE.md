@@ -21,8 +21,10 @@ Canonical host: `tarnoo.com` (www and the Vercel alias 301 in `middleware.ts`).
 | Highlight detail | `/{locale}/highlight/{id}` | implemented | index **iff ≥1 tip or photo** | 500,875 rows exist; only content-rich ones are indexed and sitemapped |
 | Collection detail | `/{locale}/collection/{id}` | implemented | index iff ≥1 visible tour | empty collections `noindex` and excluded from sitemap |
 | CMS page | `/{locale}/{slug}` | implemented | `pages.noindex` flag | 0 published indexable pages today |
-| User profile | `/{locale}/user/{id}` | implemented | **noindex iff `privacy='private'`** (2026-08-18) | no self-canonical yet — backlog P1-2 |
+| User profile | `/{locale}/user/{id}` | implemented | **noindex iff `privacy='private'`** (2026-08-18) | self-canonical added 2026-08-18; `Person` JSON-LD only when public |
 | Embed widget | `/embed/{id}` | implemented | noindex | intentionally iframe-able; `X-Frame-Options` excluded for this path |
+| My routes | `/{locale}/routes` | implemented | **noindex, follow** (2026-08-18) | auth-gated; anonymously renders a login form |
+| Feed | `/{locale}/feed` | implemented | **noindex, follow** (2026-08-18) | auth-gated; anonymously renders the empty state |
 | Admin | `/admin/**` | implemented | noindex, nofollow | disallowed in robots.txt |
 
 ### Sitemap architecture (implemented)
@@ -37,6 +39,25 @@ Canonical host: `tarnoo.com` (www and the Vercel alias 301 in `middleware.ts`).
 
 ---
 
+## Known gap: the internal link graph
+
+Measured 2026-08-18 on production. Every template above is reachable in the
+sitemap; almost none are reachable by **link**:
+
+| Page | links out to tours | collections | trails | region pages |
+|---|---|---|---|---|
+| `/nl` | 0 | 0 | 0 | 0 |
+| `/nl/discover` | 0 | 0 | 0 | 0 |
+| `/nl/collections` | 0 | 0 | 0 | 0 |
+| `/nl/trails` | 0 | 0 | 200 | 0 |
+| `/nl/discover/{region}/{cat}` | 0 | 0 | 0 | 0 (49 highlights) |
+| `/nl/trail/{id}` | 0 | 0 | 20 | 0 |
+
+`/discover` and `/collections` are client components that fetch in `useEffect`,
+so their listings never reach the HTML. This is tracked as P1-5 in
+`SEO_AUDIT.md` and needs a product decision before any template below is built —
+a new landing page with nothing linking to it would repeat the problem.
+
 ## Approved, not built
 
 | Template | URL | Why | Precondition |
@@ -44,7 +65,8 @@ Canonical host: `tarnoo.com` (www and the Vercel alias 301 in `middleware.ts`).
 | Activity hub | `/{locale}/hiking`, `/{locale}/cycling` | strongest head-term surface | needs an activity→trail mapping the data supports; `trails.sport` exists |
 | Activity × country | `/{locale}/hiking/{country}` | natural crawl tier above region | measure trails per country first; min 8 to match the existing gate |
 | Activity × region | `/{locale}/hiking/{region}` | overlaps `discover/{region}/{category}` | **must not duplicate** the existing region page — decide consolidate vs redirect before building |
-| Shared SEO entity layer | `src/lib/seo/*` | one source for canonical, title, breadcrumbs, JSON-LD, sitemap entry and visibility filtering | backlog P1-1 |
+| Shared SEO entity layer | `src/lib/seo/*` | one source for canonical, title, breadcrumbs, JSON-LD, sitemap entry and visibility filtering | backlog P1-1. Partly seeded: `src/lib/seo/` now holds the privacy/visibility regression suite (31 assertions), but metadata construction is still per-route. |
+| **Trail-region landing** | `/{locale}/trails/{region}` (shape TBD) | the missing parent for 30,265 trail pages; **873 distinct regions** exist in `trails.region`. Would also give P1-6 a real target — trail breadcrumbs currently point at `/trails?region=…`, which canonicalises away. | backlog P1-7. Needs an agreed minimum trails-per-region before any generation (the highlight-page gate is n ≥ 8; must be re-measured against the trail distribution, not assumed). |
 
 ---
 
