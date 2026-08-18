@@ -35,5 +35,6 @@ export default async function OgImage({
     coords: (trail.geometry as GeoJSON.LineString).coordinates as [number, number][],
     distanceM: (trail.stats as { distanceM: number }).distanceM,
     ascendM: (trail.stats as { ascendM: number }).ascendM,
+    timeS: (trail.stats as { timeS?: number }).timeS,
   });
 }

@@ -123,12 +123,14 @@ export function routeOgCard({
   coords,
   distanceM,
   ascendM,
+  timeS,
 }: {
   name: string;
   sportLabel: string;
   coords: [number, number][];
   distanceM: number;
   ascendM: number;
+  timeS?: number;
 }) {
   if (!coords || coords.length < 2) return notFoundOgCard();
   const lons = coords.map((c) => c[0]);
@@ -145,6 +147,12 @@ export function routeOgCard({
     .map((c) => project(c[0], c[1]))
     .join(" ");
   const km = (distanceM / 1000).toFixed(1);
+  // Duur op de share-card (Komoot-pariteit): distance/duur/klim zijn de drie
+  // kern-metrics. Alleen tonen als de route-tijd bekend is.
+  const time =
+    timeS && timeS > 0
+      ? `${Math.floor(timeS / 3600)}:${String(Math.round((timeS % 3600) / 60)).padStart(2, "0")}`
+      : null;
 
   return new ImageResponse(
     (
@@ -204,6 +212,7 @@ export function routeOgCard({
             }}
           >
             <span>{km} km</span>
+            {time && <span>{time} h</span>}
             <span>↗ {ascendM} m</span>
             <span>{sportLabel}</span>
           </div>
