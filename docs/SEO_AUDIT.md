@@ -108,6 +108,16 @@ count into this table.
   redirect obligations. Needs design in `SEO_PAGE_ARCHITECTURE.md` and a
   measured count per proposed page type before any build.
 
+**P2-3 · Concurrent agent commits with `git add -A`**
+- *What*: the UX agent stages the whole worktree, so in-flight SEO edits land
+  in unrelated commits (observed 2026-08-18, commit `55af66a`).
+- *Why*: it breaks per-change provenance and can commit a half-finished or
+  stubbed file mid-verification. Not an SEO defect, but it directly threatens
+  this loop's verification gate.
+- *Mitigation on this side*: keep each iteration's edit window as short as
+  possible and never leave a temporary test stub on disk across a build.
+- *Acceptance test*: n/a — coordination item to raise with Niels.
+
 ### P3 — optimizations
 
 - **P3-1** `sitemap.ts` `changeFrequency`/`priority` are hand-set constants;
@@ -119,16 +129,47 @@ count into this table.
 
 ## In progress
 
-_(empty)_
+_(empty — P0-1 completed this iteration)_
+
+**Next up**: P1-3 (verify hreflang `Link` headers actually ship — cheap, pure
+evidence, no file collision), then P1-2 (self-canonical on user profiles).
+P0-2 is blocked on the vitest question above.
 
 ---
 
 ## Done
 
 ### 2026-08-18 — P0-1 private profiles no longer indexable or in JSON-LD
-Fixed in `src/app/[locale]/user/[id]/page.tsx`. See commit
-`seo(privacy): private profiles noindex + geen Person-JSON-LD`.
-Evidence recorded below in the verification section.
+
+*Change*: `src/app/[locale]/user/[id]/page.tsx` — `generateMetadata` adds
+`robots: { index: false, follow: false }` when `profiles.privacy === 'private'`;
+the `Person` JSON-LD block is rendered only when privacy is not `private`.
+No markup, className or styling touched.
+
+*Rendered-HTML evidence* (production build, `npm run start`, curl of
+`/nl/user/b60c3f2a-…`):
+
+| Case | HTTP | `<meta name="robots">` | JSON-LD blocks |
+|---|---|---|---|
+| privacy = `private` (forced locally) | 200 | `content="noindex, nofollow"` | **0** |
+| privacy = `public` (real row) | 200 | absent (indexable) | 1 × `"@type":"Person"` |
+
+The private case was exercised by temporarily forcing `privacy: 'private'` in
+`getProfile` on a local production build, capturing the HTML, then reverting
+the stub and rebuilding (`npm run build` exit 0, no `TEMP-SEO-TEST` remains).
+A production DB mutation was deliberately **not** used.
+
+*Gates*: `next lint` clean · `npm run build` exit 0 · `tsc --noEmit` reports
+only the pre-existing `scripts/describe-highlights.ts(271)` duplicate-function
+error, confirmed identical with the change stashed · regression curl:
+`/nl` 200, `/nl/trails` 200, `/nl/discover` 200, `/robots.txt` 200,
+`/sitemap.xml` 200.
+
+*Provenance note*: the code change was swept into commit `55af66a`
+(`feat(planner): Ctrl+Y redo …`) by the concurrent UX agent running a
+repo-wide `git add -A` while this iteration was mid-verification. The content
+in `HEAD` is the correct, stub-free version (verified: working tree matches
+`HEAD`, `isPrivate` present, no test stub). That commit was **not** rewritten.
 
 ---
 
