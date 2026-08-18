@@ -43,5 +43,6 @@ export default async function OgImage({ params }: { params: { id: string } }) {
     distanceM: agg.distanceM,
     ascendM: Math.round(agg.ascendM),
     routesLabel: `${tours.length} ${tours.length === 1 ? "route" : "routes"}`,
+    timeS: agg.timeS,
   });
 }

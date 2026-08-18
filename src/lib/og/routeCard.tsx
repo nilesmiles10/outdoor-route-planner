@@ -260,12 +260,14 @@ export function collectionOgCard({
   distanceM,
   ascendM,
   routesLabel,
+  timeS,
 }: {
   title: string;
   routes: [number, number][][];
   distanceM: number;
   ascendM: number;
   routesLabel: string; // bv. "5 routes"
+  timeS?: number;
 }) {
   const usable = routes.filter((c) => c && c.length >= 2);
   if (!usable.length) return notFoundOgCard();
@@ -292,6 +294,12 @@ export function collectionOgCard({
       .join(" ");
   });
   const km = (distanceM / 1000).toFixed(0);
+  // Totale duur van de collectie (som van de route-tijden) — consistent met de
+  // single-route-card. Alleen tonen als bekend.
+  const time =
+    timeS && timeS > 0
+      ? `${Math.floor(timeS / 3600)}:${String(Math.round((timeS % 3600) / 60)).padStart(2, "0")}`
+      : null;
 
   return new ImageResponse(
     (
@@ -352,6 +360,7 @@ export function collectionOgCard({
           >
             <span>{routesLabel}</span>
             <span>{km} km</span>
+            {time && <span>{time} h</span>}
             <span>↗ {ascendM} m</span>
           </div>
         </div>
