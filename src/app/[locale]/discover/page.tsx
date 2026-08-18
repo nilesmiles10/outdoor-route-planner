@@ -369,12 +369,19 @@ export default function DiscoverPage() {
     );
   };
 
+  // Actieve inhoudsfilter (sport/afstand/moeilijkheid/rondje) — sorteren telt
+  // niet mee, dat herordent alleen. Zodra je filtert verberg je de redactionele
+  // "Uitgelicht"-showcase: die filtert niet mee, dus na "Wandelen" toonde hij
+  // nog racefiets-/mtb-picks — ruis t.o.v. je expliciete intentie.
+  const filtersActive =
+    sport !== "all" || band !== "all" || diff !== "all" || loopOnly;
+
   return (
     <main className="mx-auto min-h-dvh max-w-4xl px-4 pb-16 pt-20">
       <h1 className="text-xl font-semibold text-neutral-900">{t("title")}</h1>
       <p className="mt-1 text-sm text-neutral-500">{t("subtitle")}</p>
 
-      {featured.length > 0 && (
+      {featured.length > 0 && !filtersActive && (
         <section className="mt-4">
           <h2 className="mb-2 text-sm font-semibold text-neutral-700">
             ★ {t("featured")}
@@ -586,7 +593,7 @@ export default function DiscoverPage() {
             <p className="text-sm text-neutral-400">{t("empty")}</p>
             {/* Reset-knop alleen tonen als er daadwerkelijk een filter actief
                 is — anders helpt wissen niet en is de knop misleidend. */}
-            {(sport !== "all" || band !== "all" || diff !== "all" || loopOnly) && (
+            {filtersActive && (
               <button
                 type="button"
                 onClick={() => {
