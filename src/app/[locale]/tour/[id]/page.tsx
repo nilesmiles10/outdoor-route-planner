@@ -8,6 +8,7 @@ import { CATEGORY_EMOJI } from "@/lib/highlights";
 import { sportFamily } from "@/lib/geo";
 import TourView from "@/components/TourView";
 import { SITE_URL } from "@/app/sitemap";
+import { entityMetadata } from "@/lib/seo/entityMetadata";
 import { getTour } from "./data";
 
 function haversineKm(aLon: number, aLat: number, bLon: number, bLat: number) {
@@ -49,14 +50,18 @@ export async function generateMetadata({
   // de opengraph-image-route; alleen titel/omschrijving + large-image-card.
   const ogTitle = `${tour.name} · ${km} km ${sportLabel}`;
   const ogDesc = `${km} km · ↗ ${tour.stats.ascendM} m — ${buildAutoDesc(t, tour)}`;
-  return {
+  // brand: false — tourtitels droegen nooit een "| Tarnoo"-suffix; die nu
+  // toevoegen zou de <title> van bestaande geïndexeerde pagina's wijzigen.
+  return entityMetadata({
+    locale: params.locale,
+    path: `tour/${params.id}`,
     title: `${tour.name} | ${km} km ${sportLabel}`,
+    brand: false,
     description: `${ogDesc} · ${t("byline", { name: authorName })}`,
-    // Self-canonical: tracking-param-varianten consolideren naar de schone URL.
-    alternates: { canonical: `/${params.locale}/tour/${params.id}` },
-    openGraph: { title: ogTitle, description: ogDesc },
-    twitter: { card: "summary_large_image", title: ogTitle, description: ogDesc },
-  };
+    socialTitle: ogTitle,
+    socialDescription: ogDesc,
+    largeImage: true,
+  });
 }
 
 export default async function TourPage({

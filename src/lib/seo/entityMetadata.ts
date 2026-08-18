@@ -19,11 +19,27 @@ export type EntityMetadataInput = {
   path: string;
   /** Onbewerkte paginatitel; wordt door pageTitle() met de sitenaam gecombineerd. */
   title: string;
+  /**
+   * Sitenaam achter de titel plakken. Standaard aan. Uit voor tour- en
+   * collectiepagina's: die dragen hun eigen samengestelde titel
+   * ("Naam | 21,5 km Fietsen") en kregen historisch géén merk-suffix. Zet je
+   * dit aan, dan verandert de <title> van bestaande, geïndexeerde pagina's —
+   * vandaar dat het expliciet per route wordt gekozen.
+   */
+  brand?: boolean;
   description?: string;
   /** Titel voor OG/Twitter als die van de <title> afwijkt (vaak korter). */
   socialTitle?: string;
+  /**
+   * Omschrijving voor OG/Twitter als die van de meta-description afwijkt. De
+   * tourpagina hangt bv. de auteur-byline alléén aan de meta-description, niet
+   * aan de share-kaart.
+   */
+  socialDescription?: string;
   /** summary_large_image i.p.v. de standaard summary-kaart. */
   largeImage?: boolean;
+  /** Doorgegeven aan Next; bv. de thin-content-noindex van lege collecties. */
+  robots?: Metadata["robots"];
   /**
    * OG-afbeelding meegeven. Nodig zodra je openGraph zet zónder eigen
    * opengraph-image-route: door openGraph te zetten vervalt de geërfde
@@ -38,25 +54,30 @@ export async function entityMetadata({
   title,
   description,
   socialTitle,
+  socialDescription,
   largeImage,
   ogImage,
+  brand = true,
+  robots,
 }: EntityMetadataInput): Promise<Metadata> {
   const social = socialTitle ?? title;
+  const socialDesc = socialDescription ?? description;
   return {
-    title: pageTitle(await getSiteSettings(), title),
+    title: brand ? pageTitle(await getSiteSettings(), title) : title,
+    ...(robots ? { robots } : {}),
     description,
     // Self-canonical: consolideert tracking-varianten (?utm, ?fbclid) naar de
     // schone URL.
     alternates: { canonical: `/${locale}/${path}` },
     openGraph: {
       title: social,
-      description,
+      description: socialDesc,
       ...(ogImage ? { images: [ogImage] } : {}),
     },
     twitter: {
       ...(largeImage ? { card: "summary_large_image" as const } : {}),
       title: social,
-      description,
+      description: socialDesc,
     },
   };
 }

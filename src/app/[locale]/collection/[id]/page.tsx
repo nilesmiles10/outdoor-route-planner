@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { supabaseServer } from "@/lib/supabase/server";
+import { entityMetadata } from "@/lib/seo/entityMetadata";
 import BookmarkButton from "@/components/BookmarkButton";
 import ShareButton from "@/components/ShareButton";
 import MiniMap from "@/components/MiniMap";
@@ -70,23 +71,25 @@ export async function generateMetadata({
   const ogDesc =
     c.intro?.slice(0, 160) ||
     `A collection of ${tours.length} outdoor routes — planned with ${(await getSiteSettings()).site_name}.`;
-  return {
+  // brand: false — net als tours droegen collectietitels nooit een merk-suffix.
+  // summary_large_image: de collectie heeft een route-vorm-OG-afbeelding.
+  // robots: een publieke collectie zonder zichtbare routes (alle leden privé)
+  // is thin content — niet indexeren, zoals de gate op de regiopagina's. Voor
+  // een anonieme crawler filtert RLS de privé-routes weg → tours.length 0; de
+  // eigenaar ziet ze wél.
+  return entityMetadata({
+    locale: params.locale,
+    path: `collection/${params.id}`,
     title:
       tours.length > 0
         ? `${c.title} | ${tours.length} routes · ${km} km`
         : c.title,
+    brand: false,
     description: ogDesc,
-    alternates: { canonical: `/${params.locale}/collection/${params.id}` },
-    openGraph: { title: ogTitle, description: ogDesc },
-    // summary_large_image: de collectie heeft een route-vorm-OG-afbeelding, dus
-    // een grote preview i.p.v. een kleine thumbnail (consistent met tours).
-    twitter: { card: "summary_large_image", title: ogTitle, description: ogDesc },
-    // Een publieke collectie zonder zichtbare routes (alle leden privé) is
-    // thin content — niet indexeren, zoals de thin-content-gate op de
-    // region-pagina's. Voor een crawler (anoniem) filtert RLS de privé-routes
-    // weg → tours.length 0; de eigenaar ziet ze wél.
+    socialTitle: ogTitle,
+    largeImage: true,
     ...(tours.length === 0 ? { robots: { index: false } } : {}),
-  };
+  });
 }
 
 export default async function CollectionPage({

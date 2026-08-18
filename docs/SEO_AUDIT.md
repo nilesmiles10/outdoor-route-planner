@@ -112,8 +112,8 @@ count into this table.
   privacy/consent question. Lab numbers were taken instead (see Done).
 
 **P1-1b · Migrate the remaining routes onto `entityMetadata()`**
-- *What*: `trail/[id]` and `trails/[region]` now build metadata through the
-  shared helper. Still hand-rolled: `tour/[id]`, `collection/[id]`,
+- *What*: `trail/[id]`, `trails/[region]`, `tour/[id]` and `collection/[id]`
+  now build metadata through the shared helper. Still hand-rolled:
   `highlight/[id]`, `discover/[region]/[category]`, `user/[id]`, `[slug]`,
   and the hub layouts.
 - *Why the rest is a separate slice*: each has its own quirks (the collection
@@ -237,13 +237,44 @@ refactor deferred*
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: P1-1b (migrate the remaining routes onto the helper, one at a time
-with the same diff evidence), then P2-5 (i18n payload). P3-3 is parked until
-traffic justifies it. A deploy is still needed to confirm P2-4's cache HITs.
+**Next up**: finish P1-1b (`highlight/[id]`, `discover/[region]/[category]`,
+`user/[id]`, `[slug]`, hub layouts), then P2-5 (i18n payload). P3-3 is parked
+until traffic justifies it. A deploy is still needed to confirm P2-4's cache HITs.
 
 ---
 
 ## Done
+
+### 2026-08-18 — P1-1b: `tour/[id]` and `collection/[id]` migrated
+
+*Two real quirks the helper did not yet express*, found by reading the routes
+rather than assuming they matched:
+- **Neither page brands its title.** `/nl/tour/…` renders
+  `Utrecht naar Amersfoort | 21.5 km Fietsen` — no `| Tarnoo` suffix. Migrating
+  blindly would have appended the brand to every indexed tour and collection
+  title. Added an explicit `brand` option (default on) and set it `false` here.
+- **The tour's share description differs from its meta description** — the
+  author byline is appended to `description` only, not to the OG/Twitter text.
+  Added `socialDescription`.
+- Collection's conditional thin-content `robots` passes through a new `robots`
+  option.
+
+*Evidence — byte-identical delivered metadata*:
+
+| Route | Result |
+|---|---|
+| `/nl/tour/8b8c6123-…` (16 meta lines) | **IDENTICAL** |
+| `/en/tour/8b8c6123-…` (16 meta lines) | **IDENTICAL** |
+| `/nl/collection/c068af01-…` (16 meta lines) | **IDENTICAL** |
+
+*Conditional branch verified separately*, since a diff of the happy path would
+not have caught it. Two public collections whose members are all non-public
+(`71b42845-…`, `0befd30e-…`, both 0 public tours of 2 items) still render
+`<meta name="robots" content="noindex"/>`, still carry their canonical, still
+show the unsuffixed title, and are still absent from the sitemap (0 matches).
+
+*Gates*: `npm test` 37/37 · `next lint` clean · `tsc --noEmit` exit 0 ·
+`npm run build` exit 0.
 
 ### 2026-08-18 — P1-1 refactor half started: shared `entityMetadata()`
 
