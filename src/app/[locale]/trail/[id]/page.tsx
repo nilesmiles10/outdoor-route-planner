@@ -140,7 +140,10 @@ export async function generateMetadata({
   params: { id: string; locale: string };
 }): Promise<Metadata> {
   const trail = await getTrail(params.id);
-  if (!trail) return { title: "Trail not found" };
+  if (!trail)
+    return {
+      title: (await getTranslations({ locale: params.locale, namespace: "notFound" }))("title"),
+    };
   const t = await getTranslations("trailPage");
   const km = (trail.stats.distanceM / 1000).toFixed(1);
   const sportNoun = t(

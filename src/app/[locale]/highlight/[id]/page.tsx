@@ -137,7 +137,10 @@ export async function generateMetadata({
   params: { id: string; locale: string };
 }): Promise<Metadata> {
   const hl = await getHighlight(params.id);
-  if (!hl) return { title: "Highlight not found" };
+  if (!hl)
+    return {
+      title: (await getTranslations({ locale: params.locale, namespace: "notFound" }))("title"),
+    };
   // Generated text wins over the raw OSM description tag; both may be null.
   const isEn = params.locale === "en";
   const blurb = (isEn ? hl.description_en : hl.description_nl) ?? hl.description;

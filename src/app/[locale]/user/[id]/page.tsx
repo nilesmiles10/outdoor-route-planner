@@ -66,7 +66,10 @@ export async function generateMetadata({
   params: { id: string; locale: string };
 }): Promise<Metadata> {
   const p = await getProfile(params.id);
-  if (!p) return { title: "Profile not found" };
+  if (!p)
+    return {
+      title: (await getTranslations({ locale: params.locale, namespace: "notFound" }))("title"),
+    };
   const t = await getTranslations("profile");
   const name = p.display_name ?? t("anonymous");
   const bio = p.bio ?? undefined;

@@ -53,7 +53,10 @@ export async function generateMetadata({
   params: { id: string; locale: string };
 }): Promise<Metadata> {
   const c = await getCollection(params.id);
-  if (!c) return { title: "Collection not found" };
+  if (!c)
+    return {
+      title: (await getTranslations({ locale: params.locale, namespace: "notFound" }))("title"),
+    };
   const tours = c.collection_items.map((i) => i.tours).filter(Boolean) as TourLite[];
   const agg = aggregateStats(tours.map((t) => t.stats));
   // Entity-specifieke OG: zonder deze erven gedeelde collectie-links de

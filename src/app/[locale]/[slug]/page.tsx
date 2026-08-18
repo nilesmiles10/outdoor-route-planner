@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@supabase/supabase-js";
 import { renderMarkdown } from "@/lib/markdown";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
@@ -47,7 +48,10 @@ export async function generateMetadata({
   params: { locale: string; slug: string };
 }): Promise<Metadata> {
   const page = await getPage(params.slug);
-  if (!page) return { title: "Not found" };
+  if (!page)
+    return {
+      title: (await getTranslations({ locale: params.locale, namespace: "notFound" }))("title"),
+    };
   const s = await getSiteSettings();
   const nl = params.locale === "nl";
   return {

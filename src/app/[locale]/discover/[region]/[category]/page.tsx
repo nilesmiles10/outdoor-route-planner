@@ -127,7 +127,10 @@ export async function generateMetadata({
   params: { region: string; category: string; locale: string };
 }): Promise<Metadata> {
   const resolved = await resolve(params.region, params.category);
-  if (!resolved) return { title: "Not found" };
+  if (!resolved)
+    return {
+      title: (await getTranslations({ locale: params.locale, namespace: "notFound" }))("title"),
+    };
   const t = await getTranslations("regionPage");
   const cat = t(`catPlural.${params.category}` as never);
   const ogTitle = `${cat} in ${resolved.label}`;

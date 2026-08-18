@@ -29,7 +29,10 @@ export async function generateMetadata({
   params: { id: string; locale: string };
 }): Promise<Metadata> {
   const tour = await getTour(params.id);
-  if (!tour) return { title: "Tour not found" };
+  if (!tour)
+    return {
+      title: (await getTranslations({ locale: params.locale, namespace: "notFound" }))("title"),
+    };
   const km = (tour.stats.distanceM / 1000).toFixed(1);
   const t = await getTranslations("tourPage");
   const ts = await getTranslations("planner.sports");
