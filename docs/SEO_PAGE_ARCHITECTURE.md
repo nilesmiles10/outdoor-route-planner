@@ -14,6 +14,7 @@ Canonical host: `tarnoo.com` (www and the Vercel alias 301 in `middleware.ts`).
 |---|---|---|---|---|
 | Home / planner | `/{locale}` | implemented | index | self-canonical |
 | Trail index | `/{locale}/trails` | implemented | index | 30,265 trails |
+| **Trail region landing** | `/{locale}/trails/{region}` | **implemented 2026-08-18** | index **iff n ≥ 8** | 443 regions, 96.0% of trails. Slug carries a country suffix where names collide (`limburg-nl`). Breadcrumb + ItemList JSON-LD; parent of the trail detail pages |
 | Trail detail | `/{locale}/trail/{id}` | implemented | index | canonical, BreadcrumbList JSON-LD, OG image, related trails by region |
 | Tour detail (user route) | `/{locale}/tour/{id}` | implemented | RLS-gated | anon sees only `visibility='public'`; non-public → hard 404 via `layout.tsx` above the Suspense boundary |
 | Discover hub | `/{locale}/discover` | implemented | index | |
@@ -53,10 +54,19 @@ sitemap; almost none are reachable by **link**:
 | `/nl/discover/{region}/{cat}` | 0 | 0 | 0 | 0 (49 highlights) |
 | `/nl/trail/{id}` | 0 | 0 | 20 | 0 |
 
-`/discover` and `/collections` are client components that fetch in `useEffect`,
-so their listings never reach the HTML. This is tracked as P1-5 in
-`SEO_AUDIT.md` and needs a product decision before any template below is built —
-a new landing page with nothing linking to it would repeat the problem.
+**Partly fixed 2026-08-18.** The trail half now has a real hierarchy:
+
+`/{locale}/trails` → `/{locale}/trails/{region}` (443 pages) →
+`/{locale}/trail/{id}` (30,265 pages), and back up via the breadcrumb. The
+region×category pages link across to the matching trail-region page. Re-measured
+after the change: a trail page now carries **0** `trails?country=` links and one
+`/nl/trails/{region}` link; the region×category page likewise.
+
+**Still open**: `/discover` and `/collections` are client components that fetch
+in `useEffect`, so their listings never reach the HTML — the 21 public tours and
+5 public collections remain orphans. Tracked as P1-5 in `SEO_AUDIT.md`; it needs
+coordination with the UX agent because it means server-rendering their
+components, not just repointing a link.
 
 ## Approved, not built
 
@@ -66,7 +76,6 @@ a new landing page with nothing linking to it would repeat the problem.
 | Activity × country | `/{locale}/hiking/{country}` | natural crawl tier above region | measure trails per country first; min 8 to match the existing gate |
 | Activity × region | `/{locale}/hiking/{region}` | overlaps `discover/{region}/{category}` | **must not duplicate** the existing region page — decide consolidate vs redirect before building |
 | Shared SEO entity layer | `src/lib/seo/*` | one source for canonical, title, breadcrumbs, JSON-LD, sitemap entry and visibility filtering | backlog P1-1. Partly seeded: `src/lib/seo/` now holds the privacy/visibility regression suite (31 assertions), but metadata construction is still per-route. |
-| **Trail-region landing** | `/{locale}/trails/{region}` (shape TBD) | the missing parent for 30,265 trail pages; **873 distinct regions** exist in `trails.region`. Would also give P1-6 a real target — trail breadcrumbs currently point at `/trails?region=…`, which canonicalises away. | backlog P1-7. Needs an agreed minimum trails-per-region before any generation (the highlight-page gate is n ≥ 8; must be re-measured against the trail distribution, not assumed). |
 
 ---
 

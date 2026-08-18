@@ -57,70 +57,18 @@ count into this table.
 
 ### P1 — SEO architecture
 
-**P1-5 · Crawlable internal link graph is largely missing — NEEDS A DECISION**
-- *Measured 2026-08-18 on production* (links present in delivered HTML):
-
-  | Page | tour links | collection links | trail links | region links |
-  |---|---|---|---|---|
-  | `/nl` (home/planner) | 0 | 0 | 0 | 0 |
-  | `/nl/discover` (42,341 B) | **0** | **0** | 0 | **0** |
-  | `/nl/collections` (39,762 B) | 0 | **0** | 0 | 0 |
-  | `/nl/trails` (631,131 B) | 0 | 0 | **200** | 0 |
-  | `/nl/discover/aargau/hut` | 0 | 0 | **0** | 0 (49 highlight links) |
-  | `/nl/trail/{id}` | 0 | 0 | 20 | 0 |
-
-- *What this means*: sitemap.xml advertises 7,310 URLs (21 nl tours, 5 nl
-  collections, 3,625 region×category pages). Of those, **no page links to a
-  tour, a collection, or a region×category page**. They are reachable only via
-  the sitemap — orphans in the internal link graph. `/trails` links 200 of
-  30,265 trails; trail pages link sideways to 20 peers but never up.
-- *Why it is not a simple fix*: `/discover` (695 lines) and `/collections`
-  (227 lines) are client components that fetch in `useEffect`. Making their
-  content crawlable means either server-rendering them (a refactor of files the
-  UX agent owns) or adding a **new visible section** to each hub. Both are
-  product/UX decisions, not technical SEO. Adding invisible links instead would
-  be hidden SEO text, which is explicitly prohibited.
-- **Open question for Niels** — pick one:
-  1. Server-render the existing hub content (I coordinate with the UX agent
-     first; largest win, largest collision risk).
-  2. Add a compact, genuinely useful visible "Browse by region / All public
-     routes" block to each hub (smaller diff, but it is new UI).
-  3. Build proper trail-region landing pages (see P1-7) and link the hubs to
-     those instead.
+**P1-5 · `/discover` and `/collections` still ship zero crawlable links**
+- *Status*: narrowed. The trail half of the link graph is fixed (see Done,
+  2026-08-18); what remains is the two client-rendered hubs.
+- *What*: both fetch their listings in `useEffect`, so the delivered HTML
+  contains no links. The **21 public tours and 5 public collections** are still
+  reachable only via the sitemap.
+- *Why it is still open*: this is option A — server-rendering two large client
+  components (695 and 227 lines) that the UX agent owns. Unlike the trail fix,
+  there is no existing link whose href can simply be repointed; the content
+  itself has to reach the HTML.
 - *Acceptance test*: `curl -s https://tarnoo.com/nl/discover | grep -c '/nl/tour/'`
-  > 0, and a region page links to its trails.
-
-**P1-6 · Trail breadcrumbs point at a URL that is canonicalised away**
-- *What*: `trail/[id]/page.tsx` builds the region crumb as
-  `/{locale}/trails?country=X&region=Y`. But `/trails` self-canonicals to
-  `/{locale}/trails`, so the crumb — and the `BreadcrumbList` JSON-LD built
-  from the same `crumbs` array — advertises a geographic parent that is not an
-  indexable URL.
-- *Why*: a BreadcrumbList whose middle item resolves to a canonicalised-away
-  URL gives Google a hierarchy it cannot honour, and wastes the one upward link
-  each of 30,265 trail pages has.
-- *Files*: `src/app/[locale]/trail/[id]/page.tsx` (the `crumbs` array).
-- *Blocked by*: there is no indexable trail-region page to point at yet — that
-  is P1-7. Fixing the crumb without a target would just move the problem.
-- *Acceptance test*: the region crumb href resolves to a 200 page that is not
-  canonicalised to a different URL.
-
-**P1-7 · No trail-region landing pages, though the data supports 873 of them**
-- *Measured*: `select count(distinct region) from trails where region is not null`
-  → **873** regions across 30,265 official routes. The existing
-  `/discover/{region}/{category}` pages are built from **highlights**, not
-  trails: the sample region page returned 49 highlight links and **0** trail
-  links.
-- *Why it matters*: for an outdoor **route** app the missing page type is
-  "routes in region X" — the natural parent for 30,265 trail pages and the
-  natural target for P1-6.
-- *Anti-doorway note*: 873 regions must not be generated wholesale. A minimum
-  count per region has to be measured and justified first (the existing gate
-  for highlight pages is n ≥ 8; the same threshold is the obvious starting
-  point but must be checked against the trail distribution before use).
-- *Needs a decision* — new indexable page type = product scope.
-- *Acceptance test*: only regions above the agreed minimum generate a page;
-  each links to its trails; each trail links back up.
+  returns > 0.
 
 **P1-1 · SEO logic is scattered across page components**
 - *What*: canonical, title, OG, JSON-LD and breadcrumb construction are
@@ -260,15 +208,71 @@ count into this table.
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: nothing that is both collision-free and decision-free remains.
-Outstanding: P1-1 (shared SEO layer — large refactor, needs slicing and touches
-many routes), P1-4 (UX-agent `git add -A`, needs Niels), P1-5/P1-6/P1-7 (the
-internal link graph — needs the product decision under P1-5), plus the P3 list.
-The loop should stop here rather than manufacture marginal work.
+**Next up**: P1-5 is now the only large item — option A, server-rendering the
+`/discover` and `/collections` hubs so the 21 public tours and 5 collections
+stop being orphans. It touches UX-owned client components, so it needs
+coordination rather than a unilateral edit. Then P1-1 (shared SEO layer),
+P1-4 (agent coordination) and the P3 list.
 
 ---
 
 ## Done
+
+### 2026-08-18 — P1-6 + P1-7: trail-region landing pages, and the link graph around them
+
+The 30,265 trail pages had no indexable geographic parent. Both links that
+should have pointed at one — the trail breadcrumb and the "routes in this
+region" cross-link on the region×category pages — pointed at
+`/trails?country=…&region=…`, which `/trails` canonicalises away. The links
+existed; the destination did not.
+
+**Threshold measured before generating anything** (visible trails only, i.e.
+excluding the 91 `hidden_at` rows):
+
+| Minimum trails | Regions | Trails covered | Coverage |
+|---|---|---|---|
+| n ≥ 5 | 533 | — | — |
+| **n ≥ 8 (chosen)** | **443** | **28,945 / 30,158** | **96.0%** |
+| n ≥ 12 | 367 | 28,234 | 93.6% |
+
+`n ≥ 8` matches the existing gate for `/discover/{region}/{category}` — the
+brief requires applying a threshold consistently, not inventing a new one per
+page type — and gives the best balance: 443 pages is a small, defensible index
+that still gives 96% of routes a parent. Below the threshold the page does not
+exist (404), rather than existing as a thin `noindex`.
+
+*New DB object*: view `public.trail_regions` (aggregate per region+country over
+visible trails). A plain view, deliberately **not** a materialized view like
+`highlight_regions`, which needs periodic `REFRESH` and can go stale silently;
+this aggregate is cheap and ISR-cached anyway. `security_invoker = on` plus an
+explicit `hidden_at` filter, so anon never sees more than `trails_select` allows.
+
+*Evidence*:
+
+| Check | Result |
+|---|---|
+| `/nl/trails/aargau` | 200 · `25 officiële routes in Aargau \| Tarnoo` · canonical · 25 crawlable trail links · BreadcrumbList + ItemList |
+| `/en/trails/aargau` | 200 · `25 official routes in Aargau \| Tarnoo` |
+| `/nl/trails/zuid-holland` | 200 · `146 officiële routes in Zuid-Holland` · 146 trail links |
+| threshold boundary | `essex`/`padova`/`eure`/`panevezio` (n=7) → **404**; `brindisi`/`conwy`/`csongrad` (n=8) → **200** |
+| slug collisions | `/nl/trails/limburg` → 404; `limburg-nl` → 200; `limburg-be` → 200 |
+| sitemap | 7,310 → **8,196** URLs (+443 × 2 locales) |
+| trail page | breadcrumb + BreadcrumbList item 2 → `/nl/trails/nordrhein-westfalen`; **0** leftover `trails?country=` links |
+| region×category page | cross-link → `/nl/trails/aargau`; **0** leftover query-param links |
+
+*Also verified healthy*: `trails.hidden_at` is set on 91 rows and appears
+nowhere in `src/` — because RLS handles it
+(`trails_select USING (hidden_at IS NULL OR is_admin())`). Not a bug; the new
+view filters it explicitly as well.
+
+*Noted during verification*: a transient Supabase 500 surfaced as a 5xx rather
+than a cached 404 — exactly what the throw-instead-of-`[]` design in the REST
+helper is for. A cached 404 would have deindexed a valid region page for up to
+an hour.
+
+*Gates*: `npm test` 31/31 · `next lint` clean · `tsc --noEmit` exit 0 ·
+`npm run build` exit 0 · regression: `/nl`, `/nl/trails`, `/nl/discover`,
+`/nl/collections`, `/nl/routes`, `/robots.txt`, `/sitemap.xml` all 200.
 
 ### 2026-08-18 — P2-1 `/routes` and `/feed` are no longer indexable
 
