@@ -6,6 +6,35 @@ import { ImageResponse } from "next/og";
 
 export const OG_SIZE = { width: 1200, height: 630 };
 
+// Projecteer lon/lat → SVG-punten met behoud van de geografische verhouding
+// (cos-lat-gecorrigeerd), gecentreerd in W×H. Vóór dit werden lon en lat
+// onafhankelijk naar de volle breedte/hoogte geschaald, waardoor de route-vorm
+// op de share-kaart werd uitgerekt (een oost-west-route werd verticaal opgerekt
+// tot een blok). Nu klopt de vorm — consistent met MiniMap (lib/collections).
+function aspectProject(
+  minLon: number,
+  minLat: number,
+  maxLon: number,
+  maxLat: number,
+  W: number,
+  H: number,
+  pad: number,
+): (lon: number, lat: number) => string {
+  const cosLat = Math.cos((((minLat + maxLat) / 2) * Math.PI) / 180) || 1;
+  const spanX = Math.max(maxLon - minLon, 1e-4) * cosLat;
+  const spanY = Math.max(maxLat - minLat, 1e-4);
+  const availW = W - pad * 2;
+  const availH = H - pad * 2;
+  const scale = Math.min(availW / spanX, availH / spanY);
+  const offX = pad + (availW - spanX * scale) / 2;
+  const offY = pad + (availH - spanY * scale) / 2;
+  return (lon, lat) =>
+    `${(offX + (lon - minLon) * cosLat * scale).toFixed(1)},${(
+      offY +
+      (maxLat - lat) * scale
+    ).toFixed(1)}`;
+}
+
 // Fallback-OG voor een verwijderde/ontbrekende route: dezelfde merk-huisstijl
 // als siteOgCard (emerald-gradient + logo + wordmark) i.p.v. een kale donkere
 // kaart, zodat een dode share-link nog steeds herkenbaar Tarnoo is.
@@ -108,17 +137,12 @@ export function routeOgCard({
   const maxLon = Math.max(...lons);
   const minLat = Math.min(...lats);
   const maxLat = Math.max(...lats);
-  const spanLon = Math.max(maxLon - minLon, 1e-4);
-  const spanLat = Math.max(maxLat - minLat, 1e-4);
   const W = 640;
   const H = 470;
+  const project = aspectProject(minLon, minLat, maxLon, maxLat, W, H, 20);
   const pts = coords
     .filter((_, i) => i % Math.ceil(coords.length / 300) === 0 || i === coords.length - 1)
-    .map((c) => {
-      const x = ((c[0] - minLon) / spanLon) * (W - 40) + 20;
-      const y = H - (((c[1] - minLat) / spanLat) * (H - 40) + 20);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
+    .map((c) => project(c[0], c[1]))
     .join(" ");
   const km = (distanceM / 1000).toFixed(1);
 
@@ -248,19 +272,14 @@ export function collectionOgCard({
       if (lat > maxLat) maxLat = lat;
     }
   }
-  const spanLon = Math.max(maxLon - minLon, 1e-4);
-  const spanLat = Math.max(maxLat - minLat, 1e-4);
   const W = 640;
   const H = 470;
+  const project = aspectProject(minLon, minLat, maxLon, maxLat, W, H, 20);
   const polys = usable.map((coords) => {
     const step = Math.max(1, Math.floor(coords.length / 80));
     return coords
       .filter((_, i) => i % step === 0 || i === coords.length - 1)
-      .map((c) => {
-        const x = ((c[0] - minLon) / spanLon) * (W - 40) + 20;
-        const y = H - (((c[1] - minLat) / spanLat) * (H - 40) + 20);
-        return `${x.toFixed(1)},${y.toFixed(1)}`;
-      })
+      .map((c) => project(c[0], c[1]))
       .join(" ");
   });
   const km = (distanceM / 1000).toFixed(0);
