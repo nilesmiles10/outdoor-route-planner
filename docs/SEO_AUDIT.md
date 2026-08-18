@@ -57,35 +57,22 @@ count into this table.
 
 ### P1 — SEO architecture
 
-**P1-10 · `/discover` HTML is 134 kB — only reducible by trimming what the UI needs**
-- *What*: the RSC payload carries `waypoints` + `thumb_coords` for 21 tours and
-  all 230 combos (60 chips render). Measured, not guessed: the client genuinely
-  uses `thumb_coords` for the MiniMap thumbnails *and* for `isLoopRoute()`, and
-  `waypoints` for distance sorting — so none of it can simply be dropped without
-  breaking the hub.
-- *Options, none free*: server-side merge the combos down to the rendered 60
-  (needs the locale-aware Benelux merge moved into the shared module), or split
-  the SSR list into a light crawlable list plus a lazily-hydrated interactive
-  one (bigger change, touches UX-owned rendering).
-- *Priority*: P3-ish in effect — it is a payload optimisation on one route, and
-  the double-fetch (the part that was pure waste) is already gone.
-- *Acceptance test*: `/nl/discover` HTML under ~90 kB with 21 tour links and 60
-  region links still present.
-
-**P1-1 · SEO logic is scattered across page components** — *invariant done,
-refactor deferred*
-- *What remains*: canonical, title, OG and JSON-LD construction is still
-  hand-rolled per route. The **canonical half is now enforced** by
-  `canonical-guard.test.ts` (see Done), so the concrete failure mode — a new
-  route shipping without a canonical — can no longer happen silently.
-- *Why the refactor is deferred, not done*: moving metadata construction into a
-  shared module touches ~8 route files the UX agent is actively working in, and
-  produces **no behaviour change**. That is a poor trade during concurrent work.
-  The invariant buys the safety now at near-zero collision risk.
-- *Do it when*: the UX agent is idle, or the next new page type needs it anyway.
-- *Acceptance test*: routes derive canonical/title from a shared helper, and the
-  rendered HTML for each migrated route is byte-identical on title, canonical
-  and JSON-LD.
+**P2-5 · The full i18n catalogue ships on every page (20,416 bytes)**
+- *What*: measured in the delivered HTML of `/nl/discover` — the entire
+  translation catalogue is serialised into the RSC payload on **every** page,
+  including namespaces that page never uses (`planner`, `tourPage`,
+  `resetPassword`, `trailPage`, …). At 20.4 kB it is now the single largest
+  item in that page's payload, ahead of `thumb_coords` (9,748 B across 24
+  routes) and far ahead of `waypoints` (1,713 B after the P1-10 trim).
+- *Why it is not a quick fix*: next-intl can send a subset of messages to the
+  client, but that means auditing which namespaces each client component
+  actually calls and passing only those — it touches the locale layout and
+  every client component. Worth doing, but as its own piece of work.
+- *Files*: `src/app/[locale]/layout.tsx` (the `NextIntlClientProvider`), plus a
+  namespace audit per client component.
+- *Acceptance test*: `/nl/discover` HTML drops by roughly the size of the unused
+  namespaces, with every page still rendering its own copy correctly in both
+  locales.
 
 ### P2 — meaningful improvements
 
@@ -201,14 +188,50 @@ refactor deferred*
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: the UX agent has stopped, so the collision constraint is gone.
-Remaining: P1-1's refactor half (shared SEO layer) and P1-10 (`/discover`
-payload). P3-3 (field performance data) is parked until traffic justifies the
-instrumentation. Deploy needed to confirm P2-4's cache actually HITs.
+**Next up**: P1-1's refactor half (shared SEO layer) is the last structural
+item. Then P2-5 (i18n payload). P3-3 is parked until traffic justifies it.
+A deploy is still needed to confirm P2-4's cache actually HITs.
 
 ---
 
 ## Done
+
+### 2026-08-18 — P1-10 partial: `/discover` payload trimmed 17%
+
+*Two measured causes, both addressed*:
+1. Only `waypoints[0]` is ever read (distance sorting, line 344 of
+   `DiscoverClient`), but every route carried its full waypoint list. The server
+   now trims to the single element that is used — `waypoints` is down to
+   **1,713 bytes** total.
+2. All 230 combos were serialised although at most `MAX_CHIPS` (60) ever render.
+   The merge moved server-side into a shared pure module
+   (`src/lib/seo/comboMerge.ts`), used by **both** the server wrapper and the
+   client — no second copy. It is idempotent by design, so the client re-running
+   it over already-merged server data is safe, and the client's own
+   fetch-all-230 fallback path is unchanged.
+
+| Measure | Before | After |
+|---|---|---|
+| `/nl/discover` HTML | 134,161 B | **111,655 B** (−22,506, −17%) |
+| `/en/discover` HTML | — | 110,448 B |
+| tour links | 21 | 21 |
+| region links | 60 | 60 |
+
+*Behaviour preserved*: the nl locale still leads with Benelux chips
+(`liege/monument`, `namur/monument`, `antwerp/monument`, …) and still renders
+the "Ontdek in de Benelux" / "Elders in Europa" split; `en` keeps the global
+order (`bayern/peak`, `nordrhein-westfalen/nature`, …).
+
+*Honest status — the acceptance test is not met.* It asked for under ~90 kB and
+this lands at 111.6 kB. Breaking down what remains: **20,416 B is the i18n
+catalogue**, 9,748 B is `thumb_coords` (genuinely needed — it feeds both the
+MiniMap thumbnail and `isLoopRoute()`), 1,713 B waypoints. The i18n payload is
+now the biggest lever and is a separate cross-cutting change, filed as **P2-5**.
+`thumb_coords` cannot be dropped without breaking the hub. So P1-10 is closed as
+"trimmed as far as this route allows" rather than marked fully green.
+
+*Gates*: `npm test` 37/37 · `next lint` clean · `tsc --noEmit` exit 0 ·
+`npm run build` exit 0.
 
 ### 2026-08-18 — P2-4 `/trails` made viewer-independent and cacheable
 

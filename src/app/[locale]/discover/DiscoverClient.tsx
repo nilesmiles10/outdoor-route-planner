@@ -9,6 +9,7 @@ import { difficulty } from "@/lib/difficulty";
 import { fmtDuration } from "@/lib/activity";
 import SiteFooter from "@/components/SiteFooter";
 import MiniMap from "@/components/MiniMap";
+import { mergeCombosForLocale } from "@/lib/seo/comboMerge";
 
 export type Row = {
   id: string;
@@ -32,13 +33,6 @@ export type Combo = {
   n: number;
   country?: string | null;
 };
-// 3.614 combo's halen de ≥8-poort — als chiprij onbruikbaar. De rijkste eerst;
-// de rest blijft bereikbaar via de sitemap en de links op de regiopagina's.
-const MAX_CHIPS = 60;
-// Nederlandstalige bezoekers zijn vrijwel altijd op zoek naar Benelux-regio's;
-// de globale top-200 is puur bergland (DE/AT/ES/IT). Voor nl zetten we daarom de
-// Benelux-combo's vooraan. Andere locales houden de globale volgorde.
-const BENELUX = new Set(["NL", "BE", "LU"]);
 const BANDS: [string, number, number][] = [
   ["all", 0, Infinity],
   ["short", 0, 20000],
@@ -151,16 +145,13 @@ export default function DiscoverClient({
   // "Elders in Europa"). Zonder die splitsing sprong de telling van ~69 (Liège)
   // naar 6.724 (Bayern) in één rij — dat oogt als een sorteerfout i.p.v. lokaal-
   // eerst-dan-globaal. Andere locales: globale volgorde, één groep.
-  const { comboList, beCount } = useMemo(() => {
-    if (locale !== "nl") return { comboList: combos.slice(0, MAX_CHIPS), beCount: 0 };
-    const be: Combo[] = [];
-    const rest: Combo[] = [];
-    for (const c of combos)
-      (c.country && BENELUX.has(c.country) ? be : rest).push(c);
-    const merged = [...be, ...rest].slice(0, MAX_CHIPS);
-    const beShown = merged.filter((c) => c.country && BENELUX.has(c.country)).length;
-    return { comboList: merged, beCount: beShown };
-  }, [combos, locale]);
+  // Gedeeld met de server-wrapper, die de lijst al mergde vóór het doorgeven.
+  // De functie is idempotent, dus 'm hier nogmaals draaien is veilig — en nodig
+  // voor het pad waar de client zelf alle 230 combo's ophaalt.
+  const { comboList, beCount } = useMemo(
+    () => mergeCombosForLocale(combos, locale),
+    [combos, locale],
+  );
 
   // Vraag de locatie op voor de "Dichtstbij"-sortering. Aangeroepen op expliciete
   // actie (Dichtstbij-chip / locatie-knop) en bij mount alléén als de permissie

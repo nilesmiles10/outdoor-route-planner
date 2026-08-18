@@ -1,5 +1,6 @@
 import DiscoverClient, { type Row } from "./DiscoverClient";
 import { discoverCombos } from "@/lib/seo/discoverCombos";
+import { mergeCombosForLocale } from "@/lib/seo/comboMerge";
 
 // Server-wrapper om de discover-hub. Reden: de publieke routes werden alleen
 // in een useEffect opgehaald, dus de geleverde HTML bevatte nul route-links —
@@ -33,7 +34,19 @@ async function rows(path: string): Promise<Row[]> {
   }
 }
 
-export default async function DiscoverPage() {
+// De client leest alléén waypoints[0] (voor de afstandssortering), maar een
+// route draagt er tientallen. Die allemaal serialiseren is pure payload: de
+// rest wordt nooit gelezen. thumb_coords blijft wél volledig mee — dat voedt
+// zowel de MiniMap-thumbnail als isLoopRoute().
+function trimForTransport(r: Row): Row {
+  return { ...r, waypoints: r.waypoints.slice(0, 1) };
+}
+
+export default async function DiscoverPage({
+  params,
+}: {
+  params: { locale: string };
+}) {
   const [initialRows, initialFeatured, initialCombos] = await Promise.all([
     rows(
       `tours?select=${SELECT}&visibility=eq.public&kind=eq.planned&order=created_at.desc&limit=100`,
@@ -45,11 +58,15 @@ export default async function DiscoverPage() {
     // aggregatie, dan [] en haalt de client ze alsnog op.
     discoverCombos().catch(() => []),
   ]);
+  // Alleen de chips die ook echt renderen over de draad sturen: alle 230
+  // combo's serialiseren kostte ~43 kB terwijl er nooit meer dan MAX_CHIPS
+  // getoond worden. De merge is idempotent, dus de client mag 'm herhalen.
+  const { comboList } = mergeCombosForLocale(initialCombos, params.locale);
   return (
     <DiscoverClient
-      initialRows={initialRows}
-      initialFeatured={initialFeatured}
-      initialCombos={initialCombos}
+      initialRows={initialRows.map(trimForTransport)}
+      initialFeatured={initialFeatured.map(trimForTransport)}
+      initialCombos={comboList}
     />
   );
 }
