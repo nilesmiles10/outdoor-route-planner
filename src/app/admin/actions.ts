@@ -66,6 +66,26 @@ export async function unpublishTour(formData: FormData) {
   revalidatePath("/admin/tours");
 }
 
+// Trails zijn OSM-import, geen gebruikerscontent: er is geen eigenaar om aan
+// te spreken, alleen verbergen. hidden_at is de RLS-schakelaar
+// (trails_select = "hidden_at IS NULL OR is_admin()"). Tot nu toe was die
+// alleen via SQL te zetten en alleen zichtbaar op de publieke /trails-pagina;
+// dat blokkeerde het cachebaar maken van die pagina.
+export async function toggleHiddenTrail(formData: FormData) {
+  const { user, sb } = await requireAdmin();
+  const id = String(formData.get("id"));
+  const hide = String(formData.get("hide")) === "1";
+  await sb
+    .from("trails")
+    .update({ hidden_at: hide ? new Date().toISOString() : null })
+    .eq("id", id);
+  await audit(sb, user, hide ? "trail_hide" : "trail_unhide", "trail", id);
+  // De publieke trail-oppervlakken lezen met tag "trails"; zonder deze
+  // invalidatie bleef een net verborgen trail nog tot een uur zichtbaar.
+  revalidateTag("trails");
+  revalidatePath("/admin/trails");
+}
+
 // Suspend = RLS flag (hides existing content) + auth ban (blocks login).
 // The ban half needs the service role; without the key we still set the
 // flag and report the limitation honestly.
