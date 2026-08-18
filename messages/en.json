@@ -560,7 +560,7 @@
     "detailWithOperator": "Managed by {operator} · data © OpenStreetMap contributors",
     "detailNoOperator": "Data © OpenStreetMap contributors",
     "viewOsm": "View on OpenStreetMap",
-    "metaDescription": "{name}: official {km} km trail in {region}. See the elevation profile, surfaces and export to GPX/TCX/FIT.",
+    "metaDescription": "{name}: official {km} km {sport} in {region}. See the elevation profile, surfaces and export to GPX/TCX/FIT.",
     "sportNoun": {
       "hike": "hiking trail",
       "touring": "cycling route",

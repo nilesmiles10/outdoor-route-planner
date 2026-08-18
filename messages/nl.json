@@ -560,7 +560,7 @@
     "detailWithOperator": "Beheerder {operator} · gegevens © OpenStreetMap-bijdragers",
     "detailNoOperator": "Gegevens © OpenStreetMap-bijdragers",
     "viewOsm": "Bekijk op OpenStreetMap",
-    "metaDescription": "{name}: officiële route van {km} km in {region}. Bekijk hoogteprofiel, ondergrond en exporteer naar GPX/TCX/FIT.",
+    "metaDescription": "{name}: officiële {sport} van {km} km in {region}. Bekijk hoogteprofiel, ondergrond en exporteer naar GPX/TCX/FIT.",
     "sportNoun": {
       "hike": "wandelroute",
       "touring": "fietsroute",

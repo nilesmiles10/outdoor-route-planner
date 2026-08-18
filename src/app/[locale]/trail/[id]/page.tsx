@@ -152,6 +152,7 @@ export async function generateMetadata({
   const metaDesc = t("metaDescription", {
     name: trail.name,
     km,
+    sport: sportNoun,
     region: trail.region ?? "Nederland",
   });
   // Entity-specifieke OG i.p.v. de generieke layout-OG bij gedeelde links.
