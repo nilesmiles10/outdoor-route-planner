@@ -20,7 +20,10 @@ export async function generateSitemaps(): Promise<{ id: number }[]> {
   try {
     const res = await fetch(`${BASE}/rest/v1/trails?select=id&limit=1`, {
       headers: { ...HEADERS, Prefer: "count=exact" },
-      next: { revalidate: 3600 },
+      // no-store: de telling komt uit de content-range HEADER, die Next's
+      // Data Cache op een cache-hit niet bewaart → count 0 → 1 segment, dus
+      // segmenten 1..N zouden 404'en. Vers lezen elke keer.
+      cache: "no-store",
     });
     const range = res.headers.get("content-range") ?? "0-0/0";
     const count = parseInt(range.split("/")[1] ?? "0", 10) || 0;

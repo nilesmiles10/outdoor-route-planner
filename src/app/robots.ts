@@ -22,7 +22,14 @@ async function segmentCount(query: string): Promise<number> {
           Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
           Prefer: "count=exact",
         },
-        next: { revalidate: 3600 },
+        // GEEN Next-fetch-cache: de telling komt uit de content-range HEADER, en
+        // Next's Data Cache bewaart die header NIET op een cache-hit. Met
+        // revalidate zag segmentCount dan een lege range → count 0 → 1 segment,
+        // waardoor robots.txt in productie enkel /trails-sitemap/sitemap/0.xml
+        // opsomde en ~30 segmenten (58k trail-URL's) verborg voor crawlers.
+        // no-store leest de header elke keer vers; de robots-route zelf cachet
+        // nog via `export const revalidate`.
+        cache: "no-store",
       },
     );
     const count =
