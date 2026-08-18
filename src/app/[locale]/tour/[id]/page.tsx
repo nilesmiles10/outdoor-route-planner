@@ -78,7 +78,7 @@ export default async function TourPage({
   const start = tour.waypoints[0];
 
   const sb = supabaseServer();
-  const [weather, toursQ, hlQ, collQ, trailsQ, sameSportTrailsQ] = await Promise.all([
+  const [weather, toursQ, hlQ, collQ, trailsQ, sameFamilyTrailsQ] = await Promise.all([
     start ? getWeather(start.lon, start.lat) : null,
     sb
       .from("tours")
@@ -126,16 +126,24 @@ export default async function TourPage({
           .lte("start_lat", start.lat + 0.5)
           .limit(60)
       : null,
-    // Aparte, gegarandeerde zelfde-sport-fetch: de algemene bbox-query hierboven
+    // Aparte, gegarandeerde zelfde-FAMILIE-fetch: de algemene bbox-query hierboven
     // heeft geen ORDER BY, dus de .limit(60) kan minderheids-sporten volledig
-    // wegdrukken (Utrecht-bbox = 802 hike vs 8 touring → touring viel buiten de
-    // 60, waardoor de sport-eerst-sort niets te promoten had). Deze query pakt
-    // ze expliciet zodat ze in de kandidatenpool zitten; any-sport blijft fill.
+    // wegdrukken (Veluwe-bbox = 1249 hike vs 60 mtb + 14 touring → de fiets-trails
+    // vielen buiten de 60, waardoor de familie-sort niets te promoten had). Op
+    // zelfde-SPORT filteren hielp fietstoers niet: trails kennen alleen
+    // hike/mtb/touring, dus een 'road'-tour kreeg 0 gegarandeerde kandidaten.
+    // Nu op familie (fiets: mtb+touring / voet: hike) zodat de fiets-trails
+    // zeker in de pool zitten; any-sport blijft fill.
     start
       ? sb
           .from("trails")
           .select("id,name,sport,stats,thumb_coords,start_lon,start_lat")
-          .eq("sport", tour.sport)
+          .in(
+            "sport",
+            ["hike", "mtb", "touring"].filter(
+              (s) => sportFamily(s) === sportFamily(tour.sport),
+            ),
+          )
           .gte("start_lon", start.lon - 0.5)
           .lte("start_lon", start.lon + 0.5)
           .gte("start_lat", start.lat - 0.5)
@@ -189,13 +197,13 @@ export default async function TourPage({
     start_lon: number;
     start_lat: number;
   };
-  // Zelfde-sport-fetch + algemene bbox-fetch samenvoegen, dedup op id (een
-  // zelfde-sport-trail zit in beide). De sport-eerst-sort hieronder floats de
-  // zelfde-sport-treffers naar boven; any-sport blijft achteraan als fill.
+  // Zelfde-familie-fetch + algemene bbox-fetch samenvoegen, dedup op id (een
+  // familie-trail zit in beide). De familie-tier-sort hieronder floats exact-
+  // sport → zelfde familie naar boven; andere familie blijft achteraan als fill.
   const trailPool = (() => {
     const byId = new Map<string, TrailLite>();
     for (const tr of [
-      ...((sameSportTrailsQ?.data as TrailLite[]) ?? []),
+      ...((sameFamilyTrailsQ?.data as TrailLite[]) ?? []),
       ...((trailsQ?.data as TrailLite[]) ?? []),
     ]) {
       if (!byId.has(tr.id)) byId.set(tr.id, tr);
