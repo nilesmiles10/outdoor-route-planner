@@ -133,13 +133,20 @@ export default function DiscoverPage() {
   const [combos, setCombos] = useState<Combo[]>([]);
   // Voor nl-bezoekers: Benelux-combo's (stabiel op hun globale n-volgorde) eerst,
   // daarna de globale rest. Andere locales houden de globale volgorde ongemoeid.
-  const orderedCombos = useMemo(() => {
-    if (locale !== "nl") return combos;
+  // Voor nl: Benelux-combo's vooraan + het aantal getoonde Benelux-chips, zodat
+  // de render de lijst in twee gelabelde groepen kan splitsen ("In de Benelux" /
+  // "Elders in Europa"). Zonder die splitsing sprong de telling van ~69 (Liège)
+  // naar 6.724 (Bayern) in één rij — dat oogt als een sorteerfout i.p.v. lokaal-
+  // eerst-dan-globaal. Andere locales: globale volgorde, één groep.
+  const { comboList, beCount } = useMemo(() => {
+    if (locale !== "nl") return { comboList: combos.slice(0, MAX_CHIPS), beCount: 0 };
     const be: Combo[] = [];
     const rest: Combo[] = [];
     for (const c of combos)
       (c.country && BENELUX.has(c.country) ? be : rest).push(c);
-    return [...be, ...rest];
+    const merged = [...be, ...rest].slice(0, MAX_CHIPS);
+    const beShown = merged.filter((c) => c.country && BENELUX.has(c.country)).length;
+    return { comboList: merged, beCount: beShown };
   }, [combos, locale]);
 
   // Vraag de locatie op voor de "Dichtstbij"-sortering. Aangeroepen op expliciete
@@ -642,27 +649,38 @@ export default function DiscoverPage() {
         ))}
       </div>
 
-      {/* GEN-116: programmatic region pages */}
-      {combos.length > 0 && (
-        <section className="mt-10">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-400">
-            {t("browseRegions")}
-          </h2>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {orderedCombos.slice(0, MAX_CHIPS).map((c) => (
-              <a
-                key={`${c.slug}|${c.category}`}
-                href={`/${locale}/discover/${c.slug}/${c.category}`}
-                className="rounded-full border border-neutral-200 px-3 py-1 text-xs text-neutral-700 hover:border-emerald-400 hover:text-emerald-800"
-              >
-                {CATEGORY_EMOJI[c.category]} {tr(`catPlural.${c.category}` as never)}{" "}
-                in {c.label}{" "}
-                <span className="text-neutral-400">({c.n})</span>
-              </a>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* GEN-116: programmatic region pages. Voor nl in twee gelabelde groepen
+          (Benelux eerst, dan de rest) zodat de sprong in aantallen leesbaar is;
+          andere locales één globale groep. */}
+      {combos.length > 0 &&
+        (beCount > 0
+          ? [
+              { title: t("regionsBenelux"), items: comboList.slice(0, beCount) },
+              { title: t("regionsElsewhere"), items: comboList.slice(beCount) },
+            ]
+          : [{ title: t("browseRegions"), items: comboList }]
+        )
+          .filter((g) => g.items.length > 0)
+          .map((g, gi) => (
+            <section key={g.title} className={gi === 0 ? "mt-10" : "mt-6"}>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-400">
+                {g.title}
+              </h2>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {g.items.map((c) => (
+                  <a
+                    key={`${c.slug}|${c.category}`}
+                    href={`/${locale}/discover/${c.slug}/${c.category}`}
+                    className="rounded-full border border-neutral-200 px-3 py-1 text-xs text-neutral-700 hover:border-emerald-400 hover:text-emerald-800"
+                  >
+                    {CATEGORY_EMOJI[c.category]} {tr(`catPlural.${c.category}` as never)}{" "}
+                    in {c.label}{" "}
+                    <span className="text-neutral-400">({c.n})</span>
+                  </a>
+                ))}
+              </div>
+            </section>
+          ))}
 
       <SiteFooter />
     </main>

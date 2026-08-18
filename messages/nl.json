@@ -388,6 +388,8 @@
     "empty": "Geen routes voor deze filters.",
     "away": "hiervandaan",
     "browseRegions": "Ontdek per regio",
+    "regionsBenelux": "Ontdek in de Benelux",
+    "regionsElsewhere": "Elders in Europa",
     "bands": {
       "all": "Elke afstand",
       "short": "< 20 km",

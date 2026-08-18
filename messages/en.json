@@ -388,6 +388,8 @@
     "empty": "No routes match these filters.",
     "away": "away",
     "browseRegions": "Browse by region",
+    "regionsBenelux": "Explore the Benelux",
+    "regionsElsewhere": "Elsewhere in Europe",
     "bands": {
       "all": "Any distance",
       "short": "< 20 km",
