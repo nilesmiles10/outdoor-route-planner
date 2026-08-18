@@ -13,7 +13,13 @@ export async function generateMetadata({
     locale: params.locale,
     namespace: "routesPage",
   });
-  return { title: pageTitle(await getSiteSettings(), t("title")) };
+  return {
+    title: pageTitle(await getSiteSettings(), t("title")),
+    // "Mijn routes" is auth-gated: anoniem levert hij letterlijk "Log in om je
+    // opgeslagen routes te zien" plus een inlogformulier. Geen zoekresultaat
+    // waard, en met een bezittelijke titel ook misleidend in de SERP.
+    robots: { index: false, follow: true },
+  };
 }
 
 export default function RoutesLayout({

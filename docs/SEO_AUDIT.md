@@ -220,11 +220,6 @@ count into this table.
 
 ### P2 — meaningful improvements
 
-**P2-1 · `/[locale]/routes` and `/[locale]/feed` are personalized but indexable**
-- *What*: both are logged-in surfaces with generic titles and no robots gate.
-- *Acceptance test*: both return `noindex` in delivered HTML, or are proven to
-  render meaningful public content when anonymous.
-
 **P2-2 · Activity-first URL architecture not implemented**
 - *What*: the brief proposes `/hiking/{country}/{region}/{city}`. Today the
   geographic surface is `/discover/{region}/{category}`.
@@ -265,14 +260,45 @@ count into this table.
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: P2-1 (`/routes` and `/feed` noindex) — the last collision-free,
-decision-free item. After that only P1-1 (shared SEO layer, large refactor),
-P1-4 (agent coordination, needs Niels), P1-5/6/7 (need the product decision)
-and the P3 list remain.
+**Next up**: nothing that is both collision-free and decision-free remains.
+Outstanding: P1-1 (shared SEO layer — large refactor, needs slicing and touches
+many routes), P1-4 (UX-agent `git add -A`, needs Niels), P1-5/P1-6/P1-7 (the
+internal link graph — needs the product decision under P1-5), plus the P3 list.
+The loop should stop here rather than manufacture marginal work.
 
 ---
 
 ## Done
+
+### 2026-08-18 — P2-1 `/routes` and `/feed` are no longer indexable
+
+*Verified the symptom first on production*: both returned **HTTP 200 with no
+robots meta and no canonical**, and neither is in the sitemap — so they were
+indexable purely through internal header links. Anonymously `/nl/routes`
+renders `Mijn routes` + "Log in om je opgeslagen routes te zien" and a login
+form; `/nl/feed` renders the `feed.needLogin` empty state. A search result
+titled "Mijn routes" that shows a stranger a login form is both thin and
+misleading.
+
+*Change*: `robots: { index: false, follow: true }` in the two server layouts
+(`routes/layout.tsx`, `feed/layout.tsx`). `follow: true` matches the existing
+convention for non-indexable utility routes in this repo (`embed/layout.tsx`);
+`admin/layout.tsx` uses `follow: false` because it is disallowed in robots.txt
+as well.
+
+*Rendered-HTML evidence* (production build):
+
+| URL | HTTP | robots meta | title |
+|---|---|---|---|
+| `/nl/routes` | 200 | `noindex, follow` | `Mijn routes \| Tarnoo` |
+| `/nl/feed` | 200 | `noindex, follow` | `Feed \| Tarnoo` |
+| `/en/routes` | 200 | `noindex, follow` | `My routes \| Tarnoo` |
+
+*Regression check* — pages that must stay indexable still have no robots meta:
+`/nl`, `/nl/trails`, `/nl/discover`, `/nl/collections`.
+
+*Gates*: `npm test` 31/31 · `next lint` clean · `tsc --noEmit` exit 0 ·
+`npm run build` exit 0 · diff is two files.
 
 ### 2026-08-18 — P1-2 self-canonical on user profiles
 
