@@ -128,6 +128,28 @@ async function getPlace(lon: number, lat: number): Promise<string | null> {
 }
 
 
+// Heeft deze highlight échte user-content (≥1 tip of foto)? Alleen dan is de
+// pagina uniek genoeg om te indexeren (zie de robots-comment). Via de
+// content_rich_highlights-view; tellen op body-lengte (niet content-range-
+// header, die Next's cache op een hit wegvalt). Bij twijfel → false = noindex
+// (veilig: liever een unieke pagina missen dan thin-content indexeren).
+async function highlightIsContentRich(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/content_rich_highlights?id=eq.${id}&select=id&limit=1`,
+      {
+        headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! },
+        next: { revalidate: 3600, tags: ["highlight-content"] },
+      },
+    );
+    if (!res.ok) return false;
+    const rows = (await res.json()) as unknown[];
+    return Array.isArray(rows) && rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -156,14 +178,13 @@ export async function generateMetadata({
     // Entity-specifieke OG i.p.v. de generieke layout-OG bij gedeelde links.
     openGraph: { title: hl.name, description: hlDesc },
     twitter: { title: hl.name, description: hlDesc },
-    // De OSM-seed maakt honderdduizenden highlight-pagina's terwijl tips en
-    // foto's user-generated zijn en er nog geen gebruikers zijn — de meeste
-    // pagina's zijn dus (nog) dun. Op die schaal kan Google het patroon als
-    // thin content wegen en dat raakt het hele domein, niet alleen deze
-    // URL's. Daarom voorlopig noindex; follow blijft aan zodat link-equity
-    // naar routes en trails blijft lopen. Herzien zodra highlights echte
-    // content hebben (tips/foto's) — dan per-pagina op rijkdom gaten.
-    robots: { index: false, follow: true },
+    // De OSM-seed maakt honderdduizenden highlight-pagina's; op die schaal kan
+    // Google het patroon als thin content wegen (raakt het hele domein). Daarom
+    // per-pagina op rijkdom gaten: alléén highlights met échte user-content
+    // (≥1 tip of foto) zijn uniek genoeg en worden geïndexeerd + gesitemapt
+    // (zie /highlights-sitemap). De ~500k dunne blijven noindex. follow blijft
+    // altijd aan zodat link-equity naar routes/trails blijft lopen.
+    robots: { index: await highlightIsContentRich(params.id), follow: true },
   };
 }
 

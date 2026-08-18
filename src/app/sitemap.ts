@@ -97,12 +97,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.8,
       });
     }
-    // Highlight-pagina's zitten bewust NIET in de sitemap: ze zijn (blanket)
-    // noindex zolang het gros dun is — zie robots.index=false in
-    // highlight/[id]/page.tsx en de robots.ts-comment. Een sitemap met
-    // noindex-URL's is een tegenstrijdig signaal. (Er is dus géén
-    // /highlights-sitemap/ — die verwijzing was verouderd.) De region×
-    // category-combo's hierboven blijven hier: dat zijn er weinig.
+    // Highlight-pagina's zitten bewust NIET in deze hoofd-sitemap: het gros is
+    // dun (OSM-seed) en noindex. Content-rijke highlights (≥1 tip/foto) worden
+    // wél geïndexeerd en staan in de aparte gesegmenteerde /highlights-sitemap/
+    // (mirror van trails-sitemap; opgesomd in robots.ts). Zo blijft dit bestand
+    // klein en bevat het geen noindex-URL's. De region×category-combo's
+    // hierboven blijven hier: dat zijn er weinig.
     for (const c of collections.data ?? []) {
       // Lege collecties (0 zichtbare routes) zijn noindex → overslaan, anders
       // adverteert de sitemap een noindex-pagina (tegenstrijdig signaal).
