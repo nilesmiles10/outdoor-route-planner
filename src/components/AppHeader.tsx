@@ -100,42 +100,51 @@ export default function AppHeader() {
     setSearching(true);
     setOpen(true);
     timer.current = setTimeout(async () => {
-      const [tours, trails, people, places] = await Promise.all([
-        sb
-          .from("tours")
-          .select("id,name,sport,stats")
-          .ilike("name", `%${v}%`)
-          .limit(4),
-        // Officiële trails (30k) waren onvindbaar via de globale zoekbalk —
-        // die zocht alleen tours/mensen/plaatsen.
-        sb
-          .from("trails")
-          .select("id,name,sport,stats")
-          .ilike("name", `%${v}%`)
-          .limit(4),
-        // RPC ipv directe tabel-query: respecteert search_opt_out,
-        // suspension en blocks (profile-optimization plan).
-        sb.rpc("search_profiles", { q: v }),
-        fetch(`/api/geo/search?q=${encodeURIComponent(v)}`)
-          .then((r) => r.json())
-          .catch(() => ({ results: [] })),
-      ]);
-      const routeHits: Hit[] = (tours.data ?? []).map(
-        (r: { id: string; name: string; sport: string; stats: { distanceM: number } }) => ({
-          type: "route",
-          label: r.name,
-          sub: `${(r.stats.distanceM / 1000).toFixed(0)} km · ${tsport(r.sport as never)}`,
-          href: `/${locale}/tour/${r.id}`,
-        }),
-      );
-      const trailHits: Hit[] = (trails.data ?? []).map(
-        (r: { id: string; name: string; sport: string; stats: { distanceM: number } }) => ({
-          type: "trail",
-          label: r.name,
-          sub: `${(r.stats.distanceM / 1000).toFixed(0)} km · ${tsport(r.sport as never)}`,
-          href: `/${locale}/trail/${r.id}`,
-        }),
-      );
+      // Aparte prefix-fetch (naam begínt met de term) náást de substring-fetch.
+      // Zonder dit toonde `.ilike('%q%').limit(4)` 4 wíllekeurige substring-
+      // treffers: "veluwe" gaf "MTB Veluwezoom-Blauw" e.d. terwijl de 10 routes
+      // die letterlijk "Veluwe…" heten wegvielen (196 substring- vs 10 prefix-
+      // matches). Prefix eerst = relevanter. Merge dedupt op id en cap't op 4.
+      const nameQ = (table: "tours" | "trails", pattern: string, limit: number) =>
+        sb.from(table).select("id,name,sport,stats").ilike("name", pattern).limit(limit);
+      const [toursPre, toursSub, trailsPre, trailsSub, people, places] =
+        await Promise.all([
+          nameQ("tours", `${v}%`, 4),
+          nameQ("tours", `%${v}%`, 6),
+          // Officiële trails (30k) waren onvindbaar via de globale zoekbalk —
+          // die zocht alleen tours/mensen/plaatsen.
+          nameQ("trails", `${v}%`, 4),
+          nameQ("trails", `%${v}%`, 6),
+          // RPC ipv directe tabel-query: respecteert search_opt_out,
+          // suspension en blocks (profile-optimization plan).
+          sb.rpc("search_profiles", { q: v }),
+          fetch(`/api/geo/search?q=${encodeURIComponent(v)}`)
+            .then((r) => r.json())
+            .catch(() => ({ results: [] })),
+        ]);
+      type NameRow = { id: string; name: string; sport: string; stats: { distanceM: number } };
+      // Prefix-treffers vooraan, dan substring; dedup op id, top 4.
+      const mergeByPrefix = (
+        pre: { data: NameRow[] | null },
+        sub: { data: NameRow[] | null },
+      ): NameRow[] => {
+        const m = new Map<string, NameRow>();
+        for (const r of [...(pre.data ?? []), ...(sub.data ?? [])])
+          if (!m.has(r.id)) m.set(r.id, r);
+        return Array.from(m.values()).slice(0, 4);
+      };
+      const routeHits: Hit[] = mergeByPrefix(toursPre, toursSub).map((r) => ({
+        type: "route",
+        label: r.name,
+        sub: `${(r.stats.distanceM / 1000).toFixed(0)} km · ${tsport(r.sport as never)}`,
+        href: `/${locale}/tour/${r.id}`,
+      }));
+      const trailHits: Hit[] = mergeByPrefix(trailsPre, trailsSub).map((r) => ({
+        type: "trail",
+        label: r.name,
+        sub: `${(r.stats.distanceM / 1000).toFixed(0)} km · ${tsport(r.sport as never)}`,
+        href: `/${locale}/trail/${r.id}`,
+      }));
       const personHits: Hit[] = (people.data ?? []).map(
         (u: { id: string; display_name: string | null; home_region: string | null }) => ({
           type: "person",
