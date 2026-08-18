@@ -559,6 +559,17 @@
       "long": "> 50 km"
     }
   },
+  "trailRegionPage": {
+    "title": "{count, plural, =1 {# officiële route} other {# officiële routes}} in {region}",
+    "metaDescription": "Alle {count, plural, =1 {# officiële route} other {# officiële routes}} in {region}: afstand, hoogtemeters en ondergrond per route, met GPX-export.",
+    "intro": "Bewegwijzerde routes in {region}, geïmporteerd uit OpenStreetMap. Per route zie je afstand, hoogtemeters en of het een rondje is.",
+    "capHint": "{shown} van {total, number} routes getoond — alfabetisch gesorteerd.",
+    "allTrails": "Alle officiële routes",
+    "roundtrip": "Rondje",
+    "gravel": "Gravel",
+    "otherRegions": "Andere regio's",
+    "viewAll": "Bekijk alle routes in {region}"
+  },
   "trailPage": {
     "official": "Officiële route",
     "roundtrip": "Rondje",

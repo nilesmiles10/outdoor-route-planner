@@ -559,6 +559,17 @@
       "long": "> 50 km"
     }
   },
+  "trailRegionPage": {
+    "title": "{count, plural, =1 {# official route} other {# official routes}} in {region}",
+    "metaDescription": "All {count, plural, =1 {# official route} other {# official routes}} in {region}: distance, elevation gain and surface per route, with GPX export.",
+    "intro": "Waymarked routes in {region}, imported from OpenStreetMap. Each route shows distance, elevation gain and whether it is a loop.",
+    "capHint": "Showing {shown} of {total, number} routes — sorted alphabetically.",
+    "allTrails": "All official routes",
+    "roundtrip": "Loop",
+    "gravel": "Gravel",
+    "otherRegions": "Other regions",
+    "viewAll": "View all routes in {region}"
+  },
   "trailPage": {
     "official": "Official trail",
     "roundtrip": "Loop",
