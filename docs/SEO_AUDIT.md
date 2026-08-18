@@ -59,6 +59,30 @@ count into this table.
 
 ### P2 — meaningful improvements
 
+**P2-4b · `/nl/trails` is STILL not CDN-cached — the shipped fix does not work**
+- *What*: after deploying, production returns
+  `cache-control: private, no-cache, no-store, max-age=0, must-revalidate` and
+  `x-vercel-cache: MISS` on three consecutive hits. The `Cache-Control` header
+  configured in `next.config.mjs` is **overridden**.
+- *Why my local verification was misleading*: `next start` applied the config
+  header, so the local check passed. On Vercel, Next's dynamic-route handling
+  sets its own no-store `Cache-Control` afterwards. A route that reads
+  `searchParams` is always dynamically rendered, and Next marks those uncacheable
+  by default. This is precisely the claim flagged as "not verifiable locally" —
+  and it turned out false.
+- *Not a regression*: the page still returns 200 and behaves exactly as before;
+  the viewer-independence half of P2-4 (the `supabasePublic()` switch and the
+  `/admin/trails` screen) stands on its own and was the actual safety fix.
+  Only the caching goal is unmet.
+- *Next thing to try*: Vercel honours `CDN-Cache-Control` /
+  `Vercel-CDN-Cache-Control` **separately** from the browser `Cache-Control`,
+  specifically so dynamic routes can still be edge-cached. That is the
+  documented mechanism and the obvious candidate — but it costs a deploy to
+  verify, so it should not be assumed to work either.
+- *Acceptance test*: two consecutive `curl -sI https://tarnoo.com/nl/trails`
+  give `MISS` then `HIT`, **and** an admin-authenticated request never populates
+  the shared cache.
+
 **P2-2 · Activity-first URL architecture not implemented**
 - *What*: the brief proposes `/hiking/{country}/{region}/{city}`. Today the
   geographic surface is `/discover/{region}/{category}`.
@@ -112,6 +136,30 @@ count into this table.
   locales.
 
 ### P2 — meaningful improvements
+
+**P2-4b · `/nl/trails` is STILL not CDN-cached — the shipped fix does not work**
+- *What*: after deploying, production returns
+  `cache-control: private, no-cache, no-store, max-age=0, must-revalidate` and
+  `x-vercel-cache: MISS` on three consecutive hits. The `Cache-Control` header
+  configured in `next.config.mjs` is **overridden**.
+- *Why my local verification was misleading*: `next start` applied the config
+  header, so the local check passed. On Vercel, Next's dynamic-route handling
+  sets its own no-store `Cache-Control` afterwards. A route that reads
+  `searchParams` is always dynamically rendered, and Next marks those uncacheable
+  by default. This is precisely the claim flagged as "not verifiable locally" —
+  and it turned out false.
+- *Not a regression*: the page still returns 200 and behaves exactly as before;
+  the viewer-independence half of P2-4 (the `supabasePublic()` switch and the
+  `/admin/trails` screen) stands on its own and was the actual safety fix.
+  Only the caching goal is unmet.
+- *Next thing to try*: Vercel honours `CDN-Cache-Control` /
+  `Vercel-CDN-Cache-Control` **separately** from the browser `Cache-Control`,
+  specifically so dynamic routes can still be edge-cached. That is the
+  documented mechanism and the obvious candidate — but it costs a deploy to
+  verify, so it should not be assumed to work either.
+- *Acceptance test*: two consecutive `curl -sI https://tarnoo.com/nl/trails`
+  give `MISS` then `HIT`, **and** an admin-authenticated request never populates
+  the shared cache.
 
 **P2-2 · Activity-first URL architecture not implemented**
 - *What*: the brief proposes `/hiking/{country}/{region}/{city}`. Today the
@@ -181,6 +229,30 @@ count into this table.
 
 ### P2 — meaningful improvements
 
+**P2-4b · `/nl/trails` is STILL not CDN-cached — the shipped fix does not work**
+- *What*: after deploying, production returns
+  `cache-control: private, no-cache, no-store, max-age=0, must-revalidate` and
+  `x-vercel-cache: MISS` on three consecutive hits. The `Cache-Control` header
+  configured in `next.config.mjs` is **overridden**.
+- *Why my local verification was misleading*: `next start` applied the config
+  header, so the local check passed. On Vercel, Next's dynamic-route handling
+  sets its own no-store `Cache-Control` afterwards. A route that reads
+  `searchParams` is always dynamically rendered, and Next marks those uncacheable
+  by default. This is precisely the claim flagged as "not verifiable locally" —
+  and it turned out false.
+- *Not a regression*: the page still returns 200 and behaves exactly as before;
+  the viewer-independence half of P2-4 (the `supabasePublic()` switch and the
+  `/admin/trails` screen) stands on its own and was the actual safety fix.
+  Only the caching goal is unmet.
+- *Next thing to try*: Vercel honours `CDN-Cache-Control` /
+  `Vercel-CDN-Cache-Control` **separately** from the browser `Cache-Control`,
+  specifically so dynamic routes can still be edge-cached. That is the
+  documented mechanism and the obvious candidate — but it costs a deploy to
+  verify, so it should not be assumed to work either.
+- *Acceptance test*: two consecutive `curl -sI https://tarnoo.com/nl/trails`
+  give `MISS` then `HIT`, **and** an admin-authenticated request never populates
+  the shared cache.
+
 **P2-2 · Activity-first URL architecture not implemented**
 - *What*: the brief proposes `/hiking/{country}/{region}/{city}`. Today the
   geographic surface is `/discover/{region}/{category}`.
@@ -230,6 +302,30 @@ count into this table.
   and Twitter tags are byte-identical to before.
 
 ### P2 — meaningful improvements
+
+**P2-4b · `/nl/trails` is STILL not CDN-cached — the shipped fix does not work**
+- *What*: after deploying, production returns
+  `cache-control: private, no-cache, no-store, max-age=0, must-revalidate` and
+  `x-vercel-cache: MISS` on three consecutive hits. The `Cache-Control` header
+  configured in `next.config.mjs` is **overridden**.
+- *Why my local verification was misleading*: `next start` applied the config
+  header, so the local check passed. On Vercel, Next's dynamic-route handling
+  sets its own no-store `Cache-Control` afterwards. A route that reads
+  `searchParams` is always dynamically rendered, and Next marks those uncacheable
+  by default. This is precisely the claim flagged as "not verifiable locally" —
+  and it turned out false.
+- *Not a regression*: the page still returns 200 and behaves exactly as before;
+  the viewer-independence half of P2-4 (the `supabasePublic()` switch and the
+  `/admin/trails` screen) stands on its own and was the actual safety fix.
+  Only the caching goal is unmet.
+- *Next thing to try*: Vercel honours `CDN-Cache-Control` /
+  `Vercel-CDN-Cache-Control` **separately** from the browser `Cache-Control`,
+  specifically so dynamic routes can still be edge-cached. That is the
+  documented mechanism and the obvious candidate — but it costs a deploy to
+  verify, so it should not be assumed to work either.
+- *Acceptance test*: two consecutive `curl -sI https://tarnoo.com/nl/trails`
+  give `MISS` then `HIT`, **and** an admin-authenticated request never populates
+  the shared cache.
 
 **P2-2 · Activity-first URL architecture not implemented**
 - *What*: the brief proposes `/hiking/{country}/{region}/{city}`. Today the
@@ -282,6 +378,30 @@ refactor deferred*
   and JSON-LD.
 
 ### P2 — meaningful improvements
+
+**P2-4b · `/nl/trails` is STILL not CDN-cached — the shipped fix does not work**
+- *What*: after deploying, production returns
+  `cache-control: private, no-cache, no-store, max-age=0, must-revalidate` and
+  `x-vercel-cache: MISS` on three consecutive hits. The `Cache-Control` header
+  configured in `next.config.mjs` is **overridden**.
+- *Why my local verification was misleading*: `next start` applied the config
+  header, so the local check passed. On Vercel, Next's dynamic-route handling
+  sets its own no-store `Cache-Control` afterwards. A route that reads
+  `searchParams` is always dynamically rendered, and Next marks those uncacheable
+  by default. This is precisely the claim flagged as "not verifiable locally" —
+  and it turned out false.
+- *Not a regression*: the page still returns 200 and behaves exactly as before;
+  the viewer-independence half of P2-4 (the `supabasePublic()` switch and the
+  `/admin/trails` screen) stands on its own and was the actual safety fix.
+  Only the caching goal is unmet.
+- *Next thing to try*: Vercel honours `CDN-Cache-Control` /
+  `Vercel-CDN-Cache-Control` **separately** from the browser `Cache-Control`,
+  specifically so dynamic routes can still be edge-cached. That is the
+  documented mechanism and the obvious candidate — but it costs a deploy to
+  verify, so it should not be assumed to work either.
+- *Acceptance test*: two consecutive `curl -sI https://tarnoo.com/nl/trails`
+  give `MISS` then `HIT`, **and** an admin-authenticated request never populates
+  the shared cache.
 
 **P2-2 · Activity-first URL architecture not implemented**
 - *What*: the brief proposes `/hiking/{country}/{region}/{city}`. Today the
@@ -350,6 +470,27 @@ cache actually HITs — the one claim not verifiable locally.
 ---
 
 ## Done
+
+### 2026-08-18 — deployed and verified against production
+
+23 commits pushed and live. Verified on `tarnoo.com`, not locally:
+
+| Check | Result |
+|---|---|
+| region landing pages | `/nl/trails/aargau`, `/nl/trails/zuid-holland`, `/nl/trails/limburg-nl` → **200** |
+| anti-doorway gate holds in prod | `/nl/trails/essex` (n=7) → **404**; bare `/nl/trails/limburg` (collision) → **404** |
+| sitemap | **8,196** URLs, of which **443** `/nl/trails/<regio>` |
+| orphans fixed | `/nl/discover`: **21** tour links + **60** region links; `/nl/collections`: **5** collection links (all were 0) |
+| uppercase duplicates | `/nl/TRAILS` and `/nl/DiScOvEr` → **308** to lowercase |
+| auth-gated hubs | `/nl/routes`, `/nl/feed` → `noindex, follow` |
+| hub OpenGraph | `og:title` = `Ontdek routes` (was `Tarnoo`) |
+| trail breadcrumb parent | `/nl/trail/00015b65-…` → `/nl/trails/nordrhein-westfalen` |
+
+**One thing did not work: P2-4's caching.** See P2-4b in the backlog — the
+`next.config.mjs` `Cache-Control` is overridden in production and `/nl/trails`
+still reports `x-vercel-cache: MISS`. The local check passed because
+`next start` has no such override, which is exactly why that claim was recorded
+as unverified rather than done.
 
 ### 2026-08-18 — P2-5 closed as not worth doing (measured, not assumed)
 
