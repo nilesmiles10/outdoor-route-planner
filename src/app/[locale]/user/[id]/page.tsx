@@ -11,7 +11,7 @@ import ProfileTimeline, { type TimelineItem } from "@/components/ProfileTimeline
 import ProfileOwnerPanels from "@/components/ProfileOwnerPanels";
 import AccountSections from "@/components/AccountSections";
 import SiteFooter from "@/components/SiteFooter";
-import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
+import { entityMetadata } from "@/lib/seo/entityMetadata";
 
 // Profiel-v2 (Komoot-model, profile-optimization plan): identiteitskolom
 // links (avatar, bio, website, counters, content-index, statistieken),
@@ -61,25 +61,17 @@ export async function generateMetadata({
   // horen dan niet in de zoekindex — noindex (follow blijft uit: er valt
   // niets publieks te volgen op een afgeschermd profiel).
   const isPrivate = p.privacy === "private";
-  return {
-    title: pageTitle(await getSiteSettings(), name),
+  // Entity-specifieke OG i.p.v. de generieke layout-OG bij gedeelde links.
+  // ogImage expliciet: door openGraph te zetten vervalt de geërfde site-OG-
+  // afbeelding, dus verwijs 'm terug (merk-kaart via metadataBase).
+  return entityMetadata({
+    locale: params.locale,
+    path: `user/${params.id}`,
+    title: name,
     description: bio,
+    ogImage: `/${params.locale}/opengraph-image`,
     ...(isPrivate ? { robots: { index: false, follow: false } } : {}),
-    // Self-canonical: profiel-links worden veel gedeeld en komen terug met
-    // ?utm/?fbclid erachter. Zonder dit is elke tracking-variant een eigen URL
-    // met identieke inhoud. Consistent met tour/, trail/, collection/ en
-    // highlight/, die dit al deden.
-    alternates: { canonical: `/${params.locale}/user/${params.id}` },
-    // Entity-specifieke OG i.p.v. de generieke layout-OG bij gedeelde links.
-    // `images` expliciet: door openGraph te zetten verdwijnt de geërfde site-
-    // OG-afbeelding, dus verwijs 'm terug (merk-kaart via metadataBase).
-    openGraph: {
-      title: name,
-      description: bio,
-      images: [`/${params.locale}/opengraph-image`],
-    },
-    twitter: { title: name, description: bio },
-  };
+  });
 }
 
 export default async function UserPage({

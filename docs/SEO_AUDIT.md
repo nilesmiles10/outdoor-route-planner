@@ -111,6 +111,74 @@ count into this table.
   needs a decision: real-user monitoring means an analytics dependency and a
   privacy/consent question. Lab numbers were taken instead (see Done).
 
+**P2-6 · Hub pages share the generic site OpenGraph**
+- *What*: measured in the delivered HTML — `/nl/discover` and `/nl/collections`
+  have their own `<title>` and `meta description`, but their OG/Twitter tags are
+  the **inherited site-level** ones: `og:title` = `Tarnoo`, `og:description` =
+  `Plan je volgende avontuur`. Sharing either hub on social shows the brand, not
+  the page.
+- *Why it was not folded into the P1-1b refactor*: giving them page-specific OG
+  is an **improvement**, not a behaviour-preserving migration. Mixing it into a
+  refactor would have hidden a real content change behind a "no-op" claim.
+- *Files*: `discover/layout.tsx`, `collections/layout.tsx` (and `[slug]`, which
+  emits no OG at all).
+- *Acceptance test*: `og:title` on `/nl/discover` reads `Ontdek routes`, not
+  `Tarnoo`, and the OG image still resolves.
+
+**P2-5 · The full i18n catalogue ships on every page (20,416 bytes)**
+- *What*: measured in the delivered HTML of `/nl/discover` — the entire
+  translation catalogue is serialised into the RSC payload on **every** page,
+  including namespaces that page never uses (`planner`, `tourPage`,
+  `resetPassword`, `trailPage`, …). At 20.4 kB it is now the single largest
+  item in that page's payload, ahead of `thumb_coords` (9,748 B across 24
+  routes) and far ahead of `waypoints` (1,713 B after the P1-10 trim).
+- *Why it is not a quick fix*: next-intl can send a subset of messages to the
+  client, but that means auditing which namespaces each client component
+  actually calls and passing only those — it touches the locale layout and
+  every client component. Worth doing, but as its own piece of work.
+- *Files*: `src/app/[locale]/layout.tsx` (the `NextIntlClientProvider`), plus a
+  namespace audit per client component.
+- *Acceptance test*: `/nl/discover` HTML drops by roughly the size of the unused
+  namespaces, with every page still rendering its own copy correctly in both
+  locales.
+
+### P2 — meaningful improvements
+
+**P2-2 · Activity-first URL architecture not implemented**
+- *What*: the brief proposes `/hiking/{country}/{region}/{city}`. Today the
+  geographic surface is `/discover/{region}/{category}`.
+- *Why*: potentially large win, but it is a URL-architecture migration with
+  redirect obligations. Needs design in `SEO_PAGE_ARCHITECTURE.md` and a
+  measured count per proposed page type before any build.
+
+**P1-4 · ~~Concurrent agent commits with `git add -A`~~ — CLOSED 2026-08-18: the UX agent has stopped, so the hazard no longer applies. Kept below for the record.**
+- *What*: the UX agent stages the whole worktree. Observed **twice** on
+  2026-08-18: commit `55af66a` swept the private-profile fix, commit `4dd876c`
+  swept the vitest scaffold and privacy test.
+- *Why this is now P1 and not a tidiness issue*: verification techniques
+  require deliberately breaking code for a few seconds — the mutation check
+  for P0-2 ran with `.eq("visibility","public")` **removed** from
+  `src/app/sitemap.ts`. A repo-wide `git add -A` landing in that window would
+  have committed a live privacy regression (every private, followers-only and
+  close-friends route into the public sitemap) under a planner commit message,
+  with a green-looking history. This time HEAD was verified intact:
+  `git show HEAD:src/app/sitemap.ts` still contains both `visibility` filters
+  and the suite passes 9/9 against committed code.
+- *Mitigations on this side (in force from now on)*: run mutation checks on a
+  scratch copy rather than the tracked file wherever possible, and never leave
+  a deliberately-broken tracked file on disk across an await.
+- *Needs Niels*: tell the UX agent to stage explicit paths. This cannot be
+  fixed from inside this loop.
+- *Acceptance test*: n/a — coordination item.
+
+### P3 — optimizations
+
+- **P3-1** `sitemap.ts` `changeFrequency`/`priority` are hand-set constants;
+  Google ignores both. Harmless, low value to remove.
+- **P3-3** LCP/CLS/INP **field** measurement — still no data, and collecting it
+  needs a decision: real-user monitoring means an analytics dependency and a
+  privacy/consent question. Lab numbers were taken instead (see Done).
+
 **P1-1b · Migrate the remaining routes onto `entityMetadata()`**
 - *What*: six entity routes now build metadata through the shared helper —
   `trail/[id]`, `trails/[region]`, `tour/[id]`, `collection/[id]`,
@@ -238,13 +306,42 @@ refactor deferred*
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: finish P1-1b (`user/[id]`, `[slug]`, hub layouts), then P2-5
-(i18n payload). P3-3 is parked until traffic justifies it. A deploy is still
-needed to confirm P2-4's cache HITs.
+**Next up**: P2-5 (i18n payload, 20.4 kB on every page) and P2-6 (hub OG).
+P3-3 is parked until traffic justifies it. A deploy is still needed to confirm
+P2-4's cache HITs.
 
 ---
 
 ## Done
+
+### 2026-08-18 — P1-1b finished for the entity routes: `user/[id]` migrated
+
+Seven routes now build metadata through `entityMetadata()`: `trail/[id]`,
+`trails/[region]`, `tour/[id]`, `collection/[id]`, `highlight/[id]`,
+`discover/[region]/[category]` and `user/[id]`.
+
+*Evidence — byte-identical*: `/nl/user/b60c3f2a-…` (7 meta lines) unchanged,
+plus `/nl/discover`, `/nl/collections` and `/en/collections` as untouched
+controls — all **IDENTICAL**.
+
+*The private-profile `noindex` branch* is a pass-through of the same conditional
+into the helper's `robots` option, and that option is already proven in both
+directions by the highlight page (`index, follow` vs `noindex, follow`). Not
+re-stubbed this round — the database currently has 0 private profiles, so there
+is nothing live to exercise it against.
+
+*Deliberately left hand-rolled, with reason* — this is where the migration
+stops being a refactor:
+- `discover/layout.tsx`, `collections/layout.tsx`: they inherit the site-level
+  OG. Routing them through the helper would replace `og:title` `Tarnoo` with the
+  page title — an improvement, filed as **P2-6**, but not a no-op.
+- `[slug]` (CMS): emits no OG/Twitter at all today, and all three `pages` rows
+  are `published = false`, so any change there is unverifiable by rendered HTML.
+- `routes/layout.tsx`, `feed/layout.tsx`: `noindex` with no canonical and no OG.
+  Nothing for the helper to unify.
+
+*Gates*: `npm test` 37/37 · `next lint` clean · `tsc --noEmit` exit 0 ·
+`npm run build` exit 0.
 
 ### 2026-08-18 — P1-1b: `highlight/[id]` and `discover/[region]/[category]` migrated
 
