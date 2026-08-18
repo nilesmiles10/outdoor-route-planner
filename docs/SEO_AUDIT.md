@@ -63,6 +63,14 @@ count into this table.
   `generateMetadata` into a sibling module that does not import UI.
 - *Acceptance test*: metadata for a non-public id contains no `tour.name`.
 
+**P0-2d · Assert the tour metadata path emits nothing for a non-public tour**
+- *What*: render `generateMetadata` from `tour/[id]/page.tsx` for a non-public
+  id and assert no tour name, description or JSON-LD is produced.
+- *Blocker*: `page.tsx` pulls in `maplibre-gl` through `TourView`; needs either
+  a module alias stub for the map component in the test config, or extracting
+  `generateMetadata` into a sibling module that does not import UI.
+- *Acceptance test*: metadata for a non-public id contains no `tour.name`.
+
 **P0-2b · Extend the privacy suite to listing/landing queries**
 - *What*: assert private/unlisted content is absent from `/discover`,
   `/trails`, related-routes and "collections containing this route" queries.
@@ -71,6 +79,31 @@ count into this table.
   listing result; removing a `.eq("visibility","public")` turns the suite red.
 
 ### P1 — SEO architecture
+
+**P1-5 · `/discover` and `/collections` ship zero content in the HTML**
+- *What*: both hubs fetch their listings client-side from `useEffect`. Measured
+  2026-08-18 against production:
+
+  | URL | HTML bytes | tour links | trail links | collection links |
+  |---|---|---|---|---|
+  | `/nl/discover` | 42,341 | **0** | **0** | **0** |
+  | `/nl/collections` | 39,762 | **0** | **0** | **0** |
+  | `/nl/trails` | 631,131 | 0 | **200** | 0 |
+
+- *Why this matters*: `/discover` carries `priority: 0.9, changeFrequency:
+  daily` in the sitemap and is the site's main discovery hub, but a crawler
+  receives an empty shell. The 21 public tours and 7 public collections have
+  **no internal link path at all** — they are reachable only via the sitemap,
+  i.e. textbook orphan pages. `/trails` proves the SSR pattern already works
+  here (200 trail links in the delivered HTML), so this is a fixable
+  inconsistency, not a platform limit.
+- *Files*: `src/app/[locale]/discover/page.tsx`,
+  `src/app/[locale]/collections/page.tsx` — both are large client components
+  the UX agent is likely to touch. **Do not rewrite them.** The smallest
+  correct fix is a server-rendered list rendered alongside the interactive
+  client hub, or a server component wrapper that passes initial data as props.
+- *Acceptance test*: `curl -s https://tarnoo.com/nl/discover | grep -c '/nl/tour/'`
+  returns > 0, and the same for `/nl/collections` with `/nl/collection/`.
 
 **P1-1 · SEO logic is scattered across page components**
 - *What*: canonical, title, OG, JSON-LD and breadcrumb construction are
@@ -138,12 +171,52 @@ count into this table.
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: P0-2b (listing/landing queries), then P0-2d (tour metadata path),
-then P1-2 (self-canonical on user profiles).
+**Next up**: P1-5 — `/discover` and `/collections` deliver zero crawlable
+links, orphaning all 21 public tours and 7 public collections. Highest-value
+remaining item, but it touches two large client components the UX agent owns,
+so it needs a careful non-invasive approach (server wrapper passing initial
+data, not a rewrite). Then P0-2d, then P1-2.
 
 ---
 
 ## Done
+
+### 2026-08-18 — P0-2 slice 3 (P0-2b): listing queries can no longer forget the filter
+
+*First, the audit*: enumerated every `.from("tours")` / `.from("collections")`
+read in `src/` (33 call sites). Every publicly indexable listing already
+filters correctly — `/discover` (both queries), `/collections`, the highlight
+page, the tour page's related-routes query and `sitemap.ts`. No live leak was
+found. The gap was that nothing *enforced* it.
+
+*Change*: `src/lib/seo/visibility-guard.test.ts` — a source-scanning invariant.
+Every query is classified as either `PUBLIC_LISTING` (must filter) or
+`NOT_PUBLIC_LISTING` (with a written reason each). An unclassified query fails
+the suite. Plus one comment-only annotation in `tour/[id]/page.tsx` marking the
+derived `.in("id", …)` query as `seo-visibility-ok` with its justification.
+
+*Why source-scanning and not runtime*: the risk is a **future** page type
+forgetting the filter. A runtime test cannot fail for a page it does not know
+about; a source scan can.
+
+*Evidence — two mutation checks*:
+
+| Mutation | Result |
+|---|---|
+| dropped **one of two** `/discover` visibility filters | **red** — `keten #1` |
+| added a new unclassified page querying `tours` | **red** — `app/[locale]/zzztest/page.tsx` |
+| unmutated | 27 passed / 27 |
+
+The first mutation is worth recording: the guard's **first version was per-file
+and stayed green** on it, because `/discover` has two queries and the file
+still matched once. That false pass is exactly the bug the guard exists to
+catch, so it was rewritten to check every query chain individually. A guard
+that cannot fail is worse than no guard, because it reads as coverage.
+
+*Gates*: `npm test` 27/27 (3 suites) · `next lint` clean · `tsc --noEmit`
+exit 0 · `npm run build` exit 0 · rendered HTML for the touched tour route:
+HTTP 200, `<title>Utrecht naar Amersfoort | 21.5 km Fietsen</title>`, canonical
+present, JSON-LD intact (`Trip`, `BreadcrumbList`, 2 × `Place`, `Person`).
 
 ### 2026-08-18 — P0-2 slice 2 (P0-2c): direct access to non-public routes
 

@@ -230,6 +230,8 @@ export default async function TourPage({
   // (niet van alle 100 kandidaten) — id→coords-map voor de MiniMap in TourView.
   const relatedGeo = new Map<string, [number, number][]>();
   if (relatedTours.length) {
+    // seo-visibility-ok: de id's komen uit relatedTours, dat hierboven al op
+    // visibility=public is gefilterd — een eigen filter zou hier niets toevoegen.
     const { data: geos } = await sb
       .from("tours")
       .select("id,thumb_coords")
