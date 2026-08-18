@@ -31,8 +31,23 @@ const nextConfig = {
         // extra segment en cachen al via ISR.
         source: "/:locale(nl|en)/trails",
         headers: [
+          // Alléén de CDN-varianten. Een gewone Cache-Control werkt hier NIET:
+          // de route leest searchParams en wordt dus dynamisch gerenderd, en
+          // Next overschrijft Cache-Control voor dynamische routes met
+          // "private, no-cache, no-store". Gemeten na de deploy van 2026-08-18:
+          // header uit next.config weg, x-vercel-cache MISS bij drie hits.
+          // (Lokaal gaf next start een vals positief — die override doet-ie niet.)
+          //
+          // Vercel-CDN-Cache-Control en CDN-Cache-Control stuurt Next niet aan;
+          // die zijn juist bedoeld om de edge-cache los van de browser-cache te
+          // regelen, zodat dynamische routes tóch cachebaar zijn. De browser
+          // blijft dus revalideren, de CDN niet.
           {
-            key: "Cache-Control",
+            key: "Vercel-CDN-Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+          {
+            key: "CDN-Cache-Control",
             value: "public, s-maxage=3600, stale-while-revalidate=86400",
           },
         ],
