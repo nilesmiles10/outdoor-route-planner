@@ -25,7 +25,7 @@ const SPORTS = ["all", "hike", "run", "touring", "gravel", "mtb", "road", "ebike
 // Zoals /api/discover/combos ze levert: globaal op aantal gesorteerd, met de
 // top-Benelux achteraan aangehecht (die halen de globale top-200 niet). `country`
 // laat de client de Benelux-combo's voor de nl-locale vooraan zetten.
-type Combo = {
+export type Combo = {
   slug: string;
   label: string;
   category: string;
@@ -103,9 +103,11 @@ function pickDiverseBySport(
 export default function DiscoverClient({
   initialRows = [],
   initialFeatured = [],
+  initialCombos = [],
 }: {
   initialRows?: Row[];
   initialFeatured?: Row[];
+  initialCombos?: Combo[];
 }) {
   const t = useTranslations("discover");
   const ts = useTranslations("planner.sports");
@@ -141,7 +143,7 @@ export default function DiscoverClient({
   // null en sorteert nearest op de ruwe fetch-volgorde).
   const [geoState, setGeoState] = useState<"idle" | "loading" | "off">("idle");
   // GEN-116: region × category combos with enough content for a page.
-  const [combos, setCombos] = useState<Combo[]>([]);
+  const [combos, setCombos] = useState<Combo[]>(initialCombos);
   // Voor nl-bezoekers: Benelux-combo's (stabiel op hun globale n-volgorde) eerst,
   // daarna de globale rest. Andere locales houden de globale volgorde ongemoeid.
   // Voor nl: Benelux-combo's vooraan + het aantal getoonde Benelux-chips, zodat

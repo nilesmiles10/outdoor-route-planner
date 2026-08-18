@@ -1,4 +1,5 @@
 import DiscoverClient, { type Row } from "./DiscoverClient";
+import { discoverCombos } from "@/lib/seo/discoverCombos";
 
 // Server-wrapper om de discover-hub. Reden: de publieke routes werden alleen
 // in een useEffect opgehaald, dus de geleverde HTML bevatte nul route-links —
@@ -33,15 +34,22 @@ async function rows(path: string): Promise<Row[]> {
 }
 
 export default async function DiscoverPage() {
-  const [initialRows, initialFeatured] = await Promise.all([
+  const [initialRows, initialFeatured, initialCombos] = await Promise.all([
     rows(
       `tours?select=${SELECT}&visibility=eq.public&kind=eq.planned&order=created_at.desc&limit=100`,
     ),
     rows(
       `tours?select=${SELECT}&visibility=eq.public&featured_at=not.is.null&order=featured_at.desc&limit=10`,
     ),
+    // Chips = links naar 3.6k indexeerbare regio×categorie-pagina's. Faalt de
+    // aggregatie, dan [] en haalt de client ze alsnog op.
+    discoverCombos().catch(() => []),
   ]);
   return (
-    <DiscoverClient initialRows={initialRows} initialFeatured={initialFeatured} />
+    <DiscoverClient
+      initialRows={initialRows}
+      initialFeatured={initialFeatured}
+      initialCombos={initialCombos}
+    />
   );
 }

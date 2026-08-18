@@ -57,20 +57,13 @@ count into this table.
 
 ### P1 — SEO architecture
 
-**P1-8 · Region×category chips are not in the SSR HTML**
-- *What*: `/discover`'s region chips come from `/api/discover/combos`, still
-  fetched client-side, so up to 60 links to the 3,625 region×category pages are
-  absent from the delivered HTML.
-- *Why not done with P1-5*: the combos route aggregates 500k highlight rows and
-  carries its own retry/slug-collision logic; server-rendering it means
-  extracting that into a shared module, not copying the query.
-- *Acceptance test*: `curl -s .../nl/discover | grep -c '/nl/discover/'` > 0.
-
 **P1-9 · SSR payload on `/discover` carries full geometry**
-- *What*: `/nl/discover` grew 42,341 → 91,151 bytes because `waypoints` and
-  `thumb_coords` for 21 tours ride along in the RSC payload, and the client
-  still refetches the same rows.
-- *Why*: fine at 21 tours, but it scales linearly with public route count.
+- *What*: `/nl/discover` grew 42,341 → 91,151 → **134,161** bytes. Two causes:
+  `waypoints`/`thumb_coords` for 21 tours ride along in the RSC payload, and
+  all 230 combos are serialised although only 60 chips render. The client still
+  refetches both sets afterwards, so it is paid twice.
+- *Why*: fine at today's volumes, but the tour part scales linearly with public
+  route count.
 - *Acceptance test*: the SSR list uses a lighter `select`, or the client skips
   its initial refetch when server data is present.
 
@@ -212,13 +205,34 @@ count into this table.
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: no orphan sets remain. Outstanding: P1-8 (region chips in SSR),
-P1-9 (discover payload weight), P1-1 (shared SEO layer), P1-4 (UX-agent
-`git add -A`, needs Niels), plus the P3 list.
+**Next up**: P1-9 (trim the `/discover` SSR payload — now 134 kB and paid
+twice). Then P1-1 (shared SEO layer) and the P3 list. P1-4 still needs Niels.
 
 ---
 
 ## Done
+
+### 2026-08-18 — P1-8 region×category chips are now in the delivered HTML
+
+The chips are links into the 3,625 region×category pages, and they were the
+last listing still fetched client-side. `/nl/discover` and `/en/discover` now
+each carry **60** `discover/{region}/{category}` links in the HTML (was 0).
+Spot-checked that they are not links into 404s: `/nl/discover/antwerp/monument`,
+`/nl/discover/baden-wurttemberg/hut` and `/nl/discover/baden-wurttemberg/peak`
+all return 200.
+
+*Approach*: the logic moved verbatim from `/api/discover/combos/route.ts` into
+`src/lib/seo/discoverCombos.ts`; the route is now a thin wrapper over it and
+the `/discover` server page calls the same function. Copying the query instead
+would have duplicated three pieces of hard-won behaviour — the deliberate
+absence of `order=n.desc` (it times out over 500k rows), the per-page retry,
+and slug-collision resolution across the *full* set before truncating to 200.
+Two copies of that would drift, which is exactly why `lib/regionSlug.ts` exists.
+
+*Gates*: `/api/discover/combos` still 200 with 230 items · `npm test` 33/33 ·
+`next lint` clean · `tsc --noEmit` exit 0 · `npm run build` exit 0 ·
+regression: `/nl`, `/nl/trails`, `/nl/collections`, `/nl/trails/aargau`,
+`/en/discover`, `/sitemap.xml` all 200.
 
 ### 2026-08-18 — P1-5 (option A): both hubs now ship crawlable links
 
