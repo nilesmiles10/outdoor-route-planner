@@ -128,7 +128,9 @@ export default async function TrailRegionPage({
             "@context": "https://schema.org",
             "@type": "ItemList",
             name: heading,
-            numberOfItems: r.items.length,
+            // Moet overeenkomen met wat er hieronder werkelijk staat: bij een
+            // volle pagina (300 items) claimde dit er 300 en leverde er 100.
+            numberOfItems: Math.min(r.items.length, 100),
             itemListElement: r.items.slice(0, 100).map((x, i) => ({
               "@type": "ListItem",
               position: i + 1,

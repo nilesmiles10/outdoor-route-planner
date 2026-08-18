@@ -143,6 +143,16 @@ count into this table.
 - *Acceptance test*: every visible trail is reachable from at least one indexable
   listing page.
 
+**P3-5 · `/discover` and `/collections` hubs still have no JSON-LD**
+- *What*: both are listing surfaces, and both now server-render their items, but
+  neither emits an `ItemList`. `/trails`, the region pages and the collection
+  pages all do.
+- *Why not done with P2-8*: they render through client components, so the
+  structured data has to be built in the server wrapper from the same
+  `initialRows`/`initialPublic` props — a different shape than the other pages.
+- *Acceptance test*: both emit an `ItemList` whose `numberOfItems` equals the
+  number of `itemListElement` entries, all pointing at real, indexable URLs.
+
 ### P3 — optimizations
 
 - **P3-1** `sitemap.ts` `changeFrequency`/`priority` are hand-set constants;
@@ -249,6 +259,16 @@ count into this table.
 - *Acceptance test*: every visible trail is reachable from at least one indexable
   listing page.
 
+**P3-5 · `/discover` and `/collections` hubs still have no JSON-LD**
+- *What*: both are listing surfaces, and both now server-render their items, but
+  neither emits an `ItemList`. `/trails`, the region pages and the collection
+  pages all do.
+- *Why not done with P2-8*: they render through client components, so the
+  structured data has to be built in the server wrapper from the same
+  `initialRows`/`initialPublic` props — a different shape than the other pages.
+- *Acceptance test*: both emit an `ItemList` whose `numberOfItems` equals the
+  number of `itemListElement` entries, all pointing at real, indexable URLs.
+
 ### P3 — optimizations
 
 - **P3-1** `sitemap.ts` `changeFrequency`/`priority` are hand-set constants;
@@ -336,6 +356,16 @@ count into this table.
   measurement and threshold first.
 - *Acceptance test*: every visible trail is reachable from at least one indexable
   listing page.
+
+**P3-5 · `/discover` and `/collections` hubs still have no JSON-LD**
+- *What*: both are listing surfaces, and both now server-render their items, but
+  neither emits an `ItemList`. `/trails`, the region pages and the collection
+  pages all do.
+- *Why not done with P2-8*: they render through client components, so the
+  structured data has to be built in the server wrapper from the same
+  `initialRows`/`initialPublic` props — a different shape than the other pages.
+- *Acceptance test*: both emit an `ItemList` whose `numberOfItems` equals the
+  number of `itemListElement` entries, all pointing at real, indexable URLs.
 
 ### P3 — optimizations
 
@@ -427,6 +457,16 @@ refactor deferred*
 - *Acceptance test*: every visible trail is reachable from at least one indexable
   listing page.
 
+**P3-5 · `/discover` and `/collections` hubs still have no JSON-LD**
+- *What*: both are listing surfaces, and both now server-render their items, but
+  neither emits an `ItemList`. `/trails`, the region pages and the collection
+  pages all do.
+- *Why not done with P2-8*: they render through client components, so the
+  structured data has to be built in the server wrapper from the same
+  `initialRows`/`initialPublic` props — a different shape than the other pages.
+- *Acceptance test*: both emit an `ItemList` whose `numberOfItems` equals the
+  number of `itemListElement` entries, all pointing at real, indexable URLs.
+
 ### P3 — optimizations
 
 - **P3-1** `sitemap.ts` `changeFrequency`/`priority` are hand-set constants;
@@ -467,6 +507,46 @@ against production.
 ---
 
 ## Done
+
+### 2026-08-18 — P2-8: structured data on the homepage and the trails index
+
+*Audit sweep finding*: every **detail** page emitted JSON-LD (`Trip`,
+`TouristAttraction`, `BreadcrumbList`, `ItemList`, `Place`, `Person`) but **no
+listing page did** — including the homepage and `/trails`, the index to 30,265
+routes.
+
+*Added, both from real data only*:
+- Homepage: `WebSite` with `name` (from `site_settings`) and `url`. Nothing else
+  — deliberately **no** `SearchAction`/sitelinks-searchbox, which Google retired
+  in 2023 and would describe a feature that does not exist, and **no**
+  `Organization`, because there is no address, founding date or social profile
+  to populate it with.
+- `/trails`: `ItemList` of the listed routes, same pattern the region pages
+  already use — name and URL only.
+
+*A defect found by validating rather than assuming*: my first version emitted
+`numberOfItems: 200` alongside 100 `itemListElement` entries, because the list
+is capped for payload reasons. **The region pages had the same flaw already**
+(`numberOfItems: r.items.length` with `.slice(0, 100)` — so a full 300-item page
+claimed 300 and delivered 100). An `ItemList` that claims one count and ships
+another is internally contradictory. Both now report what they actually emit.
+
+*Verified across every `ItemList` on the site*:
+
+| Page | numberOfItems | elements |
+|---|---|---|
+| `/nl/trails` | 100 | 100 |
+| `/nl/trails/bayern` | 100 | 100 |
+| `/nl/trails/aargau` | 25 | 25 |
+| `/nl/discover/aargau/hut` | 49 | 49 |
+| `/nl/collection/c068af01-…` | 2 | 2 |
+
+All JSON-LD parses as valid JSON (checked by `json.loads`, not by eye), and
+every `ListItem` carries both `name` and `url`.
+
+*Gates*: `npm test` 37/37 · `next lint` clean · `tsc --noEmit` exit 0 ·
+`npm run build` exit 0 · `/nl`, `/nl/trails`, `/nl/trails/aargau`,
+`/nl/trail/…`, `/nl/discover`, `/nl/collections` all 200.
 
 ### 2026-08-18 — P2-7: region pages paginated, 4,701 trails recovered
 

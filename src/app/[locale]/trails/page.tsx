@@ -7,6 +7,10 @@ import SiteFooter from "@/components/SiteFooter";
 import RegionFilterSelect from "@/components/RegionFilterSelect";
 import MiniMap from "@/components/MiniMap";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
+import { SITE_URL } from "@/app/sitemap";
+
+// Cap op de JSON-LD-lijst: 200 items zouden de payload nog eens verdubbelen.
+const LD_ITEM_CAP = 100;
 
 // Boven dit aantal regio's wordt de chip-rij een onbruikbare muur (GB heeft er
 // 149) → dan een compacte dropdown i.p.v. chips.
@@ -259,6 +263,32 @@ export default async function TrailsPage({
 
   return (
     <main className="mx-auto min-h-dvh max-w-4xl px-4 pb-16 pt-20">
+      {/* ItemList over de daadwerkelijk getoonde routes, zelfde patroon als de
+          regiopagina's — dit was het enige lijst-oppervlak zónder gestructureerde
+          data. Alleen naam en URL: allebei echt, niets verzonnen. Gecapt op 100
+          zodat een 200-item-lijst de payload niet nog eens opblaast. numberOfItems
+          telt de getoonde routes, niet matchCount: het zijn de items die hier
+          daadwerkelijk staan. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            name: t("title"),
+            // numberOfItems telt de élementen die hieronder ook echt staan.
+            // Eerst stond hier trails.length (200) bij 100 elementen — een
+            // ItemList die 200 claimt en er 100 levert is intern tegenstrijdig.
+            numberOfItems: Math.min(trails.length, LD_ITEM_CAP),
+            itemListElement: trails.slice(0, LD_ITEM_CAP).map((tr, i) => ({
+              "@type": "ListItem",
+              position: i + 1,
+              name: tr.name,
+              url: `${SITE_URL}/${locale}/trail/${tr.id}`,
+            })),
+          }),
+        }}
+      />
       <h1 className="text-2xl font-bold text-neutral-900">{t("title")}</h1>
       <p className="mt-1 text-sm text-neutral-500">{t("subtitle")}</p>
 
