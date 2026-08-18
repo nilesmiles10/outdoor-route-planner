@@ -234,11 +234,19 @@ export default async function TrailPage({
   // Hoogtepunten die de route passeert (al opgehaald voor de kaart-pins) ook als
   // tekst-links: elk POI → zijn highlight-pagina, met de categorie als meta.
   const passedHl = highlightPins.features.map((f) => {
-    const p = (f.properties ?? {}) as { id: string; name: string; category: string };
+    const p = (f.properties ?? {}) as {
+      id: string;
+      name: string;
+      category: string;
+      km?: number;
+    };
+    const cat = tHl(`cat.${p.category}` as never);
     return {
       href: `/${locale}/highlight/${p.id}`,
       name: p.name,
-      meta: tHl(`cat.${p.category}` as never),
+      // Km-positie langs de route erbij (net als de tour-pagina's "Onderweg"),
+      // zodat je ziet wáár langs de trail elk hoogtepunt ligt.
+      meta: typeof p.km === "number" ? `${cat} · km ${p.km.toFixed(1)}` : cat,
     };
   });
 

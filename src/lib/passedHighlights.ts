@@ -55,23 +55,43 @@ export async function passedHighlightPins(
     return EMPTY;
   }
 
+  // Cumulatieve km langs de track, zodat elke passeer-highlight z'n km-positie
+  // krijgt (net als de "Onderweg"-lijst op de tour-pagina). Zelfde 5-stride als
+  // de afstandsloop hieronder — op 250 m tolerantie verliest dat niets.
+  const cumKm: number[] = [0];
+  for (let i = 1; i < coords.length; i++) {
+    cumKm.push(
+      cumKm[i - 1] +
+        haversineKm(coords[i - 1][0], coords[i - 1][1], coords[i][0], coords[i][1]),
+    );
+  }
   const passed = (data ?? [])
     .map((hl) => {
       let best = Infinity;
+      let bestKm = 0;
       for (let i = 0; i < coords.length; i += 5) {
         const d = haversineKm(hl.lon, hl.lat, coords[i][0], coords[i][1]);
-        if (d < best) best = d;
+        if (d < best) {
+          best = d;
+          bestKm = cumKm[i] ?? 0;
+        }
       }
-      return { hl, offKm: best };
+      return { hl, offKm: best, atKm: bestKm };
     })
     .filter((x) => x.offKm <= 0.25)
+    .sort((a, b) => a.atKm - b.atKm)
     .slice(0, 8);
 
   return {
     type: "FeatureCollection",
-    features: passed.map(({ hl }) => ({
+    features: passed.map(({ hl, atKm }) => ({
       type: "Feature",
-      properties: { id: hl.id, name: hl.name, category: hl.category },
+      properties: {
+        id: hl.id,
+        name: hl.name,
+        category: hl.category,
+        km: Math.round(atKm * 10) / 10,
+      },
       geometry: { type: "Point", coordinates: [hl.lon, hl.lat] },
     })),
   };
