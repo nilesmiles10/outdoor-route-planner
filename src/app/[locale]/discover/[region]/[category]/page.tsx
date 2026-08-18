@@ -23,6 +23,8 @@ type Hl = {
   category: string;
   region: string;
   description: string | null;
+  description_nl: string | null;
+  description_en: string | null;
 };
 
 // Public, session-free content. supabaseServer() calls cookies(), which opts
@@ -68,7 +70,7 @@ async function resolve(regionSlug: string, category: string) {
 
   const { ambiguous, label } = match;
   const items = await rest<Hl>(
-    `highlights?select=id,name,category,region,description` +
+    `highlights?select=id,name,category,region,description,description_nl,description_en` +
       `&region=eq.${encodeURIComponent(match.region)}&category=eq.${encodeURIComponent(category)}` +
       (ambiguous && match.country ? `&country=eq.${encodeURIComponent(match.country)}` : "") +
       `&order=name&limit=${ITEM_LIMIT}`,
@@ -262,11 +264,19 @@ export default async function RegionCategoryPage({
               <div className="truncate font-medium text-neutral-900">
                 {CATEGORY_EMOJI[h.category]} {label}
               </div>
-              {h.description && (
-                <div className="mt-0.5 truncate text-xs text-neutral-500">
-                  {h.description}
-                </div>
-              )}
+              {(() => {
+                // Gegenereerde NL/EN-omschrijving wint van de ruwe OSM-tekst
+                // (die vaak in de lokale taal van de POI staat, bv. Duits voor
+                // Zwitserse punten) — zelfde keuze als de highlight-detailpagina.
+                const blurb =
+                  (locale === "en" ? h.description_en : h.description_nl) ??
+                  h.description;
+                return blurb ? (
+                  <div className="mt-0.5 truncate text-xs text-neutral-500">
+                    {blurb}
+                  </div>
+                ) : null;
+              })()}
             </a>
           </li>
         ))}
