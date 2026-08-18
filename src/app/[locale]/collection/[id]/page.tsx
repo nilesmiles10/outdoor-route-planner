@@ -58,12 +58,20 @@ export async function generateMetadata({
   const agg = aggregateStats(tours.map((t) => t.stats));
   // Entity-specifieke OG: zonder deze erven gedeelde collectie-links de
   // generieke layout-OG ("Tarnoo" / tagline).
-  const ogTitle = `${c.title} · ${tours.length} routes · ${(agg.distanceM / 1000).toFixed(0)} km`;
+  // Lege collectie (alle leden privé/verwijderd) → geen "· 0 routes · 0 km"-
+  // suffix in title/OG: dat leest als een kapotte pagina bij delen. Alleen de
+  // naam. (De pagina is dan toch al noindex.)
+  const km = (agg.distanceM / 1000).toFixed(0);
+  const ogTitle =
+    tours.length > 0 ? `${c.title} · ${tours.length} routes · ${km} km` : c.title;
   const ogDesc =
     c.intro?.slice(0, 160) ||
     `A collection of ${tours.length} outdoor routes — planned with ${(await getSiteSettings()).site_name}.`;
   return {
-    title: `${c.title} | ${tours.length} routes · ${(agg.distanceM / 1000).toFixed(0)} km`,
+    title:
+      tours.length > 0
+        ? `${c.title} | ${tours.length} routes · ${km} km`
+        : c.title,
     description: ogDesc,
     alternates: { canonical: `/${params.locale}/collection/${params.id}` },
     openGraph: { title: ogTitle, description: ogDesc },
@@ -215,12 +223,17 @@ export default async function CollectionPage({
       <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-neutral-900">{c.title}</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            {tours.length} {tours.length === 1 ? "route" : "routes"} ·{" "}
-            {(agg.distanceM / 1000).toFixed(0)} km
-            {agg.timeS > 0 ? ` · ${fmtDuration(agg.timeS)} h` : ""} · ↗{" "}
-            {Math.round(agg.ascendM)} m
-          </p>
+          {/* Bij 0 zichtbare routes de statregel weglaten: "0 routes · 0 km · ↗
+              0 m" onder een rijke intro is een trieste, overbodige regel — de
+              lege-staat-boodschap (noRoutes) onderaan dekt het al. */}
+          {tours.length > 0 && (
+            <p className="mt-1 text-sm text-neutral-500">
+              {tours.length} {tours.length === 1 ? "route" : "routes"} ·{" "}
+              {(agg.distanceM / 1000).toFixed(0)} km
+              {agg.timeS > 0 ? ` · ${fmtDuration(agg.timeS)} h` : ""} · ↗{" "}
+              {Math.round(agg.ascendM)} m
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <ShareButton title={c.title} />
