@@ -62,11 +62,14 @@ region×category pages link across to the matching trail-region page. Re-measure
 after the change: a trail page now carries **0** `trails?country=` links and one
 `/nl/trails/{region}` link; the region×category page likewise.
 
-**Still open**: `/discover` and `/collections` are client components that fetch
-in `useEffect`, so their listings never reach the HTML — the 21 public tours and
-5 public collections remain orphans. Tracked as P1-5 in `SEO_AUDIT.md`; it needs
-coordination with the UX agent because it means server-rendering their
-components, not just repointing a link.
+**Fixed 2026-08-18 (option A).** Both hubs now have a thin server `page.tsx`
+that preloads the public rows and passes them to the existing client component
+(`DiscoverClient` / `CollectionsClient`). Re-measured: `/nl/discover` carries
+**21** tour links (was 0) and `/nl/collections` **5** collection links (was 0),
+in both locales. No orphan set remains.
+
+**Still client-only**: the region×category chips on `/discover` (P1-8) and the
+payload weight of the SSR list (P1-9).
 
 ## Approved, not built
 

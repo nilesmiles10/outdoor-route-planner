@@ -57,18 +57,22 @@ count into this table.
 
 ### P1 — SEO architecture
 
-**P1-5 · `/discover` and `/collections` still ship zero crawlable links**
-- *Status*: narrowed. The trail half of the link graph is fixed (see Done,
-  2026-08-18); what remains is the two client-rendered hubs.
-- *What*: both fetch their listings in `useEffect`, so the delivered HTML
-  contains no links. The **21 public tours and 5 public collections** are still
-  reachable only via the sitemap.
-- *Why it is still open*: this is option A — server-rendering two large client
-  components (695 and 227 lines) that the UX agent owns. Unlike the trail fix,
-  there is no existing link whose href can simply be repointed; the content
-  itself has to reach the HTML.
-- *Acceptance test*: `curl -s https://tarnoo.com/nl/discover | grep -c '/nl/tour/'`
-  returns > 0.
+**P1-8 · Region×category chips are not in the SSR HTML**
+- *What*: `/discover`'s region chips come from `/api/discover/combos`, still
+  fetched client-side, so up to 60 links to the 3,625 region×category pages are
+  absent from the delivered HTML.
+- *Why not done with P1-5*: the combos route aggregates 500k highlight rows and
+  carries its own retry/slug-collision logic; server-rendering it means
+  extracting that into a shared module, not copying the query.
+- *Acceptance test*: `curl -s .../nl/discover | grep -c '/nl/discover/'` > 0.
+
+**P1-9 · SSR payload on `/discover` carries full geometry**
+- *What*: `/nl/discover` grew 42,341 → 91,151 bytes because `waypoints` and
+  `thumb_coords` for 21 tours ride along in the RSC payload, and the client
+  still refetches the same rows.
+- *Why*: fine at 21 tours, but it scales linearly with public route count.
+- *Acceptance test*: the SSR list uses a lighter `select`, or the client skips
+  its initial refetch when server data is present.
 
 **P1-1 · SEO logic is scattered across page components**
 - *What*: canonical, title, OG, JSON-LD and breadcrumb construction are
@@ -208,15 +212,50 @@ count into this table.
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: P1-5 is now the only large item — option A, server-rendering the
-`/discover` and `/collections` hubs so the 21 public tours and 5 collections
-stop being orphans. It touches UX-owned client components, so it needs
-coordination rather than a unilateral edit. Then P1-1 (shared SEO layer),
-P1-4 (agent coordination) and the P3 list.
+**Next up**: no orphan sets remain. Outstanding: P1-8 (region chips in SSR),
+P1-9 (discover payload weight), P1-1 (shared SEO layer), P1-4 (UX-agent
+`git add -A`, needs Niels), plus the P3 list.
 
 ---
 
 ## Done
+
+### 2026-08-18 — P1-5 (option A): both hubs now ship crawlable links
+
+The orphan problem is closed. `/discover` and `/collections` fetched their
+listings in `useEffect`, so the delivered HTML contained no links at all; the
+21 public tours and 5 public collections were reachable only via the sitemap.
+
+| URL | HTML bytes before → after | tour links | collection links |
+|---|---|---|---|
+| `/nl/discover` | 42,341 → 91,151 | **0 → 21** | 0 |
+| `/en/discover` | — | **0 → 21** | 0 |
+| `/nl/collections` | 39,762 → 46,253 | 0 | **0 → 5** |
+
+*Approach*: `git mv page.tsx → {Discover,Collections}Client.tsx` (rename stays
+traceable for the UX agent), plus a thin server `page.tsx` that preloads the
+public rows and passes them as props. The client bodies changed by two or three
+lines each — state initialises from props, and `loading` starts false when
+server data exists so the skeleton does not briefly replace already-rendered
+cards. No classNames, styling or layout touched. Filters, sorting and
+geolocation stay entirely client-side.
+
+*Two genuine guard defects this work exposed* — in both the guard stayed green
+where it should have failed, which is the worst failure mode for a guard:
+1. It recognised only `.from("…")` and a literal `rest/v1/<table>`. The new
+   `/discover` wrapper built its URL from a `REST` constant, so the query was
+   invisible to the scan. The guard now also knows the `<table>?select=` form,
+   and the page deliberately keeps table name and filters adjacent in source.
+2. The chain window cut only at the next `.from(`. `/discover` has two tours
+   queries, so chain #1 read chain #2's filter and a deleted filter passed.
+   The window now cuts at any query form.
+Mutation after both fixes: removing `visibility=eq.public` from the first
+`/discover` query turns the suite red on `keten #1`.
+
+*Gates*: `npm test` 33/33 · `next lint` clean · `tsc --noEmit` exit 0 ·
+`npm run build` exit 0 · regression: `/nl`, `/nl/trails`, `/nl/trails/aargau`,
+`/nl/routes`, `/nl/feed`, `/en/collections`, `/robots.txt`, `/sitemap.xml`
+all 200.
 
 ### 2026-08-18 — P1-6 + P1-7: trail-region landing pages, and the link graph around them
 
