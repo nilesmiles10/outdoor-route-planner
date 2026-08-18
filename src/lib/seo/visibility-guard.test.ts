@@ -25,6 +25,7 @@ const SRC = join(process.cwd(), "src");
 /** Publiek indexeerbare lijsten: MOETEN expliciet op visibility filteren. */
 const PUBLIC_LISTING: readonly string[] = [
   "app/sitemap.ts",
+  "app/[locale]/discover/DiscoverClient.tsx",
   "app/[locale]/discover/page.tsx",
   "app/[locale]/collections/CollectionsClient.tsx",
   "app/[locale]/collections/page.tsx",
@@ -74,16 +75,23 @@ function readChains(src: string): { chain: string; before: string }[] {
   // (rest/v1/collections?...). Die tweede is toegevoegd nadat de server-wrapper
   // voor /collections precies zo'n fetch introduceerde en ongezien langs deze
   // guard glipte — een guard die de nieuwste query-vorm niet kent, dekt niets.
-  const re = /\.from\("(?:tours|collections)"\)|rest\/v1\/(?:tours|collections)/g;
+  const re =
+    /\.from\("(?:tours|collections)"\)|rest\/v1\/(?:tours|collections)|\b(?:tours|collections)\?select=/g;
   for (let m = re.exec(src); m; m = re.exec(src)) {
     const start = m.index + m[0].length;
     const rest = src.slice(start, start + 500);
-    const next = rest.search(/\.from\("/);
+    // Knip bij de eerstvolgende query van WELKE vorm dan ook. Knippen op
+    // alleen `.from(` liet /discover's eerste tours-query het filter van de
+    // tweede meelezen, waardoor een verwijderd filter groen bleef (aangetoond
+    // met een mutatietest op 2026-08-18).
+    const next = rest.search(
+      /\.from\("|rest\/v1\/(?:tours|collections)|\b(?:tours|collections)\?select=/,
+    );
     const chain = next === -1 ? rest : rest.slice(0, next);
-    const isRest = m[0].startsWith("rest/v1/");
+    const isRest = m[0].startsWith("rest/v1/") || m[0].includes("?select=");
     if (isRest) {
       // REST-lezen herken je aan select= in de querystring.
-      if (!/select=/.test(chain)) continue;
+      if (!/select=/.test(m[0] + chain)) continue;
     } else {
       const sel = chain.search(/\.select\(/);
       if (sel === -1) continue; // geen leespad
