@@ -52,23 +52,22 @@ count into this table.
   HTML contains `noindex` and contains **no** `application/ld+json` Person
   block; a public profile is unchanged (indexable, JSON-LD present).
 
-**P0-2 · No automated privacy regression test — BLOCKED, decision needed**
-- *What*: there is no test asserting that private/unlisted content is absent
-  from every sitemap, from listing queries, and from metadata/JSON-LD.
-- *Why*: the loop brief requires this as a deliverable. Today the guarantee
-  rests entirely on Supabase RLS plus per-page code review.
-- *Blocker*: **RESOLVED 2026-08-18** — Niels approved adding `vitest` as a
-  devDependency plus an `npm test` script. Dev-only: no runtime dependency, no
-  bundle weight, no change to the Vercel build.
-- *Files*: `package.json`, `vitest.config.ts`, `src/lib/**/__tests__/*` (new).
-- *Acceptance test*: `npm test` runs green and fails if any of the four
-  assertions is broken — a private/unlisted tour, collection or profile that
-  (a) appears in `/sitemap.xml`, the trail sitemap or the highlight sitemap,
-  (b) appears in a listing/landing query, (c) does not 404 or `noindex` on
-  direct access, or (d) leaks into generated metadata or JSON-LD.
-- *Scope note*: this is more than one iteration's work. First slice = the
-  sitemap assertions (a), since those are pure functions over query results.
-  Slices (b)–(d) follow as separate backlog items.
+**P0-2 · Automated privacy regression test** — slice 1 done 2026-08-18
+(sitemap assertions). Remaining slices below.
+
+**P0-2b · Extend the privacy suite to listing/landing queries**
+- *What*: assert private/unlisted content is absent from `/discover`,
+  `/trails`, related-routes and "collections containing this route" queries.
+- *Files*: `src/lib/seo/*.test.ts`
+- *Acceptance test*: a non-public tour in the fixture never appears in any
+  listing result; removing a `.eq("visibility","public")` turns the suite red.
+
+**P0-2c · Assert direct-access status + metadata for non-public content**
+- *What*: a non-public tour must 404 (not soft-404) and emit no metadata or
+  JSON-LD. `tour/[id]/layout.tsx` already hard-404s above the Suspense
+  boundary; this needs to be locked down by a test.
+- *Acceptance test*: rendered HTML for a non-public tour is a 404 with no
+  `application/ld+json` and no tour name in `<title>`.
 
 ### P1 — SEO architecture
 
@@ -114,15 +113,25 @@ count into this table.
   redirect obligations. Needs design in `SEO_PAGE_ARCHITECTURE.md` and a
   measured count per proposed page type before any build.
 
-**P2-3 · Concurrent agent commits with `git add -A`**
-- *What*: the UX agent stages the whole worktree, so in-flight SEO edits land
-  in unrelated commits (observed 2026-08-18, commit `55af66a`).
-- *Why*: it breaks per-change provenance and can commit a half-finished or
-  stubbed file mid-verification. Not an SEO defect, but it directly threatens
-  this loop's verification gate.
-- *Mitigation on this side*: keep each iteration's edit window as short as
-  possible and never leave a temporary test stub on disk across a build.
-- *Acceptance test*: n/a — coordination item to raise with Niels.
+**P1-4 · Concurrent agent commits with `git add -A` — RAISED TO P1, NEAR-MISS**
+- *What*: the UX agent stages the whole worktree. Observed **twice** on
+  2026-08-18: commit `55af66a` swept the private-profile fix, commit `4dd876c`
+  swept the vitest scaffold and privacy test.
+- *Why this is now P1 and not a tidiness issue*: verification techniques
+  require deliberately breaking code for a few seconds — the mutation check
+  for P0-2 ran with `.eq("visibility","public")` **removed** from
+  `src/app/sitemap.ts`. A repo-wide `git add -A` landing in that window would
+  have committed a live privacy regression (every private, followers-only and
+  close-friends route into the public sitemap) under a planner commit message,
+  with a green-looking history. This time HEAD was verified intact:
+  `git show HEAD:src/app/sitemap.ts` still contains both `visibility` filters
+  and the suite passes 9/9 against committed code.
+- *Mitigations on this side (in force from now on)*: run mutation checks on a
+  scratch copy rather than the tracked file wherever possible, and never leave
+  a deliberately-broken tracked file on disk across an await.
+- *Needs Niels*: tell the UX agent to stage explicit paths. This cannot be
+  fixed from inside this loop.
+- *Acceptance test*: n/a — coordination item.
 
 ### P3 — optimizations
 
@@ -137,13 +146,46 @@ count into this table.
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: P0-2 slice 1 — vitest scaffold + the sitemap privacy assertions
-(approved 2026-08-18, no longer blocked). Then P1-3 (verify the hreflang
-`Link` headers actually ship) and P1-2 (self-canonical on user profiles).
+**Next up**: P1-3 (verify the hreflang `Link` headers actually ship — pure
+evidence, no file collision), then P0-2b/2c to widen the privacy suite, then
+P1-2 (self-canonical on user profiles).
 
 ---
 
 ## Done
+
+### 2026-08-18 — P0-2 slice 1: sitemap privacy regression test
+
+*Change*: added `vitest` (devDependency, approved by Niels) + `npm test`,
+`vitest.config.ts`, and `src/lib/seo/sitemap-privacy.test.ts` — 9 assertions
+running the **real** `src/app/sitemap.ts` against a fake Supabase client that
+applies only the `.eq()` filters the production code actually sends.
+
+*Why a fake client and not a pure helper test*: a unit test on an extracted
+predicate stays green while `sitemap.ts` forgets to call it. The risk being
+covered is exactly that omission, so the test must execute the real sitemap.
+
+*Evidence — mutation check (the part that makes the test worth having)*:
+removing `.eq("visibility", "public")` from the tours query turned the suite
+**red on 4 tests** (private / followers / close_friends / no-id-leaks), then
+the file was restored (`git diff` on `src/app/sitemap.ts` empty).
+
+| Run | Result |
+|---|---|
+| unmutated | 9 passed / 9 |
+| `.eq("visibility","public")` removed | **4 failed**, 5 passed |
+
+*Coverage*: excludes `private`, `followers`, `close_friends` tours; excludes
+non-public collections; excludes public-but-empty collections (they are
+`noindex`); confirms both locales for public content. Trails and highlights
+sitemaps are deliberately out of scope — official OSM data, no visibility
+column, no user content.
+
+*Gates*: `npm test` 9/9 · `next lint` clean · `npm run build` exit 0 ·
+`tsc --noEmit` exit 0 · `git status` shows only `package.json`,
+`package-lock.json`, `vitest.config.ts`, `src/lib/seo/`. No route output
+changed this iteration (`git diff HEAD -- src/app/sitemap.ts` empty), so
+rendered-HTML evidence is not applicable here.
 
 ### 2026-08-18 — P0-1 private profiles no longer indexable or in JSON-LD
 
