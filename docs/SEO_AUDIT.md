@@ -57,23 +57,6 @@ count into this table.
 
 ### P1 — SEO architecture
 
-**P2-5 · The full i18n catalogue ships on every page (20,416 bytes)**
-- *What*: measured in the delivered HTML of `/nl/discover` — the entire
-  translation catalogue is serialised into the RSC payload on **every** page,
-  including namespaces that page never uses (`planner`, `tourPage`,
-  `resetPassword`, `trailPage`, …). At 20.4 kB it is now the single largest
-  item in that page's payload, ahead of `thumb_coords` (9,748 B across 24
-  routes) and far ahead of `waypoints` (1,713 B after the P1-10 trim).
-- *Why it is not a quick fix*: next-intl can send a subset of messages to the
-  client, but that means auditing which namespaces each client component
-  actually calls and passing only those — it touches the locale layout and
-  every client component. Worth doing, but as its own piece of work.
-- *Files*: `src/app/[locale]/layout.tsx` (the `NextIntlClientProvider`), plus a
-  namespace audit per client component.
-- *Acceptance test*: `/nl/discover` HTML drops by roughly the size of the unused
-  namespaces, with every page still rendering its own copy correctly in both
-  locales.
-
 ### P2 — meaningful improvements
 
 **P2-2 · Activity-first URL architecture not implemented**
@@ -360,13 +343,43 @@ refactor deferred*
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: P2-5 (i18n payload, 20.4 kB on every page) is the last open
-non-parked item. P3-3 is parked until traffic justifies it. A deploy is still
-needed to confirm P2-4's cache HITs.
+**Next up**: nothing open. P3-3 (field performance data) is parked until
+traffic justifies the instrumentation. A deploy is needed to confirm P2-4's
+cache actually HITs — the one claim not verifiable locally.
 
 ---
 
 ## Done
+
+### 2026-08-18 — P2-5 closed as not worth doing (measured, not assumed)
+
+I filed this saying the i18n catalogue shipped namespaces "that page never
+uses". **That was wrong, and measuring it is what showed me.**
+
+Census of all **39** client components: they call **18** of the 22 namespaces.
+Only four are unused client-side:
+
+| Namespace | bytes |
+|---|---|
+| `trailsPage` | 966 |
+| `trailPage` | 942 |
+| `trailRegionPage` | 646 |
+| `app` | 229 |
+| **droppable total** | **2,783 of 19,558 (14.2%)** |
+
+That is ~2.5% of the 111 kB `/discover` page. And the largest namespace,
+`planner` (4,740 bytes, 24.6% of the catalogue), is used by 13 client
+components **including `AppHeader`**, which the locale layout renders on every
+page — so it cannot be dropped anywhere.
+
+Against that ~2.8 kB sits a real fragility: passing an explicit subset to
+`NextIntlClientProvider` means a client component added later that calls a
+dropped namespace fails at runtime with a missing-message error. Guarding that
+would need yet another source-scanning invariant.
+
+Not a good trade. Moved to *Deliberately not doing*. Per-route message
+splitting would be the real lever, but that is a much larger change than an SEO
+payload tweak justifies.
 
 ### 2026-08-18 — P2-6: the two hubs now have their own OpenGraph
 
@@ -1125,3 +1138,8 @@ in `HEAD` is the correct, stub-free version (verified: working tree matches
 - **P3-1: removing `changeFrequency`/`priority` from the sitemap.** Google
   ignores both fields. Removing them is churn with no measurable upside, and
   they cost nothing where they are.
+- **P2-5: trimming the client i18n payload.** Filed on the assumption that the
+  catalogue carried namespaces the page never uses. Measuring killed it —
+  see Done, 2026-08-18. Only 14.2% is droppable, against a real runtime
+  fragility. Revisit only if the catalogue grows a lot or per-route message
+  splitting becomes cheap.
