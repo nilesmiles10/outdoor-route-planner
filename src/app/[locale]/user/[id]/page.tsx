@@ -13,23 +13,6 @@ import AccountSections from "@/components/AccountSections";
 import SiteFooter from "@/components/SiteFooter";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 
-// Route-vorm-thumbnail voor de timeline: bemonster de geometrie tot ~40 punten
-// zodat de client-payload klein blijft (de volle geometrie kan duizenden
-// punten zijn). MiniMap normaliseert de vorm zelf.
-function thumbCoords(
-  geometry: { coordinates: [number, number][] } | null,
-): [number, number][] | null {
-  const c = geometry?.coordinates;
-  if (!c || c.length < 2) return null;
-  const N = 40;
-  if (c.length <= N) return c.map((p) => [p[0], p[1]]);
-  const step = (c.length - 1) / (N - 1);
-  return Array.from({ length: N }, (_, i) => {
-    const p = c[Math.round(i * step)];
-    return [p[0], p[1]];
-  });
-}
-
 // Profiel-v2 (Komoot-model, profile-optimization plan): identiteitskolom
 // links (avatar, bio, website, counters, content-index, statistieken),
 // timeline-feed rechts. Content is RLS-gefilterd (can_view_content) —
@@ -121,7 +104,7 @@ export default async function UserPage({
     sb
       .from("tours")
       .select(
-        "id,name,sport,kind,recorded_at,stats,moving_s,created_at,updated_at,geometry",
+        "id,name,sport,kind,recorded_at,stats,moving_s,created_at,updated_at,thumb_coords",
       )
       .eq("owner", p.id)
       .order("created_at", { ascending: false })
@@ -154,7 +137,7 @@ export default async function UserPage({
     moving_s: number | null;
     created_at: string;
     updated_at: string;
-    geometry: { coordinates: [number, number][] } | null;
+    thumb_coords: [number, number][] | null;
   };
   const tours = (toursQ.data as TourLite[]) ?? [];
   const completed = tours.filter((x) => x.kind === "completed");
@@ -205,7 +188,7 @@ export default async function UserPage({
       likeCount: likeRows.filter((l) => l.tour_id === x.id).length,
       likedByMe: !!viewer && likeRows.some((l) => l.tour_id === x.id && l.user_id === viewer.id),
       commentCount: commentRows.filter((c) => c.tour_id === x.id).length,
-      coords: thumbCoords(x.geometry),
+      coords: x.thumb_coords ?? null,
     };
   });
 
