@@ -168,6 +168,11 @@ export function routeOgCard({
           <div
             style={{
               display: "flex",
+              // flexWrap: bij lange sport-labels (EN "Mountain biking", "Bike
+              // touring") liep de statsregel over de 480px-kolom, waarna Satori
+              // de flex-gap tot 0 dichtklapte → "31 mBike touring" aan elkaar.
+              // Wrap zet het label netjes op een tweede regel i.p.v. te plakken.
+              flexWrap: "wrap",
               gap: 28,
               marginTop: 28,
               fontSize: 34,
@@ -306,6 +311,11 @@ export function collectionOgCard({
           <div
             style={{
               display: "flex",
+              // flexWrap: bij lange sport-labels (EN "Mountain biking", "Bike
+              // touring") liep de statsregel over de 480px-kolom, waarna Satori
+              // de flex-gap tot 0 dichtklapte → "31 mBike touring" aan elkaar.
+              // Wrap zet het label netjes op een tweede regel i.p.v. te plakken.
+              flexWrap: "wrap",
               gap: 28,
               marginTop: 28,
               fontSize: 34,
