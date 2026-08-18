@@ -65,6 +65,11 @@ export async function generateMetadata({
     title: pageTitle(await getSiteSettings(), name),
     description: bio,
     ...(isPrivate ? { robots: { index: false, follow: false } } : {}),
+    // Self-canonical: profiel-links worden veel gedeeld en komen terug met
+    // ?utm/?fbclid erachter. Zonder dit is elke tracking-variant een eigen URL
+    // met identieke inhoud. Consistent met tour/, trail/, collection/ en
+    // highlight/, die dit al deden.
+    alternates: { canonical: `/${params.locale}/user/${params.id}` },
     // Entity-specifieke OG i.p.v. de generieke layout-OG bij gedeelde links.
     // `images` expliciet: door openGraph te zetten verdwijnt de geërfde site-
     // OG-afbeelding, dus verwijs 'm terug (merk-kaart via metadataBase).

@@ -134,6 +134,83 @@ count into this table.
   canonical from the shared helper; rendered HTML for a migrated route is
   byte-identical to before on title/canonical/JSON-LD.
 
+**P1-5 · Crawlable internal link graph is largely missing — NEEDS A DECISION**
+- *Measured 2026-08-18 on production* (links present in delivered HTML):
+
+  | Page | tour links | collection links | trail links | region links |
+  |---|---|---|---|---|
+  | `/nl` (home/planner) | 0 | 0 | 0 | 0 |
+  | `/nl/discover` (42,341 B) | **0** | **0** | 0 | **0** |
+  | `/nl/collections` (39,762 B) | 0 | **0** | 0 | 0 |
+  | `/nl/trails` (631,131 B) | 0 | 0 | **200** | 0 |
+  | `/nl/discover/aargau/hut` | 0 | 0 | **0** | 0 (49 highlight links) |
+  | `/nl/trail/{id}` | 0 | 0 | 20 | 0 |
+
+- *What this means*: sitemap.xml advertises 7,310 URLs (21 nl tours, 5 nl
+  collections, 3,625 region×category pages). Of those, **no page links to a
+  tour, a collection, or a region×category page**. They are reachable only via
+  the sitemap — orphans in the internal link graph. `/trails` links 200 of
+  30,265 trails; trail pages link sideways to 20 peers but never up.
+- *Why it is not a simple fix*: `/discover` (695 lines) and `/collections`
+  (227 lines) are client components that fetch in `useEffect`. Making their
+  content crawlable means either server-rendering them (a refactor of files the
+  UX agent owns) or adding a **new visible section** to each hub. Both are
+  product/UX decisions, not technical SEO. Adding invisible links instead would
+  be hidden SEO text, which is explicitly prohibited.
+- **Open question for Niels** — pick one:
+  1. Server-render the existing hub content (I coordinate with the UX agent
+     first; largest win, largest collision risk).
+  2. Add a compact, genuinely useful visible "Browse by region / All public
+     routes" block to each hub (smaller diff, but it is new UI).
+  3. Build proper trail-region landing pages (see P1-7) and link the hubs to
+     those instead.
+- *Acceptance test*: `curl -s https://tarnoo.com/nl/discover | grep -c '/nl/tour/'`
+  > 0, and a region page links to its trails.
+
+**P1-6 · Trail breadcrumbs point at a URL that is canonicalised away**
+- *What*: `trail/[id]/page.tsx` builds the region crumb as
+  `/{locale}/trails?country=X&region=Y`. But `/trails` self-canonicals to
+  `/{locale}/trails`, so the crumb — and the `BreadcrumbList` JSON-LD built
+  from the same `crumbs` array — advertises a geographic parent that is not an
+  indexable URL.
+- *Why*: a BreadcrumbList whose middle item resolves to a canonicalised-away
+  URL gives Google a hierarchy it cannot honour, and wastes the one upward link
+  each of 30,265 trail pages has.
+- *Files*: `src/app/[locale]/trail/[id]/page.tsx` (the `crumbs` array).
+- *Blocked by*: there is no indexable trail-region page to point at yet — that
+  is P1-7. Fixing the crumb without a target would just move the problem.
+- *Acceptance test*: the region crumb href resolves to a 200 page that is not
+  canonicalised to a different URL.
+
+**P1-7 · No trail-region landing pages, though the data supports 873 of them**
+- *Measured*: `select count(distinct region) from trails where region is not null`
+  → **873** regions across 30,265 official routes. The existing
+  `/discover/{region}/{category}` pages are built from **highlights**, not
+  trails: the sample region page returned 49 highlight links and **0** trail
+  links.
+- *Why it matters*: for an outdoor **route** app the missing page type is
+  "routes in region X" — the natural parent for 30,265 trail pages and the
+  natural target for P1-6.
+- *Anti-doorway note*: 873 regions must not be generated wholesale. A minimum
+  count per region has to be measured and justified first (the existing gate
+  for highlight pages is n ≥ 8; the same threshold is the obvious starting
+  point but must be checked against the trail distribution before use).
+- *Needs a decision* — new indexable page type = product scope.
+- *Acceptance test*: only regions above the agreed minimum generate a page;
+  each links to its trails; each trail links back up.
+
+**P1-1 · SEO logic is scattered across page components**
+- *What*: canonical, title, OG, JSON-LD and breadcrumb construction are
+  hand-rolled per route (`tour`, `trail`, `highlight`, `collection`,
+  `discover`, `user`). No shared entity/SEO module.
+- *Why*: each new page type can forget canonical, a robots gate or a
+  visibility filter — which is exactly how P0-1 arose. A shared layer makes
+  the correct thing the default.
+- *Files*: new `src/lib/seo/*`, then migrate one route per iteration.
+- *Acceptance test*: `grep -rn "alternates:" src/app` shows routes deriving
+  canonical from the shared helper; rendered HTML for a migrated route is
+  byte-identical to before on title/canonical/JSON-LD.
+
 **P1-2 · `/[locale]/user/[id]` has no self-canonical**
 - *What*: no `alternates.canonical`, so `?utm=`/`?fbclid=` variants are
   distinct URLs.
@@ -188,14 +265,39 @@ count into this table.
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: P1-5/P1-6/P1-7 are the highest-value remaining work but all three
-need a product decision (see the open question under P1-5), so the loop will
-take P1-2 (self-canonical on user profiles) and P2-1 (`/routes` and `/feed`
-noindex) next — both are metadata-only and collision-free.
+**Next up**: P2-1 (`/routes` and `/feed` noindex) — the last collision-free,
+decision-free item. After that only P1-1 (shared SEO layer, large refactor),
+P1-4 (agent coordination, needs Niels), P1-5/6/7 (need the product decision)
+and the P3 list remain.
 
 ---
 
 ## Done
+
+### 2026-08-18 — P1-2 self-canonical on user profiles
+
+*Change*: `src/app/[locale]/user/[id]/page.tsx` — added
+`alternates: { canonical: '/{locale}/user/{id}' }`. Profile links are shared
+often and come back carrying `?utm_*` / `?fbclid`; without a canonical each
+tracking variant was a separate URL with identical content. Brings the profile
+route in line with `tour/`, `trail/`, `collection/` and `highlight/`, which
+already did this.
+
+*Rendered-HTML evidence* (production build, `npm run start`):
+
+| Request | HTTP | canonical in HTML |
+|---|---|---|
+| `/nl/user/b60c3f2a-…` | 200 | `…/nl/user/b60c3f2a-…` |
+| `/nl/user/b60c3f2a-…?fbclid=abc123&utm_source=x` | 200 | `…/nl/user/b60c3f2a-…` (same clean URL) |
+
+Title unchanged (`nielsbaars | Tarnoo`), no robots meta on the public profile
+(still indexable — correct). The host in the local build is the Vercel-alias
+fallback because `NEXT_PUBLIC_SITE_URL` is unset locally; production resolves
+the same `SITE_URL` constant to `tarnoo.com`, confirmed earlier this session on
+a live trail page.
+
+*Gates*: `npm test` 31/31 · `next lint` clean · `tsc --noEmit` exit 0 ·
+`npm run build` exit 0 · diff is one file.
 
 ### 2026-08-18 — P0-2 slice 4 (P0-2d): non-public tours leak no metadata
 
