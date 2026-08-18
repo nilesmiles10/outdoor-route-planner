@@ -143,6 +143,26 @@ count into this table.
 - *Acceptance test*: every visible trail is reachable from at least one indexable
   listing page.
 
+**P3-6 · hreflang drops the query string on paginated region URLs**
+- *What*: `curl -sI https://tarnoo.com/nl/trails/bayern?page=2` returns
+  `<https://tarnoo.com/en/trails/bayern>; hreflang="en"` — **without**
+  `?page=2`. So page 2's declared English equivalent is English page *1*. Page 1
+  itself is correct.
+- *Cause*: next-intl's middleware builds the alternate links from the pathname
+  only; it does not carry search params. Not our code.
+- *Scale*: 56 of 8,252 sitemap URLs (the paginated ones). Page 1 of every region
+  is unaffected.
+- *Why not fixed on the spot*: the obvious fix — emitting `alternates.languages`
+  in the page metadata — would put a correct `<link rel="alternate">` in the HTML
+  **alongside** the incorrect `Link` header, and two contradictory hreflang
+  signals can make Google discard hreflang for those URLs entirely. That is
+  plausibly worse than the current wart. Fixing it properly means suppressing or
+  rewriting the header in middleware for paginated paths, which is fiddly enough
+  to deserve its own iteration rather than a quick patch.
+- *Acceptance test*: `curl -sI .../nl/trails/bayern?page=2` shows the `en`
+  alternate as `.../en/trails/bayern?page=2`, and exactly one hreflang mechanism
+  is in play.
+
 ### P3 — optimizations
 
 - **P3-1** `sitemap.ts` `changeFrequency`/`priority` are hand-set constants;
@@ -259,6 +279,26 @@ count into this table.
 - *Acceptance test*: both emit an `ItemList` whose `numberOfItems` equals the
   number of `itemListElement` entries, all pointing at real, indexable URLs.
 
+**P3-6 · hreflang drops the query string on paginated region URLs**
+- *What*: `curl -sI https://tarnoo.com/nl/trails/bayern?page=2` returns
+  `<https://tarnoo.com/en/trails/bayern>; hreflang="en"` — **without**
+  `?page=2`. So page 2's declared English equivalent is English page *1*. Page 1
+  itself is correct.
+- *Cause*: next-intl's middleware builds the alternate links from the pathname
+  only; it does not carry search params. Not our code.
+- *Scale*: 56 of 8,252 sitemap URLs (the paginated ones). Page 1 of every region
+  is unaffected.
+- *Why not fixed on the spot*: the obvious fix — emitting `alternates.languages`
+  in the page metadata — would put a correct `<link rel="alternate">` in the HTML
+  **alongside** the incorrect `Link` header, and two contradictory hreflang
+  signals can make Google discard hreflang for those URLs entirely. That is
+  plausibly worse than the current wart. Fixing it properly means suppressing or
+  rewriting the header in middleware for paginated paths, which is fiddly enough
+  to deserve its own iteration rather than a quick patch.
+- *Acceptance test*: `curl -sI .../nl/trails/bayern?page=2` shows the `en`
+  alternate as `.../en/trails/bayern?page=2`, and exactly one hreflang mechanism
+  is in play.
+
 ### P3 — optimizations
 
 - **P3-1** `sitemap.ts` `changeFrequency`/`priority` are hand-set constants;
@@ -356,6 +396,26 @@ count into this table.
   `initialRows`/`initialPublic` props — a different shape than the other pages.
 - *Acceptance test*: both emit an `ItemList` whose `numberOfItems` equals the
   number of `itemListElement` entries, all pointing at real, indexable URLs.
+
+**P3-6 · hreflang drops the query string on paginated region URLs**
+- *What*: `curl -sI https://tarnoo.com/nl/trails/bayern?page=2` returns
+  `<https://tarnoo.com/en/trails/bayern>; hreflang="en"` — **without**
+  `?page=2`. So page 2's declared English equivalent is English page *1*. Page 1
+  itself is correct.
+- *Cause*: next-intl's middleware builds the alternate links from the pathname
+  only; it does not carry search params. Not our code.
+- *Scale*: 56 of 8,252 sitemap URLs (the paginated ones). Page 1 of every region
+  is unaffected.
+- *Why not fixed on the spot*: the obvious fix — emitting `alternates.languages`
+  in the page metadata — would put a correct `<link rel="alternate">` in the HTML
+  **alongside** the incorrect `Link` header, and two contradictory hreflang
+  signals can make Google discard hreflang for those URLs entirely. That is
+  plausibly worse than the current wart. Fixing it properly means suppressing or
+  rewriting the header in middleware for paginated paths, which is fiddly enough
+  to deserve its own iteration rather than a quick patch.
+- *Acceptance test*: `curl -sI .../nl/trails/bayern?page=2` shows the `en`
+  alternate as `.../en/trails/bayern?page=2`, and exactly one hreflang mechanism
+  is in play.
 
 ### P3 — optimizations
 
@@ -457,6 +517,26 @@ refactor deferred*
 - *Acceptance test*: both emit an `ItemList` whose `numberOfItems` equals the
   number of `itemListElement` entries, all pointing at real, indexable URLs.
 
+**P3-6 · hreflang drops the query string on paginated region URLs**
+- *What*: `curl -sI https://tarnoo.com/nl/trails/bayern?page=2` returns
+  `<https://tarnoo.com/en/trails/bayern>; hreflang="en"` — **without**
+  `?page=2`. So page 2's declared English equivalent is English page *1*. Page 1
+  itself is correct.
+- *Cause*: next-intl's middleware builds the alternate links from the pathname
+  only; it does not carry search params. Not our code.
+- *Scale*: 56 of 8,252 sitemap URLs (the paginated ones). Page 1 of every region
+  is unaffected.
+- *Why not fixed on the spot*: the obvious fix — emitting `alternates.languages`
+  in the page metadata — would put a correct `<link rel="alternate">` in the HTML
+  **alongside** the incorrect `Link` header, and two contradictory hreflang
+  signals can make Google discard hreflang for those URLs entirely. That is
+  plausibly worse than the current wart. Fixing it properly means suppressing or
+  rewriting the header in middleware for paginated paths, which is fiddly enough
+  to deserve its own iteration rather than a quick patch.
+- *Acceptance test*: `curl -sI .../nl/trails/bayern?page=2` shows the `en`
+  alternate as `.../en/trails/bayern?page=2`, and exactly one hreflang mechanism
+  is in play.
+
 ### P3 — optimizations
 
 - **P3-1** `sitemap.ts` `changeFrequency`/`priority` are hand-set constants;
@@ -497,6 +577,28 @@ against production.
 ---
 
 ## Done
+
+### 2026-08-18 — heading-hierarchy sweep: healthy, no defect
+
+Checked because it was in scope and had never been examined. **Every page type
+has exactly one `<h1>`**, and it describes the page:
+
+| Page | H1 |
+|---|---|
+| `/nl` | `Tarnoo` |
+| `/nl/trails` | `Officiële routes` |
+| `/nl/discover` | `Ontdek routes` |
+| `/nl/collections` | `Collecties` |
+| `/nl/trails/aargau` | `25 officiële routes in Aargau` |
+| `/nl/trails/bayern?page=2` | present, 1 |
+| `/nl/trail/…` | `NaTourismus Waldroute` |
+| `/nl/collection/…` | `Wandelen door bos en heuvels` |
+
+*Worth recording*: my first sweep reported `h1=0` for `?page=2`. That was a
+**bug in my measurement loop**, not the site — checked directly and the page has
+one `<h1>` and the correct `— Pagina 2 van 4` title. Filed nothing.
+
+Recorded so this is not re-swept.
 
 ### 2026-08-18 — P3-5: `ItemList` on both hubs, structured data now complete
 
