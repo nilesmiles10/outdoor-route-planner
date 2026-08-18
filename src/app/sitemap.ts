@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { supabaseServer } from "@/lib/supabase/server";
 import { withRegionSlugs } from "@/lib/regionSlug";
-import { trailRegions } from "@/lib/seo/trailRegions";
+import { pageCount, trailRegions } from "@/lib/seo/trailRegions";
 
 // Dynamic sitemap over all public content (tours, highlights, collections),
 // both locales. Canonical host comes from NEXT_PUBLIC_SITE_URL (tarnoo.com).
@@ -128,11 +128,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
     }
     for (const tr of trailRegionList) {
-      entries.push({
-        url: `${SITE_URL}/${locale}/trails/${tr.slug}`,
-        changeFrequency: "weekly",
-        priority: 0.7,
-      });
+      // Ook de vervolgpagina's: 19 regio's zijn groter dan één pagina, en de
+      // routes daarop zouden anders alleen via de pager-link vindbaar zijn.
+      for (let page = 1; page <= pageCount(tr.n); page++) {
+        entries.push({
+          url:
+            page === 1
+              ? `${SITE_URL}/${locale}/trails/${tr.slug}`
+              : `${SITE_URL}/${locale}/trails/${tr.slug}?page=${page}`,
+          changeFrequency: "weekly",
+          priority: page === 1 ? 0.7 : 0.5,
+        });
+      }
     }
     for (const pg of pages.data ?? []) {
       entries.push({

@@ -568,7 +568,11 @@
     "roundtrip": "Rondje",
     "gravel": "Gravel",
     "otherRegions": "Andere regio's",
-    "viewAll": "Bekijk alle routes in {region}"
+    "viewAll": "Bekijk alle routes in {region}",
+    "pageLabel": "Pagina {page} van {pages}",
+    "prev": "Vorige",
+    "next": "Volgende",
+    "capHintPaged": "Routes {from}–{to} van {total, number}, alfabetisch gesorteerd."
   },
   "trailPage": {
     "official": "Officiële route",

@@ -89,6 +89,9 @@ vi.mock("@/lib/seo/trailRegions", () => ({
   trailRegions: async () => [
     { region: "Aargau", country: "CH", n: 25, slug: "aargau", label: "Aargau" },
   ],
+  // sitemap.ts pagineert de regiopagina's; zonder deze mock valt de suite om op
+  // een ontbrekende export i.p.v. op iets inhoudelijks.
+  pageCount: (n: number) => Math.max(1, Math.ceil(n / 300)),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({

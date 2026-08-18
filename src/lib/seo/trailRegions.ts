@@ -84,22 +84,36 @@ export type TrailListItem = {
   stats: { distanceM: number; timeS: number; ascendM: number };
 };
 
-/** Resolveert een URL-slug naar zijn regio + routes, of null als hij niet bestaat. */
-export async function resolveTrailRegion(slug: string): Promise<
-  (TrailRegion & { items: TrailListItem[] }) | null
-> {
+/** Aantal pagina's dat een regio nodig heeft bij TRAIL_LIST_LIMIT per pagina. */
+export function pageCount(n: number): number {
+  return Math.max(1, Math.ceil(n / TRAIL_LIST_LIMIT));
+}
+
+/**
+ * Resolveert een URL-slug naar zijn regio + routes, of null als hij niet bestaat.
+ *
+ * `page` is 1-based. Bestaat de pagina niet (te hoog), dan null → 404: een lege
+ * pagina 5 laten renderen is dunne inhoud die niet hoort te bestaan.
+ */
+export async function resolveTrailRegion(
+  slug: string,
+  page = 1,
+): Promise<(TrailRegion & { items: TrailListItem[]; page: number; pages: number }) | null> {
   const match = (await trailRegions()).find((r) => r.slug === slug);
   if (!match) return null;
+  const pages = pageCount(match.n);
+  if (!Number.isInteger(page) || page < 1 || page > pages) return null;
   const q = new URLSearchParams({
     select: "id,name,sport,roundtrip,is_gravel,stats",
     region: `eq.${match.region}`,
     order: "name_sort.asc",
     limit: String(TRAIL_LIST_LIMIT),
+    offset: String((page - 1) * TRAIL_LIST_LIMIT),
   });
   // country kan null zijn; dan niet filteren (de regionaam is dan uniek).
   if (match.country) q.set("country", `eq.${match.country}`);
   const items = await rest<TrailListItem>(`trails?${q.toString()}`);
-  return { ...match, items };
+  return { ...match, items, page, pages };
 }
 
 /** Slug voor een trail-regio, of null als die regio de drempel niet haalt. */

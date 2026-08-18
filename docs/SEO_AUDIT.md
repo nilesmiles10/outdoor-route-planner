@@ -129,6 +129,20 @@ count into this table.
   fixed from inside this loop.
 - *Acceptance test*: n/a — coordination item.
 
+**P3-4 · 1,213 trails have no top-down link (below the n≥8 region threshold)**
+- *What*: after pagination, 28,945 of 30,174 visible trails are linked from a
+  region page. The remaining **1,213** sit in regions that do not clear the n≥8
+  anti-doorway gate, so no region page exists for them.
+- *Why it is P3, not a bug*: they are all in the sitemap, and each trail page
+  links 20 regional peers, so they are discoverable — just without a top-down
+  path. Generating pages for those regions would mean creating thin pages, which
+  the threshold exists to prevent.
+- *Possible fix*: a country-level page (`/trails/{country}`) would cover them
+  without thin regions — but that is a new indexable page type and needs its own
+  measurement and threshold first.
+- *Acceptance test*: every visible trail is reachable from at least one indexable
+  listing page.
+
 ### P3 — optimizations
 
 - **P3-1** `sitemap.ts` `changeFrequency`/`priority` are hand-set constants;
@@ -221,6 +235,20 @@ count into this table.
   fixed from inside this loop.
 - *Acceptance test*: n/a — coordination item.
 
+**P3-4 · 1,213 trails have no top-down link (below the n≥8 region threshold)**
+- *What*: after pagination, 28,945 of 30,174 visible trails are linked from a
+  region page. The remaining **1,213** sit in regions that do not clear the n≥8
+  anti-doorway gate, so no region page exists for them.
+- *Why it is P3, not a bug*: they are all in the sitemap, and each trail page
+  links 20 regional peers, so they are discoverable — just without a top-down
+  path. Generating pages for those regions would mean creating thin pages, which
+  the threshold exists to prevent.
+- *Possible fix*: a country-level page (`/trails/{country}`) would cover them
+  without thin regions — but that is a new indexable page type and needs its own
+  measurement and threshold first.
+- *Acceptance test*: every visible trail is reachable from at least one indexable
+  listing page.
+
 ### P3 — optimizations
 
 - **P3-1** `sitemap.ts` `changeFrequency`/`priority` are hand-set constants;
@@ -294,6 +322,20 @@ count into this table.
 - *Needs Niels*: tell the UX agent to stage explicit paths. This cannot be
   fixed from inside this loop.
 - *Acceptance test*: n/a — coordination item.
+
+**P3-4 · 1,213 trails have no top-down link (below the n≥8 region threshold)**
+- *What*: after pagination, 28,945 of 30,174 visible trails are linked from a
+  region page. The remaining **1,213** sit in regions that do not clear the n≥8
+  anti-doorway gate, so no region page exists for them.
+- *Why it is P3, not a bug*: they are all in the sitemap, and each trail page
+  links 20 regional peers, so they are discoverable — just without a top-down
+  path. Generating pages for those regions would mean creating thin pages, which
+  the threshold exists to prevent.
+- *Possible fix*: a country-level page (`/trails/{country}`) would cover them
+  without thin regions — but that is a new indexable page type and needs its own
+  measurement and threshold first.
+- *Acceptance test*: every visible trail is reachable from at least one indexable
+  listing page.
 
 ### P3 — optimizations
 
@@ -371,6 +413,20 @@ refactor deferred*
   fixed from inside this loop.
 - *Acceptance test*: n/a — coordination item.
 
+**P3-4 · 1,213 trails have no top-down link (below the n≥8 region threshold)**
+- *What*: after pagination, 28,945 of 30,174 visible trails are linked from a
+  region page. The remaining **1,213** sit in regions that do not clear the n≥8
+  anti-doorway gate, so no region page exists for them.
+- *Why it is P3, not a bug*: they are all in the sitemap, and each trail page
+  links 20 regional peers, so they are discoverable — just without a top-down
+  path. Generating pages for those regions would mean creating thin pages, which
+  the threshold exists to prevent.
+- *Possible fix*: a country-level page (`/trails/{country}`) would cover them
+  without thin regions — but that is a new indexable page type and needs its own
+  measurement and threshold first.
+- *Acceptance test*: every visible trail is reachable from at least one indexable
+  listing page.
+
 ### P3 — optimizations
 
 - **P3-1** `sitemap.ts` `changeFrequency`/`priority` are hand-set constants;
@@ -411,6 +467,51 @@ against production.
 ---
 
 ## Done
+
+### 2026-08-18 — P2-7: region pages paginated, 4,701 trails recovered
+
+*Found by a fresh audit sweep after the deploy* — the region pages capped their
+list at `TRAIL_LIST_LIMIT` (300) with no pager, so everything past #300 was
+listed nowhere:
+
+| Measure | Count |
+|---|---|
+| visible trails | 30,174 |
+| in regions with a page (n ≥ 8) | 28,945 |
+| **actually linked before** (300-cap) | **24,244 (80.3%)** |
+| lost to the cap, across 19 oversized regions | **4,701** |
+| **linked after pagination** | **28,945 (95.9%)** |
+
+*Why pagination and not a bigger cap*: measured page weight is ~1.4 kB per
+trail (the RSC payload repeats the rendered list), so `/nl/trails/zuid-holland`
+is 213 kB for 146 links. Bayern's 1,113 trails on one page would be ~1.3 MB.
+
+*Implementation*: `?page=N`, 1-based, in the shared data layer. Out-of-range,
+zero and non-numeric pages **404** rather than rendering an empty page. Page
+title carries `— Pagina N van M` so pages 2+ are not SERP duplicates, and each
+page **self-canonicals to itself** — consolidating to page 1 would devalue
+exactly the links this pagination exists to expose. Pager is real `<a>` links,
+not client-side, or page 2+ would be as unreachable as before.
+
+*Evidence*:
+
+| Check | Result |
+|---|---|
+| `/nl/trails/bayern`, `?page=2`, `?page=4` | 200 · titles `— Pagina 1/2/4 van 4` · canonical matches each page |
+| `?page=5`, `?page=0`, `?page=abc` | **404** |
+| page 2 content | 300 trail links, pager links to page 1 and 3 |
+| single-page region (`aargau`) | unchanged — no page suffix, no pager rendered |
+| sitemap | 8,196 → **8,252** (+56 paginated URLs) |
+| regression | `/nl`, `/nl/trails`, `/nl/discover`, `/nl/collections`, `/nl/trails/aargau`, `/robots.txt` all 200 |
+
+*A silent failure worth recording*: the first pass at the metadata edit did not
+apply — I had asserted on some string replacements but not that one, so it
+no-op'd and the build stayed green while page 2 still served page 1's title and
+canonical. Caught only because the rendered-HTML check compares actual output.
+Re-applied with an assertion.
+
+*Gates*: `npm test` 37/37 · `next lint` clean · `tsc --noEmit` exit 0 ·
+`npm run build` exit 0.
 
 ### 2026-08-18 — P2-4b: `/nl/trails` is now genuinely CDN-cached
 

@@ -568,7 +568,11 @@
     "roundtrip": "Loop",
     "gravel": "Gravel",
     "otherRegions": "Other regions",
-    "viewAll": "View all routes in {region}"
+    "viewAll": "View all routes in {region}",
+    "pageLabel": "Page {page} of {pages}",
+    "prev": "Previous",
+    "next": "Next",
+    "capHintPaged": "Routes {from}–{to} of {total, number}, sorted alphabetically."
   },
   "trailPage": {
     "official": "Official trail",

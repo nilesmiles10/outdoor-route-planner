@@ -6,7 +6,11 @@ import { entityMetadata } from "@/lib/seo/entityMetadata";
 import { difficulty } from "@/lib/difficulty";
 import { fmtDuration } from "@/lib/activity";
 import { SITE_URL } from "@/app/sitemap";
-import { resolveTrailRegion, type TrailListItem } from "@/lib/seo/trailRegions";
+import {
+  resolveTrailRegion,
+  TRAIL_LIST_LIMIT,
+  type TrailListItem,
+} from "@/lib/seo/trailRegions";
 
 // Landingspagina "N officiële routes in <regio>" — de ontbrekende
 // geografische ouder van de 30k trail-pagina's. Zie lib/seo/trailRegions.ts
@@ -23,12 +27,20 @@ function sportNounKey(t: TrailListItem): string {
   return t.is_gravel ? "gravel" : t.sport;
 }
 
+function pageParam(searchParams?: { page?: string }): number {
+  const raw = searchParams?.page;
+  return raw ? Number(raw) : 1;
+}
+
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: { region: string; locale: string };
+  searchParams?: { page?: string };
 }): Promise<Metadata> {
-  const r = await resolveTrailRegion(params.region);
+  const page = pageParam(searchParams);
+  const r = await resolveTrailRegion(params.region, page);
   if (!r)
     return {
       title: (
@@ -41,12 +53,23 @@ export async function generateMetadata({
   });
   // De ECHTE telling uit het aggregaat (r.n), niet de op TRAIL_LIST_LIMIT
   // gecapte lijst — anders claimt elke grote regio het cap-getal.
-  const title = t("title", { count: r.n, region: r.label });
+  // Paginatitel draagt het paginanummer, anders zijn pagina 2+ duplicaten van
+  // pagina 1 in de SERP.
+  const base = t("title", { count: r.n, region: r.label });
+  const title =
+    r.pages > 1
+      ? `${base} — ${t("pageLabel", { page: r.page, pages: r.pages })}`
+      : base;
   const desc = t("metaDescription", { count: r.n, region: r.label });
-  // Canonical staat op de resolved slug (die kan een land-suffix dragen).
+  // Canonical staat op de resolved slug (die kan een land-suffix dragen) én op
+  // de PAGINA zelf, niet op pagina 1: consolideren naar pagina 1 zou de links op
+  // 2+ devalueren, en precies daarvoor bestaat deze paginering.
   return entityMetadata({
     locale: params.locale,
-    path: `trails/${params.region}`,
+    path:
+      r.page > 1
+        ? `trails/${params.region}?page=${r.page}`
+        : `trails/${params.region}`,
     title,
     description: desc,
     ogImage: `/${params.locale}/opengraph-image`,
@@ -55,11 +78,13 @@ export async function generateMetadata({
 
 export default async function TrailRegionPage({
   params,
+  searchParams,
 }: {
   params: { region: string; locale: string };
+  searchParams?: { page?: string };
 }) {
   setRequestLocale(params.locale);
-  const r = await resolveTrailRegion(params.region);
+  const r = await resolveTrailRegion(params.region, pageParam(searchParams));
   if (!r) notFound();
   const { locale } = params;
   const t = await getTranslations("trailRegionPage");
@@ -133,9 +158,13 @@ export default async function TrailRegionPage({
       <p className="mt-1.5 max-w-2xl text-sm text-neutral-600">
         {t("intro", { region: r.label })}
       </p>
-      {r.items.length < r.n && (
+      {r.pages > 1 && (
         <p className="mt-1 text-xs text-neutral-500">
-          {t("capHint", { shown: r.items.length, total: r.n })}
+          {t("capHintPaged", {
+            from: (r.page - 1) * TRAIL_LIST_LIMIT + 1,
+            to: (r.page - 1) * TRAIL_LIST_LIMIT + r.items.length,
+            total: r.n,
+          })}
         </p>
       )}
 
@@ -166,6 +195,32 @@ export default async function TrailRegionPage({
           );
         })}
       </ul>
+
+      {/* Echte <a>-links, geen client-side pager: pagina 2+ moet crawlbaar zijn,
+          anders blijven de routes erop even onbereikbaar als vóór de paginering. */}
+      {r.pages > 1 && (
+        <nav className="mt-6 flex items-center gap-4 text-sm" aria-label="Paginering">
+          {r.page > 1 && (
+            <a
+              href={`/${locale}/trails/${params.region}${r.page - 1 > 1 ? `?page=${r.page - 1}` : ""}`}
+              className="text-emerald-800 hover:underline"
+            >
+              ← {t("prev")}
+            </a>
+          )}
+          <span className="text-neutral-500">
+            {t("pageLabel", { page: r.page, pages: r.pages })}
+          </span>
+          {r.page < r.pages && (
+            <a
+              href={`/${locale}/trails/${params.region}?page=${r.page + 1}`}
+              className="text-emerald-800 hover:underline"
+            >
+              {t("next")} →
+            </a>
+          )}
+        </nav>
+      )}
 
       <p className="mt-8 text-sm">
         <a href={`/${locale}/trails`} className="text-emerald-800 hover:underline">
