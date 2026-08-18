@@ -1209,7 +1209,20 @@ export default function PlannerApp() {
         setError("gpx_invalid");
         return;
       }
-      const anchors = sampleAnchors(pts, 6);
+      // Lengte-adaptief bemonsteren i.p.v. een vaste 6 ankers: ~1 anker per 3 km
+      // (min 6, max 15). Met 6 ankers over bv. 48 km lag er elke 8 km één anker
+      // en had BRouter tussen de ankers te veel vrijheid → de her-routing week
+      // af van de geïmporteerde track. Dichtere ankers houden 'm dichter bij het
+      // origineel; de cap houdt het aantal legs (route-calls) beheersbaar.
+      let km = 0;
+      for (let i = 1; i < pts.length; i++) {
+        km +=
+          haversineM(
+            { name: "", lon: pts[i - 1][0], lat: pts[i - 1][1] },
+            { name: "", lon: pts[i][0], lat: pts[i][1] },
+          ) / 1000;
+      }
+      const anchors = sampleAnchors(pts, Math.min(15, Math.max(6, Math.round(km / 3))));
       dispatch({
         type: "load",
         slots: anchors.map(([lon, lat]) => ({
