@@ -161,6 +161,15 @@ function coordName(lon: number, lat: number) {
   return `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
 }
 
+// Coördinaat-vingerafdruk van een puntenreeks — alléén lon/lat (geen namen, die
+// worden na een rondje-generatie async reverse-geocode-gepatcht). Gebruikt om te
+// detecteren of de huidige route nog exact het gegenereerde rondje is, zodat
+// "Genereer" een "Ander rondje"-knop kan worden (variatie via willekeurige
+// bearing bestaat al in de engine, maar was onbereikbaar zodra er 4 punten stonden).
+function loopSig(ws: { lon: number; lat: number }[]): string {
+  return ws.map((w) => `${w.lon.toFixed(5)},${w.lat.toFixed(5)}`).join(";");
+}
+
 function isSportClient(v: string): v is Sport {
   return (SPORTS as readonly string[]).includes(v);
 }
@@ -460,6 +469,10 @@ export default function PlannerApp() {
   // veld zelf aanpast; daarna blijft de gekozen waarde staan.
   const [rtEdited, setRtEdited] = useState(false);
   const [rtBusy, setRtBusy] = useState(false);
+  // Vingerafdruk van het laatst gegenereerde rondje. Zolang de route hier exact
+  // gelijk aan is (gebruiker heeft niks handmatig gewijzigd) mag "Genereer" een
+  // "Ander rondje" worden i.p.v. te disablen bij >1 punt.
+  const lastGenSigRef = useRef<string | null>(null);
   const [copied, setCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -869,6 +882,11 @@ export default function PlannerApp() {
 
 
   const filled = plan.slots.filter((s): s is Waypoint => s !== null);
+  // True zolang de huidige route exact het laatst gegenereerde rondje is (geen
+  // handmatige bewerking). Dan mag "Genereer" een "Ander rondje" worden i.p.v.
+  // te disablen omdat er >1 punt staat.
+  const isGeneratedLoop =
+    lastGenSigRef.current !== null && loopSig(filled) === lastGenSigRef.current;
 
   // Round trip à la Komoot's "Heen en terug" toggle: the route ends where it
   // starts (last waypoint = copy of the start). Derived from the slots, so
@@ -1261,15 +1279,16 @@ export default function PlannerApp() {
       }
       if (!best) throw new Error("no_route");
       const { p1, p2 } = best;
-      dispatch({
-        type: "load",
-        slots: [
-          start,
-          { name: coordName(p1[0], p1[1]), lon: p1[0], lat: p1[1] },
-          { name: coordName(p2[0], p2[1]), lon: p2[0], lat: p2[1] },
-          { ...start },
-        ],
-      });
+      const genSlots = [
+        start,
+        { name: coordName(p1[0], p1[1]), lon: p1[0], lat: p1[1] },
+        { name: coordName(p2[0], p2[1]), lon: p2[0], lat: p2[1] },
+        { ...start },
+      ];
+      dispatch({ type: "load", slots: genSlots });
+      // Onthoud de vorm zodat "Ander rondje" beschikbaar blijft tot de gebruiker
+      // handmatig een punt verzet/toevoegt (dan wijkt de vingerafdruk af).
+      lastGenSigRef.current = loopSig(genSlots);
       patchName(p1[0], p1[1]);
       patchName(p2[0], p2[1]);
     } catch {
@@ -2365,17 +2384,21 @@ export default function PlannerApp() {
               <button
                 type="button"
                 onClick={handleGenerateLoop}
-                disabled={rtBusy || filled.length !== 1}
+                disabled={rtBusy || (filled.length !== 1 && !isGeneratedLoop)}
                 className="rounded-lg bg-emerald-700 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-800 disabled:opacity-40"
               >
-                {rtBusy ? t("generating") : t("generate")}
+                {rtBusy
+                  ? t("generating")
+                  : isGeneratedLoop
+                    ? t("regenerate")
+                    : t("generate")}
               </button>
               {!filled[0] && (
                 <span className="text-[10px] text-neutral-400">
                   {t("roundTripHint")}
                 </span>
               )}
-              {filled.length > 1 && (
+              {filled.length > 1 && !isGeneratedLoop && (
                 <span className="text-[10px] text-neutral-400">
                   {t("roundTripOnlyStart")}
                 </span>

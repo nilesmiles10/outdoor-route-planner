@@ -134,6 +134,7 @@
     "importGpx": "GPX importeren",
     "generate": "Genereer",
     "generating": "Genereren…",
+    "regenerate": "Ander rondje",
     "roundTripHint": "Kies eerst een startpunt",
     "roundTripOnlyStart": "Werkt alleen met enkel een startpunt — gebruik anders 'Heen en terug'",
     "share": "Delen",
