@@ -120,8 +120,28 @@ refactor deferred*
 
 - **P3-1** `sitemap.ts` `changeFrequency`/`priority` are hand-set constants;
   Google ignores both. Harmless, low value to remove.
-- **P3-2** Image `loading`/`alt` sweep across route cards.
-- **P3-3** LCP/CLS/INP field measurement — no data collected yet.
+- **P3-3** LCP/CLS/INP **field** measurement — still no data, and collecting it
+  needs a decision: real-user monitoring means an analytics dependency and a
+  privacy/consent question. Lab numbers were taken instead (see Done).
+
+**P2-4 · `/nl/trails` is never CDN-cached**
+- *What*: measured on production — `x-vercel-cache: MISS` on three consecutive
+  hits, 631,205 bytes, TTFB 3.30s cold and ~0.30–0.38s warm. Every other route
+  is 0.10–0.32s and HIT/STALE.
+- *Cause*: `export const dynamic = "force-dynamic"` (line 19) plus
+  `supabaseServer()`, which reads cookies. So the route re-renders and re-queries
+  Supabase on every single request, including every crawler hit on the entry
+  point to 30,265 trail pages.
+- **Hazard that blocks the obvious fix**: naively adding `Cache-Control:
+  s-maxage` would let the CDN serve one user's render to everyone — and because
+  `trails_select` is `hidden_at IS NULL OR is_admin()`, an **admin's** render
+  contains the 91 hidden trails. Caching that would leak them to anonymous
+  visitors. Any fix must first make the query provably viewer-independent (plain
+  anon fetch instead of `supabaseServer()`), exactly as `/discover` and
+  `/collections` now do.
+- *Files*: `src/app/[locale]/trails/page.tsx` (541 lines, UX-owned).
+- *Acceptance test*: repeat hits return `x-vercel-cache: HIT`, and an
+  admin-authenticated request never populates the shared cache.
 
 ---
 
@@ -129,14 +149,49 @@ refactor deferred*
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: only P3s and blocked items remain — P1-1's refactor half
-(deferred while the UX agent is active), P1-10 (payload), P1-4 (needs Niels),
-P3-2 (image alt/loading sweep) and P3-3 (no LCP/CLS/INP field data). P3-1 moved
-to Deliberately not doing.
+**Next up**: nothing actionable without a decision. P2-4 (trails caching) needs
+the viewer-independence fix designed first and touches a UX-owned file; P1-1's
+refactor half is deferred while the UX agent is active; P1-10 (payload) needs a
+UI trade-off; P1-4 needs Niels; P3-3 needs an analytics/consent decision. The
+loop stops here rather than manufacture work.
 
 ---
 
 ## Done
+
+### 2026-08-18 — P3-2 closed as no-defect, plus lab performance numbers
+
+*P3-2 (image `alt`/`loading` sweep) had nothing to fix.* The backlog entry came
+from a generic checklist; measuring the actual markup dissolved it:
+
+- The whole codebase contains **8** `<img>` tags and no `next/image`. Five are
+  admin-only (`noindex`), one is the MFA QR code behind auth.
+- The delivered HTML of `/nl`, `/nl/trails`, `/nl/discover`, `/nl/collections`
+  and `/nl/trails/aargau` contains **exactly one** `<img>` each: the header
+  logo, an inline `data:` SVG with `alt=""` inside `<a aria-label="Tarnoo">` —
+  correct decorative-image markup, and no network request.
+- `Avatar.tsx` already sets `alt`, `width`, `height`, `loading="lazy"` and
+  `decoding="async"`.
+- The highlight photo grid is the only other public image code, and
+  `highlight_photos` contains **0 rows**, so it never renders on any live page.
+
+*Lab performance* (local production build + browser Performance API on
+`/nl/trails`): **CLS 0**, 12 resources, 180 KB transferred, 11 JS files /
+173 KB. No layout shift to fix.
+
+*Production timing per route* (`curl` timing + `x-vercel-cache`):
+
+| Route | TTFB | size | cache |
+|---|---|---|---|
+| `/nl` | 0.12s | 42,790 B | HIT |
+| `/nl/discover` | 0.11s | 42,404 B | STALE |
+| `/nl/trails/aargau` | 0.23s | 6,076 B | HIT |
+| `/nl/trail/00015b65-…` | 0.32s | 109,437 B | MISS |
+| `/nl/trails` | **3.30s cold / ~0.35s warm** | **631,205 B** | **MISS ×3** |
+
+That last row is a real finding and is filed as **P2-4** — not fixed here,
+because the obvious cache fix would leak admin-visible hidden trails. See the
+backlog entry.
 
 ### 2026-08-18 — iteration-10 re-audit + uppercase URL duplicates fixed
 
