@@ -90,15 +90,6 @@ count into this table.
 - *Acceptance test*: `curl -s <user-url>?fbclid=x | grep canonical` shows the
   clean path.
 
-**P1-3 · Verify hreflang actually ships**
-- *What*: `[locale]/layout.tsx` deliberately omits `alternates.languages` and
-  relies on next-intl emitting `Link: rel="alternate"` HTTP headers.
-- *Why*: this is an assumption recorded in a comment, not evidence. If the
-  header is absent in production the site has **no** hreflang at all across
-  two locales.
-- *Acceptance test*: `curl -sI https://tarnoo.com/nl/trails | grep -i '^link:'`
-  shows en/nl/x-default pointing at the page-specific URLs.
-
 ### P2 — meaningful improvements
 
 **P2-1 · `/[locale]/routes` and `/[locale]/feed` are personalized but indexable**
@@ -146,13 +137,43 @@ count into this table.
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: P1-3 (verify the hreflang `Link` headers actually ship — pure
-evidence, no file collision), then P0-2b/2c to widen the privacy suite, then
-P1-2 (self-canonical on user profiles).
+**Next up**: P0-2c (assert non-public tours hard-404 and leak no metadata or
+JSON-LD on direct access), then P0-2b (listing/landing queries), then P1-2
+(self-canonical on user profiles).
 
 ---
 
 ## Done
+
+### 2026-08-18 — P1-3 hreflang verified shipping (no code change needed)
+
+The assumption recorded in `[locale]/layout.tsx` — that omitting
+`alternates.languages` is safe because next-intl emits hreflang via the HTTP
+`Link` header — is **correct**, now confirmed against production rather than
+against a comment.
+
+`curl -sI https://tarnoo.com/nl/trails`:
+```
+link: <https://tarnoo.com/en/trails>; rel="alternate"; hreflang="en",
+      <https://tarnoo.com/nl/trails>; rel="alternate"; hreflang="nl",
+      <https://tarnoo.com/trails>; rel="alternate"; hreflang="x-default"
+```
+Page-specific (not pointing at the homepage), absolute, on the canonical host,
+and present on deep dynamic routes too — verified on
+`/nl/trail/00015b65-…` (HTTP 200), which is the 30,265-page bulk of the site.
+`x-default` targets the locale-negotiating unprefixed URL (`/trails` → 307),
+which is the intended meaning of x-default.
+
+Same request also confirms the trail template is fully server-rendered:
+`<title>NaTourismus Waldroute | 26.2 km gravelroute | Tarnoo</title>`,
+`<link rel="canonical" href="https://tarnoo.com/nl/trail/00015b65-…"/>`,
+plus `BreadcrumbList` (3 × `ListItem`) and `Trip` JSON-LD — all in the
+delivered HTML, none client-injected.
+
+*Also checked and found healthy*: `x-vercel-cache` on a trail URL is `MISS`
+only on a cold first hit, then `HIT` with a rising `age` on repeat requests.
+The `localeCookie: false` workaround in `src/i18n/routing.ts` is doing its job;
+no crawl-budget problem here. Not filed as an issue.
 
 ### 2026-08-18 — P0-2 slice 1: sitemap privacy regression test
 
