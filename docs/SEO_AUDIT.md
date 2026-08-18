@@ -129,13 +129,66 @@ refactor deferred*
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: no P0/P1/P2 item remains that is both collision-free and
-decision-free. Outstanding: P1-1's refactor half (deliberately deferred while
-the UX agent is active), P1-10 (payload), P1-4 (needs Niels), and the P3 list.
+**Next up**: only P3s and blocked items remain — P1-1's refactor half
+(deferred while the UX agent is active), P1-10 (payload), P1-4 (needs Niels),
+P3-2 (image alt/loading sweep) and P3-3 (no LCP/CLS/INP field data). P3-1 moved
+to Deliberately not doing.
 
 ---
 
 ## Done
+
+### 2026-08-18 — iteration-10 re-audit + uppercase URL duplicates fixed
+
+*Re-audit sweep against production* (the brief asks for a full one every 10th
+iteration). Checked and found **healthy**, recorded so they are not re-chased:
+
+| Check | Result |
+|---|---|
+| trailing slash | `/nl/trails/` → 308 → `/nl/trails` |
+| double slash | `//nl/trails` → 308 → `/nl/trails` |
+| unknown slug | `/nl/does-not-exist` → 404 |
+| unknown entity id | `/nl/trail/0000…0000` → 404 (not soft-404) |
+| locale case | `/NL/trails` → redirect to `/nl/trails` |
+
+*Defect found*: path segments resolve **case-insensitively** on Vercel.
+`/nl/TRAILS`, `/nl/Trails`, `/nl/DiScOvEr` and `/nl/Collections` each returned
+**200 with full content** (200 trail links on the first). A genuinely unknown
+slug still 404s, so this is case-folding, not a catch-all. The self-canonical
+already pointed at the lowercase URL, so Google would consolidate — but they
+remain crawlable duplicates, and any mistyped external link mints another.
+
+*Change*: `src/middleware.ts` now 308-redirects any path containing uppercase
+to its lowercase form, preserving the query string.
+
+*Safety check before writing it* — every URL identifier in this app is already
+lowercase, verified against the database rather than assumed:
+
+| Column | rows differing from `lower()` |
+|---|---|
+| `trails.id`, `tours.id`, `collections.id`, `highlights.id`, `profiles.id` | **0** each |
+| `pages.slug` | **0** |
+| `trail_regions.region` | 875 — but that is the *display* name; the URL uses `slugify()`, which lowercases |
+
+Noted in the middleware comment: if a case-sensitive slug is ever introduced,
+this redirect has to change with it.
+
+*Evidence*:
+
+| Request | Result |
+|---|---|
+| `/nl/TRAILS` | 308 → `/nl/trails` |
+| `/nl/Trails`, `/nl/DiScOvEr`, `/nl/Collections` | 308 → lowercase |
+| `/nl/TRAILS?utm_source=x` | 308 → `/nl/trails?utm_source=x` (query preserved) |
+| `/NL/trails`, `/Nl` | 308 → `/nl/trails`, `/nl` |
+| `/nl/trails`, `/nl/discover`, `/nl/collections`, `/nl/trails/aargau`, `/nl/trail/00015b65-…`, `/nl`, `/robots.txt`, `/sitemap.xml` | all 200, unaffected |
+| `/api/discover/combos`, `/_next/static/…js` | 200, excluded by the matcher |
+
+Following the redirect yields the correct page (`Officiële routes | Tarnoo`)
+with its canonical intact.
+
+*Gates*: `npm test` 37/37 · `next lint` clean · `tsc --noEmit` exit 0 ·
+`npm run build` exit 0 · diff is one file.
 
 ### 2026-08-18 — P1-1 slice 1: canonical coverage closed and made enforceable
 
@@ -588,3 +641,6 @@ in `HEAD` is the correct, stub-free version (verified: working tree matches
 - **Removing the `n >= 8` region×category gate.** It is the anti-doorway rule.
 - **Cosmetic/CSS/component restructuring.** Owned by the concurrent UX agent.
 - **Bulk generation of city/country pages** until counts justify each type.
+- **P3-1: removing `changeFrequency`/`priority` from the sitemap.** Google
+  ignores both fields. Removing them is churn with no measurable upside, and
+  they cost nothing where they are.

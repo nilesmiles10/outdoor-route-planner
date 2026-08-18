@@ -52,6 +52,23 @@ export default function middleware(req: NextRequest) {
     url.port = "";
     return NextResponse.redirect(url, 301);
   }
+  // Padsegmenten zijn hoofdletter-ongevoelig op Vercel: /nl/TRAILS, /nl/Trails
+  // en /nl/DiScOvEr gaven alle een 200 met volledige inhoud (gemeten op
+  // productie 2026-08-18). De self-canonical wijst al naar de kleine-letter-
+  // URL, dus Google consolideert, maar het blijven crawlbare duplicaten — en
+  // elke externe link met een tikfout maakt er nog een.
+  //
+  // Veilig omdat élke legitieme URL in deze app al kleine letters is:
+  // trail-/tour-/collectie-/highlight-/profiel-id's zijn UUID's (0 rijen met
+  // hoofdletters, geverifieerd), pages.slug is kleine letters (0 rijen), en
+  // regio-slugs komen uit slugify() dat lowercased. Komt er ooit een
+  // hoofdletter-gevoelige slug bij, dan moet deze redirect mee veranderen.
+  const lower = req.nextUrl.pathname.toLowerCase();
+  if (lower !== req.nextUrl.pathname) {
+    const url = req.nextUrl.clone();
+    url.pathname = lower;
+    return NextResponse.redirect(url, 308);
+  }
   if (req.nextUrl.pathname.startsWith("/admin")) {
     return adminSession(req);
   }
