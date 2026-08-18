@@ -40,6 +40,7 @@
     "undo": "Undo",
     "redo": "Redo",
     "mapHint": "Tip: click the map to add points, drag the route line to adjust it.",
+    "mapHintTouch": "Tip: tap the map to add points, drag the route line to adjust it.",
     "climbs": "climbs",
     "climb": "Climb",
     "atKm": "at km",

@@ -487,6 +487,13 @@ export default function PlannerApp() {
   // 45dvh kwijt is aan het paneel. Alleen relevant onder md (grab-handle is
   // md:hidden); op desktop is het paneel een vaste zijbalk.
   const [sheetCollapsed, setSheetCollapsed] = useState(false);
+  // Touch-apparaten hebben geen muis: "klik"/"sleep" in de onboarding-hint zijn
+  // de verkeerde werkwoorden op de mobiele bottom-sheet. Detecteer coarse pointer
+  // ná mount (default false = desktop-tekst, matcht SSR → geen hydration-mismatch).
+  const [coarsePointer, setCoarsePointer] = useState(false);
+  useEffect(() => {
+    setCoarsePointer(window.matchMedia?.("(pointer: coarse)")?.matches ?? false);
+  }, []);
   // Sport-netwerk-overlays (Waymarked Trails) — opt-in, sport-bewuste default
   // zou stille tile-load betekenen; bewust handmatig.
   const [networks, setNetworks] = useState({ hiking: false, cycling: false, mtb: false });
@@ -2380,7 +2387,9 @@ export default function PlannerApp() {
               mobiel duwt hij anders het resultaat (hoogteprofiel/ondergrond/
               export) verder onder de 45dvh-vouw. */}
           {!route && (
-            <p className="text-[11px] text-neutral-400">{t("mapHint")}</p>
+            <p className="text-[11px] text-neutral-400">
+              {t(coarsePointer ? "mapHintTouch" : "mapHint")}
+            </p>
           )}
         </div>
 
