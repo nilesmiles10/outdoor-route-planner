@@ -63,17 +63,24 @@ type TourLite = {
 // hiervandaan" (Beau Site ligt óp de route maar toonde "15 km"). Sampling
 // (≤~400 punten) houdt lange routes goedkoop; valt terug op het startpunt als
 // er geen geometrie is.
+// Kortste afstand (km) van een punt tot een geometrie (gesampled ≤~400 punten).
+function minDistKmToCoords(
+  lon: number,
+  lat: number,
+  coords: [number, number][],
+): number {
+  const step = Math.max(1, Math.floor(coords.length / 400));
+  let best = Infinity;
+  for (let i = 0; i < coords.length; i += step) {
+    const d = haversineKm(lon, lat, coords[i][0], coords[i][1]);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
 function minDistKmToRoute(lon: number, lat: number, tr: TourLite): number {
   const coords = tr.thumb_coords;
-  if (coords && coords.length) {
-    const step = Math.max(1, Math.floor(coords.length / 400));
-    let best = Infinity;
-    for (let i = 0; i < coords.length; i += step) {
-      const d = haversineKm(lon, lat, coords[i][0], coords[i][1]);
-      if (d < best) best = d;
-    }
-    return best;
-  }
+  if (coords && coords.length) return minDistKmToCoords(lon, lat, coords);
   return tr.waypoints[0]
     ? haversineKm(lon, lat, tr.waypoints[0].lon, tr.waypoints[0].lat)
     : Infinity;
@@ -287,7 +294,13 @@ export default async function HighlightPage({
       name: tr.name,
       sport: tr.sport,
       stats: tr.stats,
-      distKm: haversineKm(hl.lon, hl.lat, tr.start_lon, tr.start_lat),
+      // Kortste afstand tot de trail-geometrie (net als de tours) i.p.v. tot het
+      // startpunt: een highlight kan MIDDEN op een trail liggen met een ver
+      // startpunt — dat toonde anders een misleidend "X km" en verstoorde de
+      // afstand-sortering. Fallback op het startpunt als er geen thumb is.
+      distKm: tr.thumb_coords?.length
+        ? minDistKmToCoords(hl.lon, hl.lat, tr.thumb_coords)
+        : haversineKm(hl.lon, hl.lat, tr.start_lon, tr.start_lat),
       coords: tr.thumb_coords ?? undefined,
     }))
     .filter((tr) => tr.distKm <= 20)
