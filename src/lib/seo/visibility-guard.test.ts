@@ -26,6 +26,7 @@ const SRC = join(process.cwd(), "src");
 const PUBLIC_LISTING: readonly string[] = [
   "app/sitemap.ts",
   "app/[locale]/discover/page.tsx",
+  "app/[locale]/collections/CollectionsClient.tsx",
   "app/[locale]/collections/page.tsx",
   "app/[locale]/highlight/[id]/page.tsx",
   "app/[locale]/tour/[id]/page.tsx",
@@ -69,16 +70,26 @@ const NOT_PUBLIC_LISTING: Record<string, string> = {
  */
 function readChains(src: string): { chain: string; before: string }[] {
   const out: { chain: string; before: string }[] = [];
-  const re = /\.from\("(?:tours|collections)"\)/g;
+  // Twee vormen: de supabase-js builder .from("tours") én een kale REST-URL
+  // (rest/v1/collections?...). Die tweede is toegevoegd nadat de server-wrapper
+  // voor /collections precies zo'n fetch introduceerde en ongezien langs deze
+  // guard glipte — een guard die de nieuwste query-vorm niet kent, dekt niets.
+  const re = /\.from\("(?:tours|collections)"\)|rest\/v1\/(?:tours|collections)/g;
   for (let m = re.exec(src); m; m = re.exec(src)) {
     const start = m.index + m[0].length;
     const rest = src.slice(start, start + 500);
     const next = rest.search(/\.from\("/);
     const chain = next === -1 ? rest : rest.slice(0, next);
-    const sel = chain.search(/\.select\(/);
-    if (sel === -1) continue; // geen leespad
-    const write = chain.search(/\.(insert|update|delete|upsert)\(/);
-    if (write !== -1 && write < sel) continue; // schrijfpad
+    const isRest = m[0].startsWith("rest/v1/");
+    if (isRest) {
+      // REST-lezen herken je aan select= in de querystring.
+      if (!/select=/.test(chain)) continue;
+    } else {
+      const sel = chain.search(/\.select\(/);
+      if (sel === -1) continue; // geen leespad
+      const write = chain.search(/\.(insert|update|delete|upsert)\(/);
+      if (write !== -1 && write < sel) continue; // schrijfpad
+    }
     out.push({ chain, before: src.slice(Math.max(0, m.index - 300), m.index) });
   }
   return out;
@@ -97,7 +108,8 @@ function queryingFiles(): string[] {
   for (const abs of walk(SRC)) {
     if (!/\.(ts|tsx)$/.test(abs) || abs.endsWith(".test.ts")) continue;
     const src = readFileSync(abs, "utf8");
-    if (!/\.from\("(tours|collections)"\)/.test(src)) continue;
+    // Geen eigen voorfilter meer: readChains kent beide query-vormen, en een
+    // afwijkend voorfilter is precies hoe de REST-variant eerder onzichtbaar bleef.
     if (readChains(src).length) hits.push(relative(SRC, abs).split("\\").join("/"));
   }
   return hits.sort();
@@ -131,8 +143,11 @@ describe("zichtbaarheidsfilter op tours/collections-queries", () => {
         .filter(
           ({ c }) =>
             !/\.eq\(\s*"visibility",\s*"public"\s*\)/.test(c.chain) &&
+            // Zelfde filter, maar in REST-vorm.
+            !/visibility=eq\.public/.test(c.chain) &&
             // Eigenaar-gescopte query: kan per definitie niet breder lekken.
             !/\.eq\(\s*"owner"/.test(c.chain) &&
+            !/owner=eq\./.test(c.chain) &&
             // Bewuste uitzondering, gemotiveerd bij de call-site zelf.
             !/seo-visibility-ok/.test(c.before),
         )
