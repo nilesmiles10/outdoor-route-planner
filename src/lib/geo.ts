@@ -44,11 +44,11 @@ const PAVED = new Set([
   "asphalt",
   "paved",
   "concrete",
-  "concrete:plates",
-  "concrete:lanes",
   "paving_stones",
   "sett",
   "cobblestone",
+  "unhewn_cobblestone", // ruwe kei — cobblestone-familie, constructie-steen
+  "chipseal", // bitumineuze slijtlaag = verhard
   "metal",
   "wood",
 ]);
@@ -60,17 +60,28 @@ const UNPAVED = new Set([
   "ground",
   "dirt",
   "earth",
+  "soil",
   "grass",
   "sand",
   "mud",
   "pebblestone",
   "rock",
+  "bare_rock",
+  "scree",
   "woodchips",
+  "shells",
+  "crushed_shells",
 ]);
 
 export function surfaceBucket(surface: string | undefined) {
   if (!surface) return "unknown";
-  if (PAVED.has(surface)) return "paved";
-  if (UNPAVED.has(surface)) return "unpaved";
+  // Samengestelde/variant-tags reduceren tot hun basis vóór lookup: OSM gebruikt
+  // ; en / voor gemengde ondergronden ("gravel;ground", "dirt/sand") en : voor
+  // subtypes ("asphalt:lanes", "concrete:plates"). Zonder dit telden die
+  // onterecht als "onbekend" op de ondergrond-balk (bv. 360 km unhewn_cobble-
+  // stone, 60 km paving_stones:lanes). Classificeer op het eerste segment.
+  const base = surface.split(/[;/:]/)[0].trim();
+  if (PAVED.has(base)) return "paved";
+  if (UNPAVED.has(base)) return "unpaved";
   return "unknown";
 }
