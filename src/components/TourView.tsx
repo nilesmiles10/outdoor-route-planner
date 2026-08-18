@@ -134,7 +134,9 @@ const noop = () => {};
 // (het startpunt); daarmee zou de link `?w=lon,lat` één punt bevatten en de
 // planner negeert dat (hij eist ≥2 punten) → lege planner. Bemonster dan
 // gelijkmatig langs de geometrie zodat de planner de trail benaderend
-// herbouwt. Cap 8 (BRouter routeert max 10 punten). Werkt ook voor
+// herbouwt. Cap 10: meer tussenpunten dwingen BRouter dichter langs de échte
+// trail-vorm. De planner routeert per leg (2 punten/call, zie fetchRoute) dus
+// de 10-punts-limiet van de route-API is hier geen beperking. Werkt ook voor
 // roundtrip-trails (start≈eind): de tussenpunten houden de lus intact.
 function plannerWaypointsFrom(
   waypoints: Waypoint[],
@@ -143,7 +145,7 @@ function plannerWaypointsFrom(
   if (waypoints.length >= 2) {
     return waypoints.map((p) => [p.lon, p.lat]);
   }
-  const n = Math.min(8, coords.length);
+  const n = Math.min(10, coords.length);
   if (n < 2) return coords.map((c) => [c[0], c[1]]);
   return Array.from({ length: n }, (_, i) => {
     const c = coords[Math.round((i * (coords.length - 1)) / (n - 1))];
