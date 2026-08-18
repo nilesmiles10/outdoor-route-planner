@@ -137,7 +137,10 @@ export async function generateMetadata({
   const cat = t(`catPlural.${params.category}` as never);
   const ogTitle = `${cat} in ${resolved.label}`;
   const desc = t("metaDescription", {
-    count: resolved.items.length,
+    // De echte totale telling (match.n), niet de op ITEM_LIMIT gecapte lijst —
+    // anders zei elke >500-combo "500" i.p.v. bv. 6.724 (Toppen in Bayern), wat
+    // zowel feitelijk onjuist is als het SEO-signaal verzwakt.
+    count: resolved.total,
     category: cat.toLowerCase(),
     region: resolved.label,
   });
@@ -251,7 +254,7 @@ export default async function RegionCategoryPage({
         {CATEGORY_EMOJI[category]} {cat} in {label}
       </h1>
       <p className="mt-1 text-sm text-neutral-500">
-        {t("intro", { count: items.length, category: cat.toLowerCase(), region: label })}
+        {t("intro", { count: total, category: cat.toLowerCase(), region: label })}
       </p>
 
       <ul className="mt-6 grid gap-2 sm:grid-cols-2">
