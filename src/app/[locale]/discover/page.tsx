@@ -71,6 +71,30 @@ function isLoopRoute(geometry: { coordinates: [number, number][] } | null) {
   return !!c && c.length >= 2 && haversineKm(c[0], c[c.length - 1]) < 0.1;
 }
 
+// Round-robin over de aanwezige sporten zodat een showcase-sample de breedte
+// van de catalogus toont i.p.v. één dominant type. Behoudt de binnenkomende
+// (alfabetische) volgorde binnen elke sport.
+function pickDiverseBySport(
+  rows: { id: string; sport: string }[],
+  n: number,
+): string[] {
+  const bySport = new Map<string, string[]>();
+  for (const r of rows) {
+    const b = bySport.get(r.sport);
+    if (b) b.push(r.id);
+    else bySport.set(r.sport, [r.id]);
+  }
+  const buckets = Array.from(bySport.values());
+  const out: string[] = [];
+  let i = 0;
+  while (out.length < n && buckets.some((b) => b.length > 0)) {
+    const b = buckets[i % buckets.length];
+    if (b && b.length) out.push(b.shift()!);
+    i++;
+  }
+  return out;
+}
+
 export default function DiscoverPage() {
   const t = useTranslations("discover");
   const ts = useTranslations("planner.sports");
@@ -167,16 +191,43 @@ export default function DiscoverPage() {
     // Europa-mix (consistent met de NL-default op /trails en de Benelux-bias op
     // de regio-chips). name_sort-order (letters vóór cijfers) mijdt de OSM-
     // nummerroutes. Andere locales houden de bestaande arbitraire sample.
-    (locale === "nl"
-      ? sb
+    // NL-showcase sport-divers maken: `.order("name_sort").limit(10)` gaf
+    // vrijwel altijd 10× Wandelen (de alfabetisch-eerste NL-trails), wat de
+    // breedte van de catalogus (racefiets/gravel/mtb) verbergt. Twee-staps: een
+    // lichte id+sport-pool ophalen, round-robin over de sporten 10 diverse ids
+    // kiezen, dan alleen díe 10 mét geometry (voor de MiniMap-thumbnail) laden.
+    if (locale === "nl") {
+      (async () => {
+        const { data: pool } = await sb
           .from("trails")
-          .select("id,name,sport,region,stats,geometry")
+          .select("id,sport")
           .eq("country", "NL")
           .order("name_sort")
-      : sb.from("trails").select("id,name,sport,region,stats,geometry")
-    )
-      .limit(10)
-      .then(({ data }) => setTrails((data as typeof trails) ?? []));
+          .limit(500);
+        const ids = pickDiverseBySport(
+          (pool as { id: string; sport: string }[]) ?? [],
+          10,
+        );
+        if (!ids.length) return setTrails([]);
+        const { data } = await sb
+          .from("trails")
+          .select("id,name,sport,region,stats,geometry")
+          .in("id", ids);
+        // .in() geeft db-volgorde terug → herstel de diverse round-robin-volgorde.
+        const pos = new Map(ids.map((id, i) => [id, i] as const));
+        setTrails(
+          ((data as typeof trails) ?? [])
+            .slice()
+            .sort((a, b) => (pos.get(a.id) ?? 0) - (pos.get(b.id) ?? 0)),
+        );
+      })();
+    } else {
+      sb
+        .from("trails")
+        .select("id,name,sport,region,stats,geometry")
+        .limit(10)
+        .then(({ data }) => setTrails((data as typeof trails) ?? []));
+    }
     // Tellen over `highlights` zelf ging mis: .limit(2000) leverde door de
     // PostgREST max-rows-cap 1000 willekeurige rijen van 500k, dus de counts
     // klopten niet én het gros van Europa ontbrak (14 regio's van 1.150).
