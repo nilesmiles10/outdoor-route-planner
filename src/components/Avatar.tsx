@@ -1,3 +1,5 @@
+import { supabaseThumb } from "@/lib/img";
+
 // Shared avatar: photo when set, initials fallback (GEN-118).
 export default function Avatar({
   name,
@@ -18,7 +20,7 @@ export default function Avatar({
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={url}
+        src={supabaseThumb(url, { width: size * 2, height: size * 2 }) ?? url}
         alt={name ?? ""}
         width={size}
         height={size}

@@ -9,6 +9,7 @@ import { gradientFor } from "@/lib/collections";
 import { regionSlugFor } from "@/lib/regionSlug";
 import HighlightMap from "@/components/HighlightMap";
 import MiniMap from "@/components/MiniMap";
+import { supabaseThumb } from "@/lib/img";
 import HighlightActions from "@/components/HighlightActions";
 import ShareButton from "@/components/ShareButton";
 import Avatar from "@/components/Avatar";
@@ -405,7 +406,7 @@ export default async function HighlightPage({
         <div className="mt-3 grid h-56 grid-cols-3 gap-1 overflow-hidden rounded-2xl">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={`${storageBase}${photos[0].path}`}
+            src={supabaseThumb(`${storageBase}${photos[0].path}`, { width: 800 }) ?? undefined}
             alt={hl.name}
             className="col-span-2 h-full w-full object-cover"
           />
@@ -414,7 +415,7 @@ export default async function HighlightPage({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 key={p.id}
-                src={`${storageBase}${p.path}`}
+                src={supabaseThumb(`${storageBase}${p.path}`, { width: 400 }) ?? undefined}
                 alt=""
                 className="h-full w-full object-cover"
               />
