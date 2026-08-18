@@ -166,7 +166,8 @@
       "tooltip": "The colour of the elevation line shows how steep each part of the route is."
     },
     "loop": "Loop",
-    "oneWay": "One-way"
+    "oneWay": "One-way",
+    "roundTripExplain": "Generates a loop of this distance, back to your starting point."
   },
   "account": {
     "login": "Log in to save routes",

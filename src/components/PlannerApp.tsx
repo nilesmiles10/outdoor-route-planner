@@ -2414,6 +2414,14 @@ export default function PlannerApp() {
                   {t("roundTripOnlyStart")}
                 </span>
               )}
+              {/* Verklaar wat "Rondje" doet in de klaar-om-te-genereren-staat
+                  (alleen een startpunt): onderscheidt het van "Heen en terug"
+                  (die verdubbelt je bestaande route). */}
+              {filled.length === 1 && (
+                <span className="w-full text-[10px] text-neutral-400">
+                  {t("roundTripExplain")}
+                </span>
+              )}
             </div>
           )}
           {/* Onboarding-hint alleen tonen zolang er nog geen route is: zodra je
