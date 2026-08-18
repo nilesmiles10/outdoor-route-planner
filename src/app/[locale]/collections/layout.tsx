@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
+import { entityMetadata } from "@/lib/seo/entityMetadata";
 
 // Client-page → eigen titel/omschrijving via deze server-layout.
 export async function generateMetadata({
@@ -12,13 +12,16 @@ export async function generateMetadata({
     locale: params.locale,
     namespace: "collections",
   });
-  return {
-    title: pageTitle(await getSiteSettings(), t("title")),
+  // Self-canonical consolideert tracking-varianten (?utm/?fbclid) naar de
+  // schone hub-URL. Eigen OG i.p.v. de geërfde site-OG: een gedeelde link naar
+  // deze hub toonde "Tarnoo" i.p.v. waar de pagina over gaat.
+  return entityMetadata({
+    locale: params.locale,
+    path: "collections",
+    title: t("title"),
     description: t("subtitle"),
-    // Self-canonical: consolideert tracking-varianten (?utm/?fbclid) naar de
-    // schone hub-URL. Stond hier als enige indexeerbare hub nog niet.
-    alternates: { canonical: `/${params.locale}/collections` },
-  };
+    ogImage: `/${params.locale}/opengraph-image`,
+  });
 }
 
 export default function CollectionsLayout({

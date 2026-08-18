@@ -111,6 +111,60 @@ count into this table.
   needs a decision: real-user monitoring means an analytics dependency and a
   privacy/consent question. Lab numbers were taken instead (see Done).
 
+**P2-5 · The full i18n catalogue ships on every page (20,416 bytes)**
+- *What*: measured in the delivered HTML of `/nl/discover` — the entire
+  translation catalogue is serialised into the RSC payload on **every** page,
+  including namespaces that page never uses (`planner`, `tourPage`,
+  `resetPassword`, `trailPage`, …). At 20.4 kB it is now the single largest
+  item in that page's payload, ahead of `thumb_coords` (9,748 B across 24
+  routes) and far ahead of `waypoints` (1,713 B after the P1-10 trim).
+- *Why it is not a quick fix*: next-intl can send a subset of messages to the
+  client, but that means auditing which namespaces each client component
+  actually calls and passing only those — it touches the locale layout and
+  every client component. Worth doing, but as its own piece of work.
+- *Files*: `src/app/[locale]/layout.tsx` (the `NextIntlClientProvider`), plus a
+  namespace audit per client component.
+- *Acceptance test*: `/nl/discover` HTML drops by roughly the size of the unused
+  namespaces, with every page still rendering its own copy correctly in both
+  locales.
+
+### P2 — meaningful improvements
+
+**P2-2 · Activity-first URL architecture not implemented**
+- *What*: the brief proposes `/hiking/{country}/{region}/{city}`. Today the
+  geographic surface is `/discover/{region}/{category}`.
+- *Why*: potentially large win, but it is a URL-architecture migration with
+  redirect obligations. Needs design in `SEO_PAGE_ARCHITECTURE.md` and a
+  measured count per proposed page type before any build.
+
+**P1-4 · ~~Concurrent agent commits with `git add -A`~~ — CLOSED 2026-08-18: the UX agent has stopped, so the hazard no longer applies. Kept below for the record.**
+- *What*: the UX agent stages the whole worktree. Observed **twice** on
+  2026-08-18: commit `55af66a` swept the private-profile fix, commit `4dd876c`
+  swept the vitest scaffold and privacy test.
+- *Why this is now P1 and not a tidiness issue*: verification techniques
+  require deliberately breaking code for a few seconds — the mutation check
+  for P0-2 ran with `.eq("visibility","public")` **removed** from
+  `src/app/sitemap.ts`. A repo-wide `git add -A` landing in that window would
+  have committed a live privacy regression (every private, followers-only and
+  close-friends route into the public sitemap) under a planner commit message,
+  with a green-looking history. This time HEAD was verified intact:
+  `git show HEAD:src/app/sitemap.ts` still contains both `visibility` filters
+  and the suite passes 9/9 against committed code.
+- *Mitigations on this side (in force from now on)*: run mutation checks on a
+  scratch copy rather than the tracked file wherever possible, and never leave
+  a deliberately-broken tracked file on disk across an await.
+- *Needs Niels*: tell the UX agent to stage explicit paths. This cannot be
+  fixed from inside this loop.
+- *Acceptance test*: n/a — coordination item.
+
+### P3 — optimizations
+
+- **P3-1** `sitemap.ts` `changeFrequency`/`priority` are hand-set constants;
+  Google ignores both. Harmless, low value to remove.
+- **P3-3** LCP/CLS/INP **field** measurement — still no data, and collecting it
+  needs a decision: real-user monitoring means an analytics dependency and a
+  privacy/consent question. Lab numbers were taken instead (see Done).
+
 **P2-6 · Hub pages share the generic site OpenGraph**
 - *What*: measured in the delivered HTML — `/nl/discover` and `/nl/collections`
   have their own `<title>` and `meta description`, but their OG/Twitter tags are
@@ -306,13 +360,38 @@ refactor deferred*
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: P2-5 (i18n payload, 20.4 kB on every page) and P2-6 (hub OG).
-P3-3 is parked until traffic justifies it. A deploy is still needed to confirm
-P2-4's cache HITs.
+**Next up**: P2-5 (i18n payload, 20.4 kB on every page) is the last open
+non-parked item. P3-3 is parked until traffic justifies it. A deploy is still
+needed to confirm P2-4's cache HITs.
 
 ---
 
 ## Done
+
+### 2026-08-18 — P2-6: the two hubs now have their own OpenGraph
+
+Flagged in the previous iteration and deliberately kept out of the refactor,
+because this one **does** change output. `/discover` and `/collections` had
+their own `<title>` and `meta description` but inherited the site-level OG, so
+sharing either hub showed the brand instead of the page.
+
+| Route | og:title before → after | og:description after |
+|---|---|---|
+| `/nl/discover` | `Tarnoo` → **`Ontdek routes`** | `Kant-en-klare rondjes van de community en redactie.` |
+| `/nl/collections` | `Tarnoo` → **`Collecties`** | `Samengestelde routesets — thematische ritten en wandelingen om te volgen.` |
+| `/en/discover` | `Tarnoo` → **`Discover routes`** | `Hand-picked and community loops, ready to ride or walk.` |
+
+Both hubs now route through `entityMetadata()`, so they gained the shared
+canonical handling too. `og:image` still resolves: `/nl/opengraph-image` →
+**200 `image/png`**.
+
+*Regression*: `/nl`, `/nl/trails`, `/nl/discover`, `/nl/collections`,
+`/nl/trails/aargau`, `/nl/routes`, `/sitemap.xml`, `/robots.txt` all 200, and
+the crawlable links are untouched — 21 tour links and 60 region links on
+`/nl/discover`, 5 collection links on `/nl/collections`.
+
+*Gates*: `npm test` 37/37 · `next lint` clean · `tsc --noEmit` exit 0 ·
+`npm run build` exit 0.
 
 ### 2026-08-18 — P1-1b finished for the entity routes: `user/[id]` migrated
 
