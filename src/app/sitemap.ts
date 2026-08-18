@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { supabaseServer } from "@/lib/supabase/server";
 import { withRegionSlugs } from "@/lib/regionSlug";
+import { trailRegions } from "@/lib/seo/trailRegions";
 
 // Dynamic sitemap over all public content (tours, highlights, collections),
 // both locales. Canonical host comes from NEXT_PUBLIC_SITE_URL (tarnoo.com).
@@ -33,6 +34,9 @@ async function fetchAll<T>(
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const sb = supabaseServer();
+  // Trail-regio-landingspagina's (n >= 8). Weinig URL's (443 × 2 locales), dus
+  // hier en niet in een eigen segment — net als de region×category-combo's.
+  const trailRegionList = await trailRegions();
   // Trail-URL's zitten in gesegmenteerde sitemaps: /trails-sitemap/sitemap/<n>.xml
   const [tours, regionRows, collections, pages] = await Promise.all([
     sb.from("tours").select("id,updated_at").eq("visibility", "public").eq("kind", "planned").limit(1000),
@@ -119,6 +123,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const combo of combos) {
       entries.push({
         url: `${SITE_URL}/${locale}/discover/${combo}`,
+        changeFrequency: "weekly",
+        priority: 0.7,
+      });
+    }
+    for (const tr of trailRegionList) {
+      entries.push({
+        url: `${SITE_URL}/${locale}/trails/${tr.slug}`,
         changeFrequency: "weekly",
         priority: 0.7,
       });

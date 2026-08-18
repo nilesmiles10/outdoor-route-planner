@@ -6,6 +6,7 @@ import TourView from "@/components/TourView";
 import { buildAutoDesc } from "@/lib/autoDesc";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 import { SITE_URL } from "@/app/sitemap";
+import { trailRegionSlug } from "@/lib/seo/trailRegions";
 import { passedHighlightPins } from "@/lib/passedHighlights";
 import { sportFamily } from "@/lib/geo";
 
@@ -253,17 +254,17 @@ export default async function TrailPage({
   // Eén bron voor de zichtbare breadcrumb (TourView) én de BreadcrumbList-JSON-LD,
   // zodat ze niet uit elkaar lopen. Regio-link draagt land mee tegen regionaam-
   // botsingen (Limburg NL vs BE).
+  // De regio-kruimel wijst naar de indexeerbare regiopagina wanneer die
+  // bestaat (>= 8 routes). Voorheen ging hij altijd naar /trails?region=…,
+  // een query-URL die weg-canonicaliseert naar /trails — de BreadcrumbList
+  // beloofde dus een ouder die als URL niet bestond. Haalt de regio de
+  // drempel niet, dan valt de kruimel weg i.p.v. naar een niet-indexeerbare
+  // filter-URL te wijzen.
+  const regionSlug = await trailRegionSlug(trail.region, trail.country);
   const crumbs = [
     { label: tNav("trails"), href: `/${locale}/trails` },
-    ...(trail.region
-      ? [
-          {
-            label: trail.region,
-            href: trail.country
-              ? `/${locale}/trails?country=${trail.country}&region=${encodeURIComponent(trail.region)}`
-              : `/${locale}/trails?region=${encodeURIComponent(trail.region)}`,
-          },
-        ]
+    ...(trail.region && regionSlug
+      ? [{ label: trail.region, href: `/${locale}/trails/${regionSlug}` }]
       : []),
   ];
 
@@ -335,14 +336,17 @@ export default async function TrailPage({
           relatedTrails.length > 0 || passedHl.length > 0
             ? {
                 toursTitle: t("moreInRegion", { region: trail.region ?? "" }),
-                // Maak de "Meer routes in <regio>"-kop een link naar de volledige,
-                // filterbare /trails-lijst voor die regio (zichtbaarder dan de
-                // breadcrumb-crumb). Alleen als er een regio is.
+                // Maak de "Meer routes in <regio>"-kop een link naar de regio
+                // (zichtbaarder dan de breadcrumb-crumb). Bij voorkeur de
+                // indexeerbare regiopagina; haalt de regio de drempel niet,
+                // dan de filterbare /trails-lijst als menselijk alternatief.
                 ...(trail.region
                   ? {
-                      toursHref: trail.country
-                        ? `/${locale}/trails?country=${trail.country}&region=${encodeURIComponent(trail.region)}`
-                        : `/${locale}/trails?region=${encodeURIComponent(trail.region)}`,
+                      toursHref: regionSlug
+                        ? `/${locale}/trails/${regionSlug}`
+                        : trail.country
+                          ? `/${locale}/trails?country=${trail.country}&region=${encodeURIComponent(trail.region)}`
+                          : `/${locale}/trails?region=${encodeURIComponent(trail.region)}`,
                     }
                   : {}),
                 tours: relatedTrails.map((tr) => ({

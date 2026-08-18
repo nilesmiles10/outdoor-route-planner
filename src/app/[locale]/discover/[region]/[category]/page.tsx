@@ -6,6 +6,7 @@ import { withRegionSlugs, type RegionCombo } from "@/lib/regionSlug";
 import SiteFooter from "@/components/SiteFooter";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 import { SITE_URL } from "@/app/sitemap";
+import { trailRegionSlug } from "@/lib/seo/trailRegions";
 
 // GEN-116 — programmatic SEO pages: "<Category-plural> in <Region>".
 // Driven by the highlights corpus (680 POIs with a backfilled region).
@@ -185,10 +186,17 @@ export default async function RegionCategoryPage({
   const { locale, category } = params;
   const t = await getTranslations("regionPage");
   const cat = t(`catPlural.${category}` as never);
-  const [siblings, routeCount] = await Promise.all([
+  const [siblings, routeCount, trailSlug] = await Promise.all([
     siblingCategories(resolved.region, resolved.country, category),
     trailsInRegion(resolved.country, resolved.region),
+    trailRegionSlug(resolved.region, resolved.country),
   ]);
+  // Naar de indexeerbare regiopagina als die bestaat; anders terug naar de
+  // filter-URL op /trails (die canonicaliseert weg, maar is voor een mens nog
+  // steeds de juiste bestemming — beter dan de crosslink laten vallen).
+  const trailRegionHref = trailSlug
+    ? `/${locale}/trails/${trailSlug}`
+    : `/${locale}/trails?country=${resolved.country}&region=${encodeURIComponent(resolved.region)}`;
 
   // Zelfde-naam-POI's (bv. 4× "Alpenzeiger" in Aargau, elk een aparte OSM-node)
   // een volgnummer geven: OSM levert voor deze punten geen plaats of omschrijving
@@ -305,9 +313,7 @@ export default async function RegionCategoryPage({
       {routeCount > 0 && (
         <section className="mt-8">
           <a
-            href={`/${locale}/trails?country=${resolved.country}&region=${encodeURIComponent(
-              resolved.region,
-            )}`}
+            href={trailRegionHref}
             className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 transition hover:bg-emerald-100"
           >
             🥾 {t("routesInRegion", { count: routeCount, region: label })}

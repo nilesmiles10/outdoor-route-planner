@@ -82,6 +82,15 @@ function fakeQuery(table: string) {
   return builder;
 }
 
+// Trail-regio's zijn officiële OSM-data zonder gebruikers-zichtbaarheid, dus
+// buiten scope van deze privacy-suite. Wel gemockt: sitemap.ts roept ze aan en
+// dat is een echte HTTP-fetch die in een testomgeving geen basis-URL heeft.
+vi.mock("@/lib/seo/trailRegions", () => ({
+  trailRegions: async () => [
+    { region: "Aargau", country: "CH", n: 25, slug: "aargau", label: "Aargau" },
+  ],
+}));
+
 vi.mock("@/lib/supabase/server", () => ({
   supabaseServer: () => ({ from: (table: string) => fakeQuery(table) }),
 }));
