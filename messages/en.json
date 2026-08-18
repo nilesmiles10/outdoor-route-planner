@@ -59,6 +59,7 @@
       "road": "Road",
       "access": "Access road",
       "steps": "Steps",
+      "unknown": "Unknown",
       "other": "Other"
     },
     "sf": {

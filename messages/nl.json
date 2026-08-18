@@ -59,6 +59,7 @@
       "road": "Weg",
       "access": "Toegangsweg",
       "steps": "Trap",
+      "unknown": "Onbekend",
       "other": "Overig"
     },
     "sf": {

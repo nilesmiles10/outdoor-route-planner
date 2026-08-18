@@ -22,6 +22,16 @@ const WAYTYPE_GROUPS: Record<string, string> = {
   primary_link: "road",
   trunk: "road",
   trunk_link: "road",
+  motorway: "road",
+  motorway_link: "road",
+  busway: "road",
+  road: "road", // generieke highway=road
+  via_ferrata: "path",
+  corridor: "path",
+  // Ongetagde ways (route API zet highway ?? "unknown"): apart tonen i.p.v. op
+  // één hoop met "Overig" (constructie, perron, ...) — parallel aan de
+  // ondergrond-balk die "Onbekend" ook los toont.
+  unknown: "unknown",
 };
 
 export function groupWaytypes(
