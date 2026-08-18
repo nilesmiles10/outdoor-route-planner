@@ -1088,11 +1088,28 @@ export default function PlannerApp() {
   // Keyboard: undo/redo + Esc closes the click balloon
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setBalloon(null);
+        return;
+      }
+      // Niet de route-undo kapen terwijl je in een tekstveld typt — daar hoort
+      // Ctrl+Z/Y de tékst te undo'en (bv. de start/bestemming-zoekvelden).
+      const el = e.target as HTMLElement | null;
+      if (
+        el &&
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.isContentEditable)
+      )
+        return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
         dispatch({ type: e.shiftKey ? "redo" : "undo" });
+      } else if (e.ctrlKey && !e.metaKey && e.key.toLowerCase() === "y") {
+        // Ctrl+Y = redo (Windows-conventie), náást Ctrl+Shift+Z.
+        e.preventDefault();
+        dispatch({ type: "redo" });
       }
-      if (e.key === "Escape") setBalloon(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

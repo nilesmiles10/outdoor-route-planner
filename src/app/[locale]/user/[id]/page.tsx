@@ -56,9 +56,15 @@ export async function generateMetadata({
   const t = await getTranslations("profile");
   const name = p.display_name ?? t("anonymous");
   const bio = p.bio ?? undefined;
+  // Privacy: `profiles_select_all` is RLS `USING (true)`, dus een anonieme
+  // crawler krijgt óók de rij van een privé-profiel terug. Naam/bio/regio
+  // horen dan niet in de zoekindex — noindex (follow blijft uit: er valt
+  // niets publieks te volgen op een afgeschermd profiel).
+  const isPrivate = p.privacy === "private";
   return {
     title: pageTitle(await getSiteSettings(), name),
     description: bio,
+    ...(isPrivate ? { robots: { index: false, follow: false } } : {}),
     // Entity-specifieke OG i.p.v. de generieke layout-OG bij gedeelde links.
     // `images` expliciet: door openGraph te zetten verdwijnt de geërfde site-
     // OG-afbeelding, dus verwijs 'm terug (merk-kaart via metadataBase).
@@ -232,19 +238,24 @@ export default async function UserPage({
 
   return (
     <main className="mx-auto min-h-dvh max-w-5xl px-4 pb-16 pt-20">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "Person",
-            name,
-            description: p.bio ?? undefined,
-            homeLocation: p.home_region ?? undefined,
-            url: websiteHref ?? undefined,
-          }),
-        }}
-      />
+      {/* Person-JSON-LD alléén voor publieke profielen: gestructureerde data
+          van een privé-profiel voert bio/woonregio/website rechtstreeks aan
+          zoekmachines en knowledge-panels. Zie noindex in generateMetadata. */}
+      {p.privacy !== "private" && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Person",
+              name,
+              description: p.bio ?? undefined,
+              homeLocation: p.home_region ?? undefined,
+              url: websiteHref ?? undefined,
+            }),
+          }}
+        />
+      )}
       <div className="grid gap-8 md:grid-cols-[280px_1fr]">
         {/* Identiteitskolom */}
         <div>
