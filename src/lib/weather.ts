@@ -29,7 +29,11 @@ export async function getWeather(
     const url =
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
       `&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode` +
-      `&timezone=Europe%2FAmsterdam&forecast_days=5`;
+      // timezone=auto: dag-grenzen + "vandaag" volgen de LOKALE tijd van de
+      // route, niet die van Amsterdam. Voor de pan-Europese dataset (UK/GMT,
+      // Iberië/WET, Griekenland+Baltische staten/EET) klopte de dag-indeling
+      // en de pack-tip-"vandaag" anders 1-2 uur niet.
+      `&timezone=auto&forecast_days=5`;
     const res = await fetch(url, { next: { revalidate: 3600 } });
     const d = await res.json();
     const days = (d.daily?.time ?? []).map((date: string, i: number) => ({
