@@ -55,19 +55,20 @@ count into this table.
 **P0-2 · Automated privacy regression test** — slice 1 done 2026-08-18
 (sitemap assertions). Remaining slices below.
 
+**P0-2d · Assert the tour metadata path emits nothing for a non-public tour**
+- *What*: render `generateMetadata` from `tour/[id]/page.tsx` for a non-public
+  id and assert no tour name, description or JSON-LD is produced.
+- *Blocker*: `page.tsx` pulls in `maplibre-gl` through `TourView`; needs either
+  a module alias stub for the map component in the test config, or extracting
+  `generateMetadata` into a sibling module that does not import UI.
+- *Acceptance test*: metadata for a non-public id contains no `tour.name`.
+
 **P0-2b · Extend the privacy suite to listing/landing queries**
 - *What*: assert private/unlisted content is absent from `/discover`,
   `/trails`, related-routes and "collections containing this route" queries.
 - *Files*: `src/lib/seo/*.test.ts`
 - *Acceptance test*: a non-public tour in the fixture never appears in any
   listing result; removing a `.eq("visibility","public")` turns the suite red.
-
-**P0-2c · Assert direct-access status + metadata for non-public content**
-- *What*: a non-public tour must 404 (not soft-404) and emit no metadata or
-  JSON-LD. `tour/[id]/layout.tsx` already hard-404s above the Suspense
-  boundary; this needs to be locked down by a test.
-- *Acceptance test*: rendered HTML for a non-public tour is a 404 with no
-  `application/ld+json` and no tour name in `<title>`.
 
 ### P1 — SEO architecture
 
@@ -137,13 +138,53 @@ count into this table.
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: P0-2c (assert non-public tours hard-404 and leak no metadata or
-JSON-LD on direct access), then P0-2b (listing/landing queries), then P1-2
-(self-canonical on user profiles).
+**Next up**: P0-2b (listing/landing queries), then P0-2d (tour metadata path),
+then P1-2 (self-canonical on user profiles).
 
 ---
 
 ## Done
+
+### 2026-08-18 — P0-2 slice 2 (P0-2c): direct access to non-public routes
+
+*RLS verified against the live DB first* (the layer the app test assumes):
+`tours_select` and `collections_select` both use
+`can_view_content(owner, visibility)`. Reading its definition: an anonymous
+visitor (`auth.uid()` NULL) matches only the `vis = 'public'` branch, and only
+when the owner is not suspended **and** `profiles.privacy = 'public'`. The
+`followers` and `close_friends` branches each require an `auth.uid()` match,
+so they are unreachable anonymously. Side effect worth knowing: if an owner
+flips their profile to private, their previously-public tours become 404 for
+crawlers — correct behaviour, not a defect.
+
+*Change*: `src/lib/seo/tour-access.test.ts` — 9 assertions; `vitest.config.ts`
+gained `esbuild: { jsx: "automatic" }` (the layout uses the automatic runtime,
+no `import React`).
+
+*Evidence — mutation check*: removing `if (!tour) notFound();` from
+`src/app/[locale]/tour/[id]/layout.tsx` turned the suite **red on 3 tests**
+(private / followers / close_friends), then restored (`git diff HEAD` empty).
+
+| Run | Result |
+|---|---|
+| unmutated | 18 passed / 18 (both suites) |
+| `notFound()` guard removed | **3 failed**, 15 passed |
+
+This specifically locks in the *hard* 404. `loading.tsx` makes the tour page a
+Suspense boundary, so a `notFound()` inside `page.tsx` would land after a 200
+shell — a soft-404 that Google indexes as a valid page. The guard must stay in
+the layout, above the boundary; the test now enforces that.
+
+*Known limitation, honestly stated*: the metadata/JSON-LD half of P0-2c is
+asserted at the data layer (`getTour` returns null), not by rendering
+`generateMetadata`. `page.tsx` transitively imports `TourView` → `maplibre-gl`,
+which will not load in a node test environment. Both the metadata and the
+render path are guarded by the same `getTour` null, which is covered. Filed as
+P0-2d below rather than pretended to be covered.
+
+*Gates*: `npm test` 18/18 · `next lint` clean · `tsc --noEmit` exit 0 ·
+`npm run build` exit 0 · `git status` shows only `vitest.config.ts` and the
+new test file.
 
 ### 2026-08-18 — P1-3 hreflang verified shipping (no code change needed)
 

@@ -11,5 +11,8 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
+  // Automatic JSX-runtime: layout.tsx e.d. gebruiken geen `import React`,
+  // dus de klassieke React.createElement-transform valt om.
+  esbuild: { jsx: "automatic" },
   test: { environment: "node", include: ["src/**/*.test.ts"] },
 });
