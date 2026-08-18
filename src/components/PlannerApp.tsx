@@ -82,8 +82,12 @@ type PlanAction =
   // Late reverse-geocode result: update the label of the waypoint at these
   // coordinates without touching route state or the undo history.
   | { type: "rename"; lon: number; lat: number; name: string }
-  // Replace the whole plan (share-URL restore, GPX import, round trip).
+  // Replace the whole plan, resetting history (share-URL restore, GPX import).
   | { type: "load"; slots: Slots }
+  // Replace the whole plan but KEEP history — voor rondje-generatie, zodat
+  // "Ander rondje" een undo-baar spoor achterlaat en je terug kunt naar een
+  // eerder rondje dat je beter vond.
+  | { type: "loadUndoable"; slots: Slots }
   | { type: "clear" };
 
 function planReducer(state: PlanState, action: PlanAction): PlanState {
@@ -149,6 +153,11 @@ function planReducer(state: PlanState, action: PlanAction): PlanState {
       let slots = action.slots;
       while (slots.length < 2) slots = [...slots, null];
       return { slots, past: [], future: [] };
+    }
+    case "loadUndoable": {
+      let slots = action.slots;
+      while (slots.length < 2) slots = [...slots, null];
+      return commit(slots);
     }
     // Undobaar wissen (via commit) i.p.v. "load": een per ongeluk gewiste route
     // kun je zo terughalen met Ctrl-Z / de ↶-knop.
@@ -469,10 +478,11 @@ export default function PlannerApp() {
   // veld zelf aanpast; daarna blijft de gekozen waarde staan.
   const [rtEdited, setRtEdited] = useState(false);
   const [rtBusy, setRtBusy] = useState(false);
-  // Vingerafdruk van het laatst gegenereerde rondje. Zolang de route hier exact
-  // gelijk aan is (gebruiker heeft niks handmatig gewijzigd) mag "Genereer" een
-  // "Ander rondje" worden i.p.v. te disablen bij >1 punt.
-  const lastGenSigRef = useRef<string | null>(null);
+  // Vingerafdrukken van álle deze sessie gegenereerde rondjes. Zolang de huidige
+  // route exact één daarvan is (geen handmatige bewerking) mag "Genereer" een
+  // "Ander rondje" worden i.p.v. te disablen bij >1 punt. Een set (niet alleen de
+  // laatste) zodat undo/redo naar een eerder rondje de knop actief houdt.
+  const genSigsRef = useRef<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -886,7 +896,7 @@ export default function PlannerApp() {
   // handmatige bewerking). Dan mag "Genereer" een "Ander rondje" worden i.p.v.
   // te disablen omdat er >1 punt staat.
   const isGeneratedLoop =
-    lastGenSigRef.current !== null && loopSig(filled) === lastGenSigRef.current;
+    filled.length > 1 && genSigsRef.current.has(loopSig(filled));
 
   // Round trip à la Komoot's "Heen en terug" toggle: the route ends where it
   // starts (last waypoint = copy of the start). Derived from the slots, so
@@ -1285,10 +1295,11 @@ export default function PlannerApp() {
         { name: coordName(p2[0], p2[1]), lon: p2[0], lat: p2[1] },
         { ...start },
       ];
-      dispatch({ type: "load", slots: genSlots });
-      // Onthoud de vorm zodat "Ander rondje" beschikbaar blijft tot de gebruiker
-      // handmatig een punt verzet/toevoegt (dan wijkt de vingerafdruk af).
-      lastGenSigRef.current = loopSig(genSlots);
+      // Undo-baar laden (commit) zodat je met ↶ terug kunt naar het vorige
+      // rondje; onthoud de vorm zodat "Ander rondje" beschikbaar blijft tot de
+      // gebruiker handmatig een punt verzet/toevoegt (dan wijkt de sig af).
+      dispatch({ type: "loadUndoable", slots: genSlots });
+      genSigsRef.current.add(loopSig(genSlots));
       patchName(p1[0], p1[1]);
       patchName(p2[0], p2[1]);
     } catch {
