@@ -104,14 +104,23 @@ async function siblingCategories(
 async function trailsInRegion(country: string | null, region: string): Promise<number> {
   if (!country) return 0;
   try {
+    // Tel via de BODY-lengte, niet via de content-range HEADER: die header gaat
+    // verloren op een Next Data-Cache-hit (zie de robots/sitemap-fix), waardoor
+    // count=exact hier 0 teruggaf en de "X routes in deze regio"-crosslink
+    // wegviel ondanks bestaande trails. Body wordt wél gecacht, dus ISR blijft
+    // intact (geen no-store → geen dynamische render). Limit 1000 = PostgREST
+    // max-rows; grotere regio's tellen af op 1000 (verwaarloosbaar — cross-link
+    // gaat toch naar de volledige, exact-getelde /trails-catalogus).
     const res = await fetch(
-      `${REST}/trails?select=id&country=eq.${country}&region=eq.${encodeURIComponent(region)}&limit=1`,
+      `${REST}/trails?select=id&country=eq.${country}&region=eq.${encodeURIComponent(region)}&limit=1000`,
       {
-        headers: { ...HEADERS, Prefer: "count=exact" },
+        headers: HEADERS,
         next: { revalidate: 3600, tags: ["trails"] },
       },
     );
-    return parseInt((res.headers.get("content-range") ?? "*/0").split("/")[1] ?? "0", 10) || 0;
+    if (!res.ok) return 0;
+    const rows = (await res.json()) as unknown[];
+    return Array.isArray(rows) ? rows.length : 0;
   } catch {
     return 0;
   }
