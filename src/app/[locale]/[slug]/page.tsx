@@ -58,6 +58,9 @@ export async function generateMetadata({
     title: pageTitle(s, nl ? page.title_nl : page.title_en),
     description: (nl ? page.meta_description_nl : page.meta_description_en) ?? undefined,
     robots: page.noindex ? { index: false, follow: true } : undefined,
+    // Self-canonical op de schone slug-URL, ook voor noindex-pagina's: een
+    // gedeelde link met tracking-params hoort naar het origineel te wijzen.
+    alternates: { canonical: `/${params.locale}/${params.slug}` },
   };
 }
 

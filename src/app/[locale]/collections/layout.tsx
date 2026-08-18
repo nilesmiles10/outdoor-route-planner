@@ -15,6 +15,9 @@ export async function generateMetadata({
   return {
     title: pageTitle(await getSiteSettings(), t("title")),
     description: t("subtitle"),
+    // Self-canonical: consolideert tracking-varianten (?utm/?fbclid) naar de
+    // schone hub-URL. Stond hier als enige indexeerbare hub nog niet.
+    alternates: { canonical: `/${params.locale}/collections` },
   };
 }
 
