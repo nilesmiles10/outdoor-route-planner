@@ -537,6 +537,7 @@
     "allCountries": "Alle landen",
     "gravelMeta": "{km} km gravel",
     "clearFilters": "Filters wissen",
+    "resultCount": "{count, plural, =1 {# route} other {# routes}}",
     "capHint": "De eerste {count} routes worden getoond. Verfijn op land, sport of zoek op naam om meer te zien.",
     "diffAll": "Elke moeilijkheid",
     "loopsOnly": "Alleen rondjes",

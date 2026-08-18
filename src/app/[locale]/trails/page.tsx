@@ -146,6 +146,10 @@ export default async function TrailsPage({
     .from("trails")
     .select(
       "id,name,sport,region,roundtrip,stats,is_gravel,gravel_m,thumb_coords",
+      // Exacte match-telling (vóór de 200-cap) komt mee in de Content-Range
+      // header — geen extra round-trip. Geeft de gebruiker filter-feedback:
+      // "47 routes" vs "1.240 routes" → weet je of je moet verfijnen.
+      { count: "exact" },
     )
     .order(TRAIL_SORTS[sort].col, { ascending: TRAIL_SORTS[sort].asc })
     .limit(TRAIL_LIMIT);
@@ -166,7 +170,7 @@ export default async function TrailsPage({
   if (diff !== "all") query = query.eq("difficulty", diff);
 
   // Regio-chips alleen bínnen een gekozen land (Europa-breed = te veel).
-  const [{ data }, countriesQ, regionsQ] = await Promise.all([
+  const [{ data, count: matchCount }, countriesQ, regionsQ] = await Promise.all([
     query,
     sb.rpc("trail_countries").then(
       (r) => r,
@@ -431,6 +435,14 @@ export default async function TrailsPage({
             {t(`sort.${s}` as never)}
           </a>
         ))}
+        {/* Exacte filter-telling (vóór de 200-cap) zodat de gebruiker de omvang
+            van z'n selectie ziet: "47 routes" vs "1.240 routes" → weet of het
+            zin heeft te verfijnen. Right-aligned; wrapt op mobiel naar eigen regel. */}
+        {matchCount != null && (
+          <span className="ml-auto text-xs font-medium tabular-nums text-neutral-400">
+            {t("resultCount", { count: matchCount })}
+          </span>
+        )}
       </div>
 
       {trails.length === 0 ? (

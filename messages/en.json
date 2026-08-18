@@ -537,6 +537,7 @@
     "allCountries": "All countries",
     "gravelMeta": "{km} km gravel",
     "clearFilters": "Clear filters",
+    "resultCount": "{count, plural, =1 {# route} other {# routes}}",
     "capHint": "Showing the first {count} trails. Refine by country, sport, or search by name to see more.",
     "diffAll": "Any difficulty",
     "loopsOnly": "Loops only",
