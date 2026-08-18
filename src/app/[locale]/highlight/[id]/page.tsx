@@ -14,7 +14,7 @@ import HighlightActions from "@/components/HighlightActions";
 import ShareButton from "@/components/ShareButton";
 import Avatar from "@/components/Avatar";
 import SiteFooter from "@/components/SiteFooter";
-import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
+import { entityMetadata } from "@/lib/seo/entityMetadata";
 import { SITE_URL } from "@/app/sitemap";
 
 // GEN-138 — highlight detail page. Anatomy copied from Komoot's highlight
@@ -171,21 +171,22 @@ export async function generateMetadata({
     (isEn
       ? `Discover ${hl.name}: a community highlight with tips, photos and nearby routes.`
       : `Ontdek ${hl.name}: community-highlight met tips, foto's en routes in de buurt.`);
-  return {
-    title: pageTitle(await getSiteSettings(), `${hl.name} – ${titleSuffix}`),
+  // socialTitle = de kale naam: de share-kaart hoeft het SEO-titelsuffix niet.
+  //
+  // robots: de OSM-seed maakt honderdduizenden highlight-pagina's; op die
+  // schaal kan Google het patroon als thin content wegen (raakt het hele
+  // domein). Daarom per pagina op rijkdom poorten: alléén highlights met échte
+  // user-content (≥1 tip of foto) zijn uniek genoeg en worden geïndexeerd +
+  // gesitemapt (zie /highlights-sitemap). De ~500k dunne blijven noindex.
+  // follow blijft altijd aan zodat link-equity naar routes/trails blijft lopen.
+  return entityMetadata({
+    locale: params.locale,
+    path: `highlight/${params.id}`,
+    title: `${hl.name} – ${titleSuffix}`,
     description: hlDesc,
-    alternates: { canonical: `/${params.locale}/highlight/${params.id}` },
-    // Entity-specifieke OG i.p.v. de generieke layout-OG bij gedeelde links.
-    openGraph: { title: hl.name, description: hlDesc },
-    twitter: { title: hl.name, description: hlDesc },
-    // De OSM-seed maakt honderdduizenden highlight-pagina's; op die schaal kan
-    // Google het patroon als thin content wegen (raakt het hele domein). Daarom
-    // per-pagina op rijkdom gaten: alléén highlights met échte user-content
-    // (≥1 tip of foto) zijn uniek genoeg en worden geïndexeerd + gesitemapt
-    // (zie /highlights-sitemap). De ~500k dunne blijven noindex. follow blijft
-    // altijd aan zodat link-equity naar routes/trails blijft lopen.
+    socialTitle: hl.name,
     robots: { index: await highlightIsContentRich(params.id), follow: true },
-  };
+  });
 }
 
 export default async function HighlightPage({

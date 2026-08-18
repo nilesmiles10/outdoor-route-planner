@@ -4,8 +4,8 @@ import { getTranslations } from "next-intl/server";
 import { CATEGORY_EMOJI, HIGHLIGHT_CATEGORIES } from "@/lib/highlights";
 import { withRegionSlugs, type RegionCombo } from "@/lib/regionSlug";
 import SiteFooter from "@/components/SiteFooter";
-import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 import { SITE_URL } from "@/app/sitemap";
+import { entityMetadata } from "@/lib/seo/entityMetadata";
 import { trailRegionSlug } from "@/lib/seo/trailRegions";
 
 // GEN-116 — programmatic SEO pages: "<Category-plural> in <Region>".
@@ -154,25 +154,17 @@ export async function generateMetadata({
     category: cat.toLowerCase(),
     region: resolved.label,
   });
-  return {
-    title: pageTitle(await getSiteSettings(), ogTitle),
+  // Self-canonical op de resolved slug (region kan een land-suffix hebben).
+  // ogImage expliciet: door openGraph te zetten vervalt de geërfde site-OG-
+  // afbeelding, dus verwijs 'm terug (merk-kaart via metadataBase). Deze 3,6k
+  // SEO-pagina's toonden anders "Tarnoo" i.p.v. "Toppen in Bayern" in previews.
+  return entityMetadata({
+    locale: params.locale,
+    path: `discover/${params.region}/${params.category}`,
+    title: ogTitle,
     description: desc,
-    // Self-canonical op de resolved slug (region kan een land-suffix hebben).
-    alternates: {
-      canonical: `/${params.locale}/discover/${params.region}/${params.category}`,
-    },
-    // Zonder eigen openGraph erfde een gedeelde link de generieke layout-OG
-    // ("Tarnoo"), niet de pagina-titel. Deze 7,25k SEO-pagina's tonen nu
-    // "Toppen in Aargau" e.d. in de preview i.p.v. de merknaam. `images` moet
-    // expliciet mee: door openGraph te zetten verdwijnt de geërfde site-OG-
-    // afbeelding, dus verwijs 'm terug (merk-kaart via metadataBase).
-    openGraph: {
-      title: ogTitle,
-      description: desc,
-      images: [`/${params.locale}/opengraph-image`],
-    },
-    twitter: { title: ogTitle, description: desc },
-  };
+    ogImage: `/${params.locale}/opengraph-image`,
+  });
 }
 
 export default async function RegionCategoryPage({

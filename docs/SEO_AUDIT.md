@@ -112,10 +112,11 @@ count into this table.
   privacy/consent question. Lab numbers were taken instead (see Done).
 
 **P1-1b · Migrate the remaining routes onto `entityMetadata()`**
-- *What*: `trail/[id]`, `trails/[region]`, `tour/[id]` and `collection/[id]`
-  now build metadata through the shared helper. Still hand-rolled:
-  `highlight/[id]`, `discover/[region]/[category]`, `user/[id]`, `[slug]`,
-  and the hub layouts.
+- *What*: six entity routes now build metadata through the shared helper —
+  `trail/[id]`, `trails/[region]`, `tour/[id]`, `collection/[id]`,
+  `highlight/[id]` and `discover/[region]/[category]`. Still hand-rolled:
+  `user/[id]`, `[slug]`, and the hub layouts (`discover`, `collections`,
+  `routes`, `feed`), which are simpler — no OG/Twitter blocks.
 - *Why the rest is a separate slice*: each has its own quirks (the collection
   page varies its title by tour count, the highlight page's `robots` depends on
   a content-richness lookup), so they need migrating one at a time with the same
@@ -237,13 +238,42 @@ refactor deferred*
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: finish P1-1b (`highlight/[id]`, `discover/[region]/[category]`,
-`user/[id]`, `[slug]`, hub layouts), then P2-5 (i18n payload). P3-3 is parked
-until traffic justifies it. A deploy is still needed to confirm P2-4's cache HITs.
+**Next up**: finish P1-1b (`user/[id]`, `[slug]`, hub layouts), then P2-5
+(i18n payload). P3-3 is parked until traffic justifies it. A deploy is still
+needed to confirm P2-4's cache HITs.
 
 ---
 
 ## Done
+
+### 2026-08-18 — P1-1b: `highlight/[id]` and `discover/[region]/[category]` migrated
+
+Six of the entity routes are now on `entityMetadata()`. Nothing new had to be
+added to the helper this round — `robots`, `socialTitle` and `ogImage` covered
+both pages, which is a decent sign the abstraction is the right shape.
+
+*Evidence — byte-identical delivered metadata, both `robots` branches included*:
+
+| Route | robots | Result |
+|---|---|---|
+| `/nl/highlight/ff87ca06-…` (content-rich) | `index, follow` | **IDENTICAL** (17 lines) |
+| `/nl/highlight/00002a8e-…` (thin) | `noindex, follow` | **IDENTICAL** (17 lines) |
+| `/en/highlight/ff87ca06-…` | `index, follow` | **IDENTICAL** (17 lines) |
+| `/nl/discover/aargau/hut` | — | **IDENTICAL** (10 lines) |
+
+Testing both highlight branches mattered: the content-rich gate is what keeps
+~500k thin OSM pages out of the index, and a happy-path-only diff would not have
+touched it. Deliberately picked one id from `content_rich_highlights` and one
+that is absent from it.
+
+*The build caught a leftover*: removing the hand-rolled metadata left
+`getSiteSettings`/`pageTitle` unused in the region page, and `next build` failed
+on it rather than shipping dead imports. Removed, then green.
+
+*Gates*: `npm test` 37/37 · `next lint` clean · `tsc --noEmit` exit 0 ·
+`npm run build` exit 0 · regression: `/nl`, `/nl/trails`, `/nl/discover`
+(60 region links intact), `/nl/collections`, `/nl/trails/aargau`,
+`/sitemap.xml` all 200.
 
 ### 2026-08-18 — P1-1b: `tour/[id]` and `collection/[id]` migrated
 
