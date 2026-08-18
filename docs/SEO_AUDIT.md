@@ -57,12 +57,18 @@ count into this table.
   from every sitemap, from listing queries, and from metadata/JSON-LD.
 - *Why*: the loop brief requires this as a deliverable. Today the guarantee
   rests entirely on Supabase RLS plus per-page code review.
-- *Blocker*: the repo has **no test framework at all** (`package.json` has no
-  `test` script and no vitest/jest/playwright). Adding one is a new dev
-  dependency and a CI decision — outside SEO scope.
-- **Open question for Niels**: may I add `vitest` as a devDependency plus a
-  `npm test` script, to host this privacy regression suite? It is dev-only
-  (no runtime/bundle weight). Without it P0-2 cannot be closed.
+- *Blocker*: **RESOLVED 2026-08-18** — Niels approved adding `vitest` as a
+  devDependency plus an `npm test` script. Dev-only: no runtime dependency, no
+  bundle weight, no change to the Vercel build.
+- *Files*: `package.json`, `vitest.config.ts`, `src/lib/**/__tests__/*` (new).
+- *Acceptance test*: `npm test` runs green and fails if any of the four
+  assertions is broken — a private/unlisted tour, collection or profile that
+  (a) appears in `/sitemap.xml`, the trail sitemap or the highlight sitemap,
+  (b) appears in a listing/landing query, (c) does not 404 or `noindex` on
+  direct access, or (d) leaks into generated metadata or JSON-LD.
+- *Scope note*: this is more than one iteration's work. First slice = the
+  sitemap assertions (a), since those are pure functions over query results.
+  Slices (b)–(d) follow as separate backlog items.
 
 ### P1 — SEO architecture
 
@@ -131,9 +137,9 @@ count into this table.
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: P1-3 (verify hreflang `Link` headers actually ship — cheap, pure
-evidence, no file collision), then P1-2 (self-canonical on user profiles).
-P0-2 is blocked on the vitest question above.
+**Next up**: P0-2 slice 1 — vitest scaffold + the sitemap privacy assertions
+(approved 2026-08-18, no longer blocked). Then P1-3 (verify the hreflang
+`Link` headers actually ship) and P1-2 (self-canonical on user profiles).
 
 ---
 
