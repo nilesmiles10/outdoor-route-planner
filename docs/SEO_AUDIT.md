@@ -96,7 +96,59 @@ refactor deferred*
   redirect obligations. Needs design in `SEO_PAGE_ARCHITECTURE.md` and a
   measured count per proposed page type before any build.
 
-**P1-4 · Concurrent agent commits with `git add -A` — RAISED TO P1, NEAR-MISS**
+**P1-4 · ~~Concurrent agent commits with `git add -A`~~ — CLOSED 2026-08-18: the UX agent has stopped, so the hazard no longer applies. Kept below for the record.**
+- *What*: the UX agent stages the whole worktree. Observed **twice** on
+  2026-08-18: commit `55af66a` swept the private-profile fix, commit `4dd876c`
+  swept the vitest scaffold and privacy test.
+- *Why this is now P1 and not a tidiness issue*: verification techniques
+  require deliberately breaking code for a few seconds — the mutation check
+  for P0-2 ran with `.eq("visibility","public")` **removed** from
+  `src/app/sitemap.ts`. A repo-wide `git add -A` landing in that window would
+  have committed a live privacy regression (every private, followers-only and
+  close-friends route into the public sitemap) under a planner commit message,
+  with a green-looking history. This time HEAD was verified intact:
+  `git show HEAD:src/app/sitemap.ts` still contains both `visibility` filters
+  and the suite passes 9/9 against committed code.
+- *Mitigations on this side (in force from now on)*: run mutation checks on a
+  scratch copy rather than the tracked file wherever possible, and never leave
+  a deliberately-broken tracked file on disk across an await.
+- *Needs Niels*: tell the UX agent to stage explicit paths. This cannot be
+  fixed from inside this loop.
+- *Acceptance test*: n/a — coordination item.
+
+### P3 — optimizations
+
+- **P3-1** `sitemap.ts` `changeFrequency`/`priority` are hand-set constants;
+  Google ignores both. Harmless, low value to remove.
+- **P3-3** LCP/CLS/INP **field** measurement — still no data, and collecting it
+  needs a decision: real-user monitoring means an analytics dependency and a
+  privacy/consent question. Lab numbers were taken instead (see Done).
+
+**P1-1 · SEO logic is scattered across page components** — *invariant done,
+refactor deferred*
+- *What remains*: canonical, title, OG and JSON-LD construction is still
+  hand-rolled per route. The **canonical half is now enforced** by
+  `canonical-guard.test.ts` (see Done), so the concrete failure mode — a new
+  route shipping without a canonical — can no longer happen silently.
+- *Why the refactor is deferred, not done*: moving metadata construction into a
+  shared module touches ~8 route files the UX agent is actively working in, and
+  produces **no behaviour change**. That is a poor trade during concurrent work.
+  The invariant buys the safety now at near-zero collision risk.
+- *Do it when*: the UX agent is idle, or the next new page type needs it anyway.
+- *Acceptance test*: routes derive canonical/title from a shared helper, and the
+  rendered HTML for each migrated route is byte-identical on title, canonical
+  and JSON-LD.
+
+### P2 — meaningful improvements
+
+**P2-2 · Activity-first URL architecture not implemented**
+- *What*: the brief proposes `/hiking/{country}/{region}/{city}`. Today the
+  geographic surface is `/discover/{region}/{category}`.
+- *Why*: potentially large win, but it is a URL-architecture migration with
+  redirect obligations. Needs design in `SEO_PAGE_ARCHITECTURE.md` and a
+  measured count per proposed page type before any build.
+
+**P1-4 · ~~Concurrent agent commits with `git add -A`~~ — CLOSED 2026-08-18: the UX agent has stopped, so the hazard no longer applies. Kept below for the record.**
 - *What*: the UX agent stages the whole worktree. Observed **twice** on
   2026-08-18: commit `55af66a` swept the private-profile fix, commit `4dd876c`
   swept the vitest scaffold and privacy test.
@@ -149,15 +201,50 @@ refactor deferred*
 
 _(empty — P0-1 completed this iteration)_
 
-**Next up**: nothing actionable without a decision. P2-4 (trails caching) needs
-the viewer-independence fix designed first and touches a UX-owned file; P1-1's
-refactor half is deferred while the UX agent is active; P1-10 (payload) needs a
-UI trade-off; P1-4 needs Niels; P3-3 needs an analytics/consent decision. The
-loop stops here rather than manufacture work.
+**Next up**: the UX agent has stopped, so the collision constraint is gone.
+Remaining: P1-1's refactor half (shared SEO layer) and P1-10 (`/discover`
+payload). P3-3 (field performance data) is parked until traffic justifies the
+instrumentation. Deploy needed to confirm P2-4's cache actually HITs.
 
 ---
 
 ## Done
+
+### 2026-08-18 — P2-4 `/trails` made viewer-independent and cacheable
+
+*Precondition first*: there was **no admin trails screen** — the 91 `hidden_at`
+trails were visible only because a logged-in admin opening the **public**
+`/trails` page got them back through RLS (`hidden_at IS NULL OR is_admin()`).
+That is exactly what made the page uncacheable: caching an admin's render would
+have served the hidden trails to everyone. Built `/admin/trails` (list, search,
+all/visible/hidden filter, hide/unhide with `admin_audit`) so the capability has
+its own home. Bonus: `hidden_at` previously had no UI at all and could only be
+set via SQL.
+
+*Then the fix*: new `supabasePublic()` — a sessionless anon client — replaces
+`supabaseServer()` (which reads cookies) in `trails/page.tsx`, so every visitor
+now gets an identical render. `force-dynamic` removed, and a CDN header added in
+`next.config.mjs` scoped to `/:locale(nl|en)/trails`:
+`public, s-maxage=3600, stale-while-revalidate=86400`. The region pages don't
+match that source — they have an extra segment and already cache via ISR.
+
+*Evidence*:
+
+| Check | Result |
+|---|---|
+| `/nl/trails` | 200, 200 trail links, `Officiële routes \| Tarnoo`, canonical present |
+| `Cache-Control` on the response | `public, s-maxage=3600, stale-while-revalidate=86400` |
+| filters still work | `?sport=hike` 200/200 links · `?country=NL` 200/200 · `?q=waldroute` 200/1 |
+| **hidden trail excluded** | search `Stevenson` → **0** results; `GR 121 liaison` → **0**; direct `/nl/trail/6f8b32ce-…` → **404** |
+| visible control | search `Waldroute` → 1 result (still findable) |
+| regression | `/nl`, `/nl/discover`, `/nl/collections`, `/nl/trails/aargau`, `/sitemap.xml`, `/robots.txt` all 200 |
+
+*Not yet verifiable*: whether Vercel's CDN actually returns `x-vercel-cache: HIT`
+can only be confirmed after a deploy — a local `next start` has no CDN. The
+header is emitted correctly, which is the part that can be checked here.
+
+*Gates*: `npm test` 37/37 · `next lint` clean · `tsc --noEmit` exit 0 ·
+`npm run build` exit 0.
 
 ### 2026-08-18 — P3-2 closed as no-defect, plus lab performance numbers
 

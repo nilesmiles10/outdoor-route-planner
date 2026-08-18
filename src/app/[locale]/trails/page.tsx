@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { supabaseServer } from "@/lib/supabase/server";
+import { supabasePublic } from "@/lib/supabase/server";
 import { difficulty } from "@/lib/difficulty";
 import { fmtDuration } from "@/lib/activity";
 import SiteFooter from "@/components/SiteFooter";
@@ -16,7 +16,16 @@ const REGION_CHIP_CAP = 16;
 // regio-filter, zelfde interactiepatroon als /discover (GET-params,
 // server component — SEO-vriendelijk).
 
-export const dynamic = "force-dynamic";
+// force-dynamic stond hier omdat de pagina searchParams leest. Die filters
+// maken 'm sowieso al dynamisch; force-dynamic voegde daar alleen aan toe dat
+// Vercel het antwoord nóóit mocht cachen — gemeten: x-vercel-cache MISS bij
+// drie opeenvolgende hits, 631 kB per request. Weggehaald, en de cache-header
+// staat in next.config.mjs.
+//
+// Voorwaarde daarvoor is dat de render niet van de bezoeker afhangt: hij haalt
+// z'n data nu via supabasePublic() (sessieloos) i.p.v. supabaseServer() (leest
+// cookies). Een ingelogde admin zag hier voorheen óók de verborgen trails; die
+// horen nu op /admin/trails.
 
 type TrailRow = {
   id: string;
@@ -138,7 +147,7 @@ export default async function TrailsPage({
       ? (searchParams.sort as TrailSort)
       : "name";
 
-  const sb = supabaseServer();
+  const sb = supabasePublic();
   // Cap op de lijst; als 'ie geraakt wordt tonen we een verfijn-hint i.p.v.
   // stil de rest (NL alleen al ~4.4k trails) weg te laten.
   const TRAIL_LIMIT = 200;
