@@ -43,7 +43,13 @@ export default async function sitemap({
     `${BASE}/rest/v1/trails?select=id,updated_at&order=id&offset=${id * PER_SEGMENT}&limit=${PER_SEGMENT}`,
     { headers: HEADERS, next: { revalidate: 3600 } },
   );
-  const rows = ((await res.json()) as { id: string; updated_at: string }[]) ?? [];
+  // Guard tegen een niet-OK respons (bv. 402 als Supabase over z'n
+  // egress-quota zit): res.json() geeft dan een error-object, geen array,
+  // en `for (const … of rows)` crasht met "r is not iterable" — wat op
+  // 19-08-2026 de hele productie-build liet falen. Bij een fout: leeg
+  // segment i.p.v. een crash; de sitemap is dan tijdelijk kleiner.
+  const json = res.ok ? await res.json().catch(() => null) : null;
+  const rows: { id: string; updated_at: string }[] = Array.isArray(json) ? json : [];
   const entries: MetadataRoute.Sitemap = [];
   for (const locale of ["nl", "en"]) {
     for (const t of rows) {
