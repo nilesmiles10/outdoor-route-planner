@@ -2,6 +2,35 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
+// CDN-caching voor bezoeker-onafhankelijke publieke pagina's.
+//
+// Reden (gemeten 2026-08-19): 35 GB Supabase-egress in één maand, vrijwel
+// alleen crawler-verkeer tegen de pagina's die de sitemap sinds de
+// SEO-uitbreiding aanbiedt (30k trails, 3,6k regio×categorie, 443 regio's).
+// Elke trail-pagina trekt een 12 kB-geometrierij + een bbox-highlights-query
+// (tot 1000 rijen). ISR cachet de render al, maar zonder deze header
+// revalideert de rand agressief en her-query't Supabase bij elke her-crawl.
+//
+// s-maxage=3600 + stale-while-revalidate=86400: 1 uur vers aan de rand, daarna
+// tot 24 uur stale-vanaf-de-rand met één achtergrond-revalidatie. Zo blijft een
+// her-crawl binnen de dag een rand-hit i.p.v. een Supabase-query, en is de
+// staleness (bv. na een admin-hide van een trail) tot 1 uur begrensd.
+//
+// Vercel-/CDN-Cache-Control worden door Next NIET overschreven; een gewone
+// Cache-Control wél op dynamische routes (Next zet daar "private, no-store").
+// Gemeten na de deploy van 2026-08-18: gewone Cache-Control verdween in
+// productie, de CDN-varianten bleven staan en gaven x-vercel-cache HIT.
+const CDN_CACHE = [
+  {
+    key: "Vercel-CDN-Cache-Control",
+    value: "public, s-maxage=3600, stale-while-revalidate=86400",
+  },
+  {
+    key: "CDN-Cache-Control",
+    value: "public, s-maxage=3600, stale-while-revalidate=86400",
+  },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async headers() {
@@ -16,42 +45,33 @@ const nextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         ],
       },
+      // ── CDN-cache: ALLEEN bezoeker-onafhankelijke routes ────────────────────
+      // Deze vier lezen allemaal via plain anon PostgREST-fetch — geen
+      // supabaseServer()/cookies, dus dezelfde render voor iedereen. Zou een van
+      // hen weer een sessie gaan lezen, dan lekt deze cache de render van de ene
+      // bezoeker naar de andere; dan moet de bron hier weg. /tour en /collection
+      // staan er bewust NIET bij: die zijn RLS-afgeschermd (privé-content) en
+      // moeten sessie-bewust blijven. Vaste-diepte patronen zodat niets dubbel
+      // matcht; paginering (?page=N) zit in de query, niet in het pad.
       {
-        // /trails is dynamisch (leest searchParams) en werd daardoor nóóit door
-        // de CDN gecacht: x-vercel-cache MISS bij drie opeenvolgende hits, 631 kB
-        // en een volledige Supabase-query per request — op de instap-pagina van
-        // 30k trail-pagina's. Met deze header cachet de CDN per volledige URL,
-        // dus per filtercombinatie, en serveert hij verouderd terwijl hij
-        // ververst.
-        //
-        // Mag alleen omdat de render sinds supabasePublic() bezoeker-onafhankelijk
-        // is. Zou hij weer cookies gaan lezen, dan lekt deze cache de render van
-        // de ene bezoeker naar de andere — zie de comment bij supabasePublic().
-        // De regio-pagina's (/trails/<regio>) matchen hier niet: die hebben een
-        // extra segment en cachen al via ISR.
+        // /trails leest searchParams (filters) → dynamisch, zonder deze header
+        // nooit gecacht.
         source: "/:locale(nl|en)/trails",
-        headers: [
-          // Alléén de CDN-varianten. Een gewone Cache-Control werkt hier NIET:
-          // de route leest searchParams en wordt dus dynamisch gerenderd, en
-          // Next overschrijft Cache-Control voor dynamische routes met
-          // "private, no-cache, no-store". Gemeten na de deploy van 2026-08-18:
-          // header uit next.config weg, x-vercel-cache MISS bij drie hits.
-          // (Lokaal gaf next start een vals positief — die override doet-ie niet.)
-          //
-          // Vercel-CDN-Cache-Control en CDN-Cache-Control stuurt Next niet aan;
-          // die zijn juist bedoeld om de edge-cache los van de browser-cache te
-          // regelen, zodat dynamische routes tóch cachebaar zijn. De browser
-          // blijft dus revalideren, de CDN niet.
-          {
-            key: "Vercel-CDN-Cache-Control",
-            value: "public, s-maxage=3600, stale-while-revalidate=86400",
-          },
-          {
-            key: "CDN-Cache-Control",
-            value: "public, s-maxage=3600, stale-while-revalidate=86400",
-          },
-        ],
+        headers: CDN_CACHE,
       },
+      {
+        source: "/:locale(nl|en)/trail/:id",
+        headers: CDN_CACHE,
+      },
+      {
+        source: "/:locale(nl|en)/trails/:region",
+        headers: CDN_CACHE,
+      },
+      {
+        source: "/:locale(nl|en)/discover/:region/:category",
+        headers: CDN_CACHE,
+      },
+      // ───────────────────────────────────────────────────────────────────────
       {
         // Clickjacking-bescherming overal BEHALVE de /embed-widget: die moet
         // juist door derden ge-iframe't kunnen worden (dat is z'n functie).
