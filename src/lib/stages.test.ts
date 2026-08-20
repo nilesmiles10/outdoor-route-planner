@@ -78,6 +78,18 @@ describe("splitIntoStages", () => {
     for (const stage of s) expect(stage.endIdx).toBeGreaterThan(stage.startIdx);
   });
 
+  it("scales per-stage ascent/descent to the route totals when given", () => {
+    // raw ascent over the whole route = 150+80 = 230; raw descent = 0+30 = 30.
+    // Ask the stages to reconcile to an official 115 m ascent / 15 m descent.
+    const s = splitIntoStages(coords, elevation, cumDist, TIME, 2, 115, 15);
+    const sumA = s.reduce((t, x) => t + x.ascentM, 0);
+    const sumD = s.reduce((t, x) => t + x.descentM, 0);
+    expect(sumA).toBeCloseTo(115); // sums to the headline, not the raw 230
+    expect(sumD).toBeCloseTo(15);
+    // proportions preserved: stage 1 had all the descent-free climb
+    expect(s[0].ascentM).toBeCloseTo(115 * (150 / 230));
+  });
+
   it("handles degenerate input", () => {
     expect(splitIntoStages([[0, 0]], [0], [0], 0, 2)).toEqual([]);
     expect(splitIntoStages(coords, elevation, cumDist, TIME, 0)).toEqual([]);

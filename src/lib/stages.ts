@@ -46,6 +46,12 @@ export function splitIntoStages(
   cumDist: number[], // metres, parallel to coords, monotonic non-decreasing
   totalTimeS: number,
   nDays: number,
+  // Optional route totals (BRouter's own smoothed ascent/descent). When given,
+  // per-stage ascent/descent is scaled so the stages sum EXACTLY to these —
+  // otherwise raw elevation-delta sums overcount vs the headline figure and the
+  // days visibly don't add up to the whole.
+  totalAscentM?: number,
+  totalDescentM?: number,
 ): Stage[] {
   const n = coords.length;
   if (n < 2 || nDays < 1) return [];
@@ -93,6 +99,19 @@ export function splitIntoStages(
       end: [e[0], e[1]],
     });
     startIdx = endIdx;
+  }
+
+  // Reconcile per-stage ascent/descent with the route's official totals so the
+  // days sum to the headline figure (raw deltas overcount from GPS noise).
+  if (totalAscentM !== undefined || totalDescentM !== undefined) {
+    const rawA = stages.reduce((t, s) => t + s.ascentM, 0);
+    const rawD = stages.reduce((t, s) => t + s.descentM, 0);
+    const fa = totalAscentM !== undefined && rawA > 0 ? totalAscentM / rawA : 1;
+    const fd = totalDescentM !== undefined && rawD > 0 ? totalDescentM / rawD : 1;
+    for (const s of stages) {
+      s.ascentM *= fa;
+      s.descentM *= fd;
+    }
   }
   return stages;
 }

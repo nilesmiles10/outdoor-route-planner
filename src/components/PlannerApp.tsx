@@ -449,6 +449,8 @@ export default function PlannerApp() {
             distances,
             route.stats.timeS,
             stageDays,
+            route.stats.ascendM,
+            route.stats.descendM,
           )
         : [],
     [stageDays, routeCoords, route, distances],
