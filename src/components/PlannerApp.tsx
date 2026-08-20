@@ -17,6 +17,7 @@ import GradeLegend from "./GradeLegend";
 import { groupWaytypes } from "@/lib/waytypes";
 import { type Weather, wmoEmoji } from "@/lib/weather";
 import { buildKmMarkers } from "@/lib/kmMarkers";
+import { POI_CATEGORIES } from "@/lib/poiCategories";
 import AccountPanel, { type TourPayload } from "./AccountPanel";
 import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
 import { parseGpx, sampleAnchors } from "@/lib/gpx";
@@ -520,6 +521,9 @@ export default function PlannerApp() {
   // Sport-netwerk-overlays (Waymarked Trails) — opt-in, sport-bewuste default
   // zou stille tile-load betekenen; bewust handmatig.
   const [networks, setNetworks] = useState({ hiking: false, cycling: false, mtb: false });
+  // GEN-137: "Places" POI toggles (keyed by POI_CATEGORIES id). All off by
+  // default — opt-in, like the network overlays.
+  const [places, setPlaces] = useState<Record<string, boolean>>({});
 
   // Map-content-voorkeuren onthouden tussen bezoeken (localStorage). Voorheen
   // resette elke reload de highlights/km-markers/onverhard/categorieën/netwerk-
@@ -542,6 +546,7 @@ export default function PlannerApp() {
           mtb: !!p.networks.mtb,
         });
       }
+      if (p.places && typeof p.places === "object") setPlaces(p.places);
     } catch {
       // corrupte/geblokkeerde storage — negeer, gebruik defaults
     }
@@ -565,12 +570,13 @@ export default function PlannerApp() {
           showUnpaved,
           hiddenCats: Array.from(hiddenCats),
           networks,
+          places,
         }),
       );
     } catch {
       /* storage vol/geblokkeerd — negeer */
     }
-  }, [showHl, showKmMarkers, showUnpaved, hiddenCats, networks]);
+  }, [showHl, showKmMarkers, showUnpaved, hiddenCats, networks, places]);
   // Onthoud de laatst gekozen sport, zodat de planner niet elke sessie op
   // "touring" terugvalt. Restore is bewust GEGATE op de afwezigheid van `?w`:
   // een gedeelde route-link (`?w=...&sport=...`) bevat zijn eigen sport en die
@@ -1602,6 +1608,7 @@ export default function PlannerApp() {
         offGridLines={offGridLines}
         alertLines={alertLines}
         networkOverlays={networks}
+        poiCategories={places}
         kmMarkers={kmMarkers}
         unpavedLines={unpavedLines}
         emphasisSlot={emphasisSlot}
@@ -1835,6 +1842,35 @@ export default function PlannerApp() {
               ))}
               <p className="mt-1 text-[10px] text-neutral-400">
                 © waymarkedtrails.org
+              </p>
+            </div>
+
+            <div className="mt-2 border-t border-neutral-100 pt-2">
+              <span className="text-xs font-medium text-neutral-700">
+                {t("mapContent.places")}
+              </span>
+              {POI_CATEGORIES.map((cat) => (
+                <label
+                  key={cat.id}
+                  className="mt-1 flex items-center gap-2 text-xs text-neutral-600"
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!places[cat.id]}
+                    onChange={() =>
+                      setPlaces((prev) => ({ ...prev, [cat.id]: !prev[cat.id] }))
+                    }
+                    className="accent-emerald-700"
+                  />
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-full ring-1 ring-white"
+                    style={{ backgroundColor: cat.color }}
+                  />
+                  {t(`mapContent.poi_${cat.id}` as never)}
+                </label>
+              ))}
+              <p className="mt-1 text-[10px] text-neutral-400">
+                {t("mapContent.poiHint")}
               </p>
             </div>
 

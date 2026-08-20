@@ -5,6 +5,7 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { mapStyle, attachBasemapFallback } from "@/lib/mapStyle";
 import { CATEGORY_COLOR } from "@/lib/highlights";
+import { POI_CATEGORIES, poiFilter } from "@/lib/poiCategories";
 
 // offGrid: the leg ARRIVING at this waypoint is a straight (unrouted) line.
 export type Waypoint = { name: string; lon: number; lat: number; offGrid?: boolean };
@@ -70,6 +71,8 @@ type Props = {
   alertLines?: GeoJSON.FeatureCollection | null;
   unpavedLines?: GeoJSON.FeatureCollection | null;
   networkOverlays?: { hiking: boolean; cycling: boolean; mtb: boolean };
+  // GEN-137: per-category "Places" POI toggles (keyed by POI_CATEGORIES id).
+  poiCategories?: Record<string, boolean>;
   // GEN-137: distance markers along the route (every 5/10 km).
   kmMarkers?: GeoJSON.FeatureCollection | null;
   emphasisSlot?: number | null;
@@ -103,6 +106,7 @@ export default function MapView({
   alertLines,
   unpavedLines,
   networkOverlays,
+  poiCategories,
   kmMarkers,
   emphasisSlot,
   onGeolocate,
@@ -324,7 +328,11 @@ export default function MapView({
       if (!map.getLayer(spec.id)) map.addLayer(spec, beforeId);
     };
     const initLayers = () => {
-      if (layersReady) return;
+      // Re-add when the style was REPLACED (basemap failover -> setStyle wipes
+      // our custom sources/layers). Detect via our own "route" source going
+      // missing; the ensure* helpers keep the re-add idempotent on normal
+      // incremental styledata events.
+      if (layersReady && map.getSource("route")) return;
       try {
         addAllLayers();
       } catch {
@@ -351,6 +359,30 @@ export default function MapView({
           layout: { visibility: "none" },
           paint: { "raster-opacity": 0.85 },
         });
+      }
+      // GEN-137: Komoot-style "Places" POI toggles, filtered from the basemap's
+      // own OpenMapTiles vector source (no extra fetch). Guarded: on the
+      // protomaps failover basemap the "openmaptiles" source is absent, so we
+      // skip them without aborting the rest of the bootstrap. Added before the
+      // route so the route line and markers stay on top.
+      if (map.getSource("openmaptiles")) {
+        for (const cat of POI_CATEGORIES) {
+          ensureLayer({
+            id: `poi-${cat.id}`,
+            type: "circle",
+            source: "openmaptiles",
+            "source-layer": "poi",
+            filter: poiFilter(cat),
+            minzoom: 13,
+            layout: { visibility: "none" },
+            paint: {
+              "circle-radius": 5,
+              "circle-color": cat.color,
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 1.5,
+            },
+          });
+        }
       }
       ensureSource("route", {
         type: "geojson",
@@ -1008,6 +1040,21 @@ export default function MapView({
       }
     }
   }, [networkOverlays, ready]);
+
+  // Sync "Places" POI toggles (GEN-137)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    for (const cat of POI_CATEGORIES) {
+      if (map.getLayer(`poi-${cat.id}`)) {
+        map.setLayoutProperty(
+          `poi-${cat.id}`,
+          "visibility",
+          poiCategories?.[cat.id] ? "visible" : "none",
+        );
+      }
+    }
+  }, [poiCategories, ready]);
 
   // Sync saved-places layer (GEN-137)
   useEffect(() => {

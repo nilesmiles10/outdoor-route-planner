@@ -93,7 +93,17 @@
       "net_hiking": "Wandelnetwerken",
       "net_cycling": "Fietsnetwerken (incl. knooppunten)",
       "net_mtb": "MTB-routes",
-      "unpaved": "Onverharde stukken"
+      "unpaved": "Onverharde stukken",
+      "places": "Plekken",
+      "poi_water": "Drinkwater",
+      "poi_food": "Eten & drinken",
+      "poi_toilets": "Toiletten",
+      "poi_parking": "Parkeren",
+      "poi_lodging": "Overnachten",
+      "poi_shelter": "Schuilhutten",
+      "poi_camp": "Camping",
+      "poi_bike": "Fietswinkels",
+      "poiHint": "Zoom in om plekken te zien"
     },
     "rowActions": {
       "remove": "Waypoint verwijderen",

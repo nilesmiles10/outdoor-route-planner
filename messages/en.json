@@ -93,7 +93,17 @@
       "net_hiking": "Hiking networks",
       "net_cycling": "Cycling networks (incl. node networks)",
       "net_mtb": "MTB trails",
-      "unpaved": "Unpaved stretches"
+      "unpaved": "Unpaved stretches",
+      "places": "Places",
+      "poi_water": "Drinking water",
+      "poi_food": "Food & drink",
+      "poi_toilets": "Toilets",
+      "poi_parking": "Parking",
+      "poi_lodging": "Accommodation",
+      "poi_shelter": "Shelters & huts",
+      "poi_camp": "Camping",
+      "poi_bike": "Bike shops",
+      "poiHint": "Zoom in to see places"
     },
     "rowActions": {
       "remove": "Remove waypoint",
