@@ -163,6 +163,14 @@ count into this table.
   alternate as `.../en/trails/bayern?page=2`, and exactly one hreflang mechanism
   is in play.
 
+**P3-7 · Further egress reduction if caching alone is insufficient**
+- *What*: after the CDN-cache fix, if Supabase egress stays high, trim the bbox
+  highlights query (`passedHighlights.ts`, currently `limit=1000` to keep ~20-50)
+  and reduce the 60.9 M profiles RLS scans by switching remaining public pages
+  (highlight/[id]) to `supabasePublic()`.
+- *Acceptance test*: monthly egress trends well under the plan limit; the
+  highlights bbox query returns < 200 rows per trail page.
+
 ### P3 — optimizations
 
 - **P3-1** `sitemap.ts` `changeFrequency`/`priority` are hand-set constants;
@@ -577,6 +585,46 @@ against production.
 ---
 
 ## Done
+
+### 2026-08-19 — Supabase egress incident: 35 GB quota block, caching fix, recovery
+
+**Incident:** Supabase egress hit 35.58 GB against the 5.5 GB free-tier cap and
+began returning HTTP **402 on every query** — a hard block. Effects:
+- Content pages down in production: `/trails/[region]` and `/discover/[r]/[c]`
+  → 500, `/trail/[id]` → 404 (the query 402'd → notFound).
+- The Vercel build itself failed: `trails-sitemap` / `highlights-sitemap`
+  parsed `res.json()` with no `res.ok` check, so a 402 (error object, not an
+  array) crashed with "r is not iterable" → no deploys possible.
+
+**Root cause of the egress:** the SEO expansion made 30,265 trail pages +
+3,625 region×category + 443 region pages crawlable and sitemapped. Googlebot
+crawls them; each trail page pulls a ~12 KB geometry row + a bbox highlights
+query (≤1000 rows). `pg_stat_user_tables`: highlights 1.9 bn rows read, trails
+1.1 bn, profiles 60.9 M scans (RLS session checks). Pages were ISR-cached but
+without an edge-cache header they revalidated aggressively and re-queried
+Supabase on every re-crawl of 60k+ unique URLs.
+
+**Fixes shipped:**
+- `next.config.mjs`: `Vercel-CDN-Cache-Control` + `CDN-Cache-Control`
+  (`s-maxage=3600, stale-while-revalidate=86400`) on the four viewer-independent
+  public families (`/trails`, `/trail/[id]`, `/trails/[region]`,
+  `/discover/[r]/[c]`). NOT on `/tour` or `/collection` — those are RLS-gated
+  and must stay session-aware.
+- Build resilience: the three sitemap fetches now guard `res.ok` +
+  `Array.isArray`, so a future quota block degrades (smaller sitemap) instead
+  of failing the build.
+
+**Recovery (after Pro upgrade → 250 GB egress → 402 lifted):** every query 200;
+stale cached 500/404 self-cleared on revalidation; all content pages 200;
+CDN caching verified MISS→HIT on `/trails/[region]`, `/trail/[id]`,
+`/discover/[r]/[c]` in both locales. Future crawls now hit the edge, not
+Supabase.
+
+**Watch:** egress should fall sharply over the coming days as re-crawls serve
+from cache. If it does not, the next levers are trimming the bbox highlights
+query (≤1000 → far fewer) and cutting the 60 M profiles RLS scans by moving the
+remaining public pages off the session-aware client. Filed as P3-7.
+
 
 ### 2026-08-18 — heading-hierarchy sweep: healthy, no defect
 
