@@ -20,7 +20,13 @@ import { buildKmMarkers } from "@/lib/kmMarkers";
 import { POI_CATEGORIES } from "@/lib/poiCategories";
 import AccountPanel, { type TourPayload } from "./AccountPanel";
 import { cumulativeDistances, detectClimbs } from "@/lib/elevation";
-import { parseGpx, sampleAnchors } from "@/lib/gpx";
+import { buildGpx, parseGpx, sampleAnchors } from "@/lib/gpx";
+import {
+  splitIntoStages,
+  suggestDays,
+  dayKmFor,
+  type Stage,
+} from "@/lib/stages";
 import ExportMenu from "./ExportMenu";
 import { loopVias } from "@/lib/roundtrip";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -430,6 +436,38 @@ export default function PlannerApp() {
   const distances = useMemo(
     () => (routeCoords ? cumulativeDistances(routeCoords) : null),
     [routeCoords],
+  );
+  // GEN-121: multi-day stage planner. null = off; a number = split into N days.
+  const [stageDays, setStageDays] = useState<number | null>(null);
+  // GEN-121: split the route into N balanced day-stages (pure lib, unit-tested).
+  const stages = useMemo<Stage[]>(
+    () =>
+      stageDays !== null && routeCoords && route && distances
+        ? splitIntoStages(
+            routeCoords,
+            route.elevation,
+            distances,
+            route.stats.timeS,
+            stageDays,
+          )
+        : [],
+    [stageDays, routeCoords, route, distances],
+  );
+  const downloadStageGpx = useCallback(
+    (s: Stage) => {
+      if (!routeCoords || !route) return;
+      const coords = routeCoords.slice(s.startIdx, s.endIdx + 1);
+      const elev = route.elevation.slice(s.startIdx, s.endIdx + 1);
+      const blob = new Blob([buildGpx(`Tarnoo - dag ${s.day}`, coords, elev, [])], {
+        type: "application/gpx+xml",
+      });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `tarnoo-dag-${s.day}.gpx`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    },
+    [routeCoords, route],
   );
   // Onverharde stukken op de lijn (amber). Default aan: het is precies wat
   // je vóór een rit wilt weten, en op verharde routes is de laag toch leeg.
@@ -2618,6 +2656,95 @@ export default function PlannerApp() {
                 <div className="text-[10px] uppercase text-neutral-500">m</div>
               </div>
             </div>
+
+            {/* GEN-121: multi-day stage planner — long routes only */}
+            {route.stats.distanceM >= 25000 && (
+              <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-neutral-800">
+                    {t("multiDay.title")}
+                  </span>
+                  {stageDays === null ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setStageDays(
+                          suggestDays(route.stats.distanceM, dayKmFor(sport)),
+                        )
+                      }
+                      className="rounded-lg bg-emerald-700 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-800"
+                    >
+                      {t("multiDay.split")}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        aria-label={t("multiDay.fewer")}
+                        onClick={() =>
+                          setStageDays((d) => Math.max(1, (d ?? 1) - 1))
+                        }
+                        className="h-6 w-6 rounded bg-neutral-200 text-neutral-700 hover:bg-neutral-300"
+                      >
+                        −
+                      </button>
+                      <span className="min-w-[3.5rem] text-center text-xs tabular-nums text-neutral-700">
+                        {t("multiDay.days", { count: stageDays })}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={t("multiDay.more")}
+                        onClick={() => setStageDays((d) => (d ?? 1) + 1)}
+                        className="h-6 w-6 rounded bg-neutral-200 text-neutral-700 hover:bg-neutral-300"
+                      >
+                        +
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={t("multiDay.close")}
+                        onClick={() => setStageDays(null)}
+                        className="ml-1 text-neutral-400 hover:text-neutral-600"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {stageDays !== null && stages.length > 0 && (
+                  <ul className="mt-2 flex flex-col gap-1">
+                    {stages.map((s) => (
+                      <li
+                        key={s.day}
+                        className="flex items-center gap-2 text-[11px] text-neutral-700"
+                      >
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-[10px] font-semibold text-white">
+                          {s.day}
+                        </span>
+                        <span className="font-medium">
+                          {fmtKm(s.distanceM)} km
+                        </span>
+                        <span className="text-neutral-500">
+                          ↗ {Math.round(s.ascentM)}
+                        </span>
+                        <span className="text-neutral-500">
+                          ↘ {Math.round(s.descentM)}
+                        </span>
+                        <span className="text-neutral-500">
+                          {fmtTime(s.timeS)} {t("time")}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => downloadStageGpx(s)}
+                          className="ml-auto rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] font-medium text-neutral-700 hover:bg-neutral-300"
+                        >
+                          GPX
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
 
             {/* GEN-129: access warnings — static restrictions only */}
             {route.alerts && route.alerts.length > 0 && distances && (

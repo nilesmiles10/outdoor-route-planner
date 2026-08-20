@@ -177,7 +177,15 @@
     },
     "loop": "Rondje",
     "oneWay": "Enkele richting",
-    "roundTripExplain": "Genereert een rondje van deze afstand, terug naar je startpunt."
+    "roundTripExplain": "Genereert een rondje van deze afstand, terug naar je startpunt.",
+    "multiDay": {
+      "title": "Meerdaags",
+      "split": "In dagen opdelen",
+      "days": "{count, plural, one {# dag} other {# dagen}}",
+      "fewer": "Minder dagen",
+      "more": "Meer dagen",
+      "close": "Sluiten"
+    }
   },
   "account": {
     "login": "Log in om routes op te slaan",

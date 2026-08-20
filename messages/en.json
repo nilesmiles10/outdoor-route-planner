@@ -177,7 +177,15 @@
     },
     "loop": "Loop",
     "oneWay": "One-way",
-    "roundTripExplain": "Generates a loop of this distance, back to your starting point."
+    "roundTripExplain": "Generates a loop of this distance, back to your starting point.",
+    "multiDay": {
+      "title": "Multi-day",
+      "split": "Split into days",
+      "days": "{count, plural, one {# day} other {# days}}",
+      "fewer": "Fewer days",
+      "more": "More days",
+      "close": "Close"
+    }
   },
   "account": {
     "login": "Log in to save routes",
