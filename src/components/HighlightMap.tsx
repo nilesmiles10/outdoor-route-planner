@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { mapStyle } from "@/lib/mapStyle";
+import { mapStyle, attachBasemapFallback } from "@/lib/mapStyle";
 
 
 
@@ -31,6 +31,7 @@ export default function HighlightMap({
       zoom: 12,
       attributionControl: { compact: true },
     });
+    attachBasemapFallback(map);
     map.addControl(
       new maplibregl.NavigationControl({ showCompass: false }),
       "top-right",

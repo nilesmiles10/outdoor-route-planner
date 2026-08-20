@@ -8,7 +8,7 @@
 import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { mapStyle } from "@/lib/mapStyle";
+import { mapStyle, attachBasemapFallback } from "@/lib/mapStyle";
 
 
 
@@ -44,6 +44,7 @@ export default function EmbedView({
       scrollZoom: false,
     });
     mapRef.current = map;
+    attachBasemapFallback(map);
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }));
     const dot = (color: string, pos: GeoJSON.Position) =>
       new maplibregl.Marker({ color, scale: 0.7 })

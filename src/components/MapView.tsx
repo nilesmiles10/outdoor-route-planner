@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { mapStyle } from "@/lib/mapStyle";
+import { mapStyle, attachBasemapFallback } from "@/lib/mapStyle";
 import { CATEGORY_COLOR } from "@/lib/highlights";
 
 // offGrid: the leg ARRIVING at this waypoint is a straight (unrouted) line.
@@ -166,6 +166,10 @@ export default function MapView({
           ? { center: initialView.center, zoom: initialView.zoom } // hervat laatst-bekeken
           : { center: [5.1214, 52.0907], zoom: 8 }), // Utrecht (planner-default)
     });
+    // If the primary basemap never loads (OpenFreeMap has stalled repeatedly),
+    // fail over once to the self-hosted tiles. Overlay layers re-add themselves
+    // on the resulting styledata event (see initLayers below).
+    attachBasemapFallback(map);
     // Surface style/source failures instead of silently showing a blank map —
     // the OpenFreeMap stalls and the pmtiles switch both failed this way.
     map.on("error", (e) => {
