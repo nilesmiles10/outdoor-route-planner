@@ -10,19 +10,21 @@ import {
 
 export const dynamic = "force-dynamic";
 
-// BRouter is CPU-bound op de route-lengte: korte routes <2s, maar lange
-// (~200 km) kosten 8-19s en een 250 km MTB-route tot ~59s. De Vercel-default
-// van 10s kapte die stil af → "route tekent niet" voor lange (vaak
-// buitenlandse) trajecten, terwijl korte NL-routes wél werkten. Distance is
-// de factor, niet het land (Amsterdam→Maastricht 210 km = 18.5s, óók over de
-// 10s). 60s dekt elk realistisch traject met ruime marge. Paid-plan vereist.
-export const maxDuration = 60;
+// Defense-in-depth op de functie-timeout. BRouter is CPU-bound op route-lengte:
+// korte routes <2s, ~200 km 8-19s, extreme 250 km MTB tot ~59s. Empirisch liep
+// productie zulke lange calls al succesvol af (curl 59s → 200), dus de default
+// kapte niet op 10s — de "buitenlandse route doet niets"-klacht kwam NIET
+// hiervandaan (dat was de kaart die niet hercentreerde, zie MapView). Toch
+// pinnen we de grens expliciet op 120s zodat een toekomstige Vercel-default-
+// wijziging lange trajecten niet stilletjes kan afkappen. Ruim boven elke
+// echte route. Paid-plan.
+export const maxDuration = 120;
 
-// Harde bovengrens op de BRouter-call zelf: nét onder maxDuration zodat een
-// echt-te-lange/hangende route een nette router_unavailable teruggeeft
-// (met vertaalde melding) i.p.v. een rauwe Vercel-504 waar de client
-// "generic error" van maakt.
-const BROUTER_TIMEOUT_MS = 55_000;
+// Bovengrens op de BRouter-call zelf, ruim boven de traagste echte route (~59s)
+// en onder maxDuration: een écht hangende upstream valt zo netjes in de catch
+// → router_unavailable (vertaalde melding) i.p.v. de functie tot 120s te laten
+// hangen. Niet bedoeld om normale lange routes te raken.
+const BROUTER_TIMEOUT_MS = 110_000;
 
 // GET /api/geo/route?points=4.30,52.07|5.12,52.09&sport=gravel
 // Proxies BRouter and returns geometry + stats + surface/waytype breakdown.

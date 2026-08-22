@@ -893,16 +893,44 @@ export default function MapView({
       src.setData(route);
       routeCoordsRef.current =
         (route.geometry as GeoJSON.LineString | undefined)?.coordinates ?? null;
+      const fitCoords = (route.geometry as GeoJSON.LineString).coordinates;
+      if (!fitCoords?.length) return;
+      const bounds = fitCoords.reduce(
+        (bd, c) => bd.extend([c[0], c[1]]),
+        new maplibregl.LngLatBounds(
+          [fitCoords[0][0], fitCoords[0][1]],
+          [fitCoords[0][0], fitCoords[0][1]],
+        ),
+      );
+      // Layout-bewuste padding: paneel links (md+) of onderaan (mobiel).
+      const fitPadding = () => {
+        const cont = map.getContainer();
+        const cw = cont.clientWidth;
+        const ch = cont.clientHeight;
+        const wide = cw >= 768;
+        const left = wide ? Math.min(400, Math.round(cw * 0.4)) : 40;
+        const bottom = wide
+          ? 60
+          : Math.min(Math.round(ch * 0.45) + 24, Math.round(ch * 0.5));
+        return { top: 60, right: 60, left, bottom };
+      };
+      // Een NIEUWE route die volledig buiten het huidige beeld valt (andere
+      // stad/land) neemt de camera mee — anders tekent de lijn off-screen en
+      // "gebeurt er niets". Dit was de echte oorzaak van "korte NL-route werkt,
+      // langere buitenlandse niet": de kaart bleef op NL staan en de lijn stond
+      // in bv. Zwitserland, buiten beeld. Kleine edits (waypoint slepen) blijven
+      // in beeld → geen refit → geen camera-yank (origineel hasFitRef-gedrag).
+      const cur = map.getBounds();
+      const offView =
+        bounds.getWest() > cur.getEast() ||
+        bounds.getEast() < cur.getWest() ||
+        bounds.getSouth() > cur.getNorth() ||
+        bounds.getNorth() < cur.getSouth();
+      if (hasFitRef.current && offView) {
+        map.fitBounds(bounds, { padding: fitPadding() });
+        return;
+      }
       if (!hasFitRef.current) {
-        const coords = (route.geometry as GeoJSON.LineString).coordinates;
-        if (!coords?.length) return;
-        const bounds = coords.reduce(
-          (bd, c) => bd.extend([c[0], c[1]]),
-          new maplibregl.LngLatBounds(
-            [coords[0][0], coords[0][1]],
-            [coords[0][0], coords[0][1]],
-          ),
-        );
         // Fit pas zodra de canvas écht gemeten is. Bij eerste load kan de GL-
         // canvas nog op zijn 400×300-default staan (of 0×0 terwijl de pane
         // offscreen is); de layout-bewuste left:400-padding overtreft dan de
