@@ -938,6 +938,16 @@ export default function PlannerApp() {
 
 
   const filled = plan.slots.filter((s): s is Waypoint => s !== null);
+  // Rechte-lijn som over de waypoints als snelle proxy voor "dit wordt een
+  // lange, trage BRouter-berekening". BRouter is CPU-bound op route-lengte:
+  // ~80 km rechte lijn ≈ 5-30s. Boven die grens tonen we tijdens het laden een
+  // duidelijker "even geduld"-melding i.p.v. het gewone "berekenen…", zodat een
+  // lange wachttijd als "bezig" leest en niet als "kapot".
+  let pendingStraightM = 0;
+  for (let i = 1; i < filled.length; i++) {
+    pendingStraightM += haversineM(filled[i - 1], filled[i]);
+  }
+  const pendingLongRoute = pendingStraightM > 80_000;
   // True zolang de huidige route exact het laatst gegenereerde rondje is (geen
   // handmatige bewerking). Dan mag "Genereer" een "Ander rondje" worden i.p.v.
   // te disablen omdat er >1 punt staat.
@@ -2542,7 +2552,13 @@ export default function PlannerApp() {
         </div>
 
         {loading && (
-          <p className="text-sm text-neutral-500">{t("calculating")}</p>
+          <div className="flex items-center gap-2 text-sm text-neutral-500">
+            <span
+              aria-hidden
+              className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-500"
+            />
+            <span>{t(pendingLongRoute ? "calculatingLong" : "calculating")}</span>
+          </div>
         )}
         {error && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">

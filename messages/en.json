@@ -12,6 +12,7 @@
     "reverse": "Reverse",
     "clear": "Clear",
     "calculating": "Calculating route…",
+    "calculatingLong": "Long route — this can take up to a minute…",
     "time": "time",
     "surfaces": "Surfaces",
     "paved": "Paved",
