@@ -107,6 +107,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: "monthly",
         priority: 0.8,
       },
+      {
+        url: `${SITE_URL}/${locale}/mtb-route-planner`,
+        changeFrequency: "monthly",
+        priority: 0.8,
+      },
+      {
+        url: `${SITE_URL}/${locale}/running-route-planner`,
+        changeFrequency: "monthly",
+        priority: 0.8,
+      },
     );
     for (const t of tours.data ?? []) {
       entries.push({

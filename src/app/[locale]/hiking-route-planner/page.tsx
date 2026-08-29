@@ -91,7 +91,11 @@ const COPY: Record<"nl" | "en", ActivityCopy> = {
       },
     ],
     relatedHeading: "Other route planners",
-    related: [{ label: "Cycling route planner", slug: "cycling-route-planner" }],
+    related: [
+      { label: "Cycling route planner", slug: "cycling-route-planner" },
+      { label: "MTB route planner", slug: "mtb-route-planner" },
+      { label: "Running route planner", slug: "running-route-planner" },
+    ],
     closingHeading: "Plan your walk",
     closingBody:
       "Open the planner, pick the walking activity, and build your route. No account, no cost.",
@@ -172,7 +176,11 @@ const COPY: Record<"nl" | "en", ActivityCopy> = {
       },
     ],
     relatedHeading: "Andere routeplanners",
-    related: [{ label: "Fietsroute plannen", slug: "cycling-route-planner" }],
+    related: [
+      { label: "Fietsroute plannen", slug: "cycling-route-planner" },
+      { label: "MTB-route plannen", slug: "mtb-route-planner" },
+      { label: "Hardlooproute maken", slug: "running-route-planner" },
+    ],
     closingHeading: "Plan je wandeling",
     closingBody:
       "Open de planner, kies de activiteit wandelen en bouw je route. Geen account, geen kosten.",

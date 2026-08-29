@@ -2,6 +2,30 @@
 
 Newest first. Each entry: what shipped and why it should help search visibility.
 
+## 2026-08-29 — Iteration 3: MTB + running planners (activity cluster complete)
+
+**Pages created**
+- `/[locale]/mtb-route-planner` (nl: "MTB-route plannen") — off-road routing,
+  surface, climbs/descents. No invented trail-difficulty grading.
+- `/[locale]/running-route-planner` (nl: "Hardlooproute maken") — loop-from-your-
+  door (Round trip), trail-vs-road surface, running-watch GPX (Garmin/Coros/
+  Suunto/Apple Watch). `trailsSport=hike` since `/trails` has no run filter.
+
+**Internal links**
+- The four activity pages (hiking, cycling, MTB, running) now cross-link each
+  other four-ways via the "Other route planners" block — a tight topic cluster.
+- MTB + running added to `sitemap.ts` (both locales).
+
+**Technical validation**
+- `tsc` clean; `next build` green; all eight locale URLs pre-rendered (SSG);
+  each page ~734 B on top of the shared component.
+
+**Expected impact**
+- Completes the activity-planner cluster (hike/cycle/MTB/run) covering the four
+  main outdoor search intents with distinct, factual pages and dense internal
+  linking that concentrates topical authority around "route planner" for Tarnoo.
+
+
 ## 2026-08-29 — Iteration 2: Cycling route planner + shared component
 
 **Pages created**
