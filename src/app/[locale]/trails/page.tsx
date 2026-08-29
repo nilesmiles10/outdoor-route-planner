@@ -291,6 +291,17 @@ export default async function TrailsPage({
       />
       <h1 className="text-2xl font-bold text-neutral-900">{t("title")}</h1>
       <p className="mt-1 text-sm text-neutral-500">{t("subtitle")}</p>
+      {/* Contextuele interne link naar de wandel-landingspagina (SEO-cluster). */}
+      <p className="mt-1 text-sm text-neutral-500">
+        {locale === "nl" ? "Zelf een route uitstippelen? " : "Prefer to draw your own? "}
+        <a
+          href={`/${locale}/hiking-route-planner`}
+          className="font-medium text-emerald-800 hover:underline"
+        >
+          {locale === "nl" ? "Maak een wandelroute" : "Plan a hiking route"}
+        </a>
+        {locale === "nl" ? " met hoogte, ondergrond en GPX." : " with elevation, surface and GPX."}
+      </p>
 
       {/* Land achter een label i.p.v. 28 vlaggen open en bloot (Komoot zet
           filters ook achter een knop). <details> = geen JS nodig, links

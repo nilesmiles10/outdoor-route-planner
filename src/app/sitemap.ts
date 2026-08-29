@@ -94,6 +94,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: "weekly",
         priority: 0.9,
       },
+      // SEO-landingspagina's (use-case intent, geen kannibalisatie met de
+      // planner-homepage). Statische React-routes, dus hier handmatig i.p.v.
+      // uit een tabel.
+      {
+        url: `${SITE_URL}/${locale}/hiking-route-planner`,
+        changeFrequency: "monthly",
+        priority: 0.8,
+      },
     );
     for (const t of tours.data ?? []) {
       entries.push({
