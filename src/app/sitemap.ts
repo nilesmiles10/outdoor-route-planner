@@ -117,6 +117,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: "monthly",
         priority: 0.8,
       },
+      {
+        url: `${SITE_URL}/${locale}/gpx`,
+        changeFrequency: "monthly",
+        priority: 0.7,
+      },
     );
     for (const t of tours.data ?? []) {
       entries.push({

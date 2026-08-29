@@ -2,6 +2,37 @@
 
 Newest first. Each entry: what shipped and why it should help search visibility.
 
+## 2026-08-29 — Iteration 4: GPX page (create/export/import)
+
+**Pages created**
+- `/[locale]/gpx` (en: "GPX route planner — create & export GPX files", nl:
+  "GPX maken") — both locales, SSG.
+
+**Refactor**
+- Made `ActivityPlannerLanding`'s trails section + secondary CTA optional, and
+  the planner deep-link work with an empty `sport` — so it also serves
+  activity-agnostic tool pages, not just activity pages.
+
+**Content**
+- GPX-specific and factual: one-click GPX export, turn-by-turn course, importing
+  an existing GPX, works for every activity, "what is a GPX file" explainer.
+  Deliberately avoids naming specific third-party apps as guaranteed-compatible
+  ("GPS devices, sports watches and phone apps"). No fabricated claims.
+
+**Internal links**
+- GPX links to all four activity pages ("Plan by activity"), and all four now
+  link back to GPX ("Make a GPX file" / "GPX maken") — full reciprocal linking.
+- Added `/[locale]/gpx` to `sitemap.ts` (both locales).
+
+**Technical validation**
+- `tsc` clean; `next build` green; both locale URLs pre-rendered (SSG).
+
+**Expected impact**
+- Captures high-intent "make/create a GPX / GPX route planner" demand (Garmin
+  and watch users) with a distinct, useful page, tightly woven into the activity
+  cluster.
+
+
 ## 2026-08-29 — Iteration 3: MTB + running planners (activity cluster complete)
 
 **Pages created**

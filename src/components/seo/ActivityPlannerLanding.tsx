@@ -16,13 +16,14 @@ export type ActivityCopy = {
   h1: string;
   lede: string;
   ctaPlan: string;
-  ctaTrails: string;
+  /** Secondary CTA + trails section. Omit both to skip the trails block (e.g. tool pages). */
+  ctaTrails?: string;
   featuresHeading: string;
   features: { h: string; p: string }[];
   stepsHeading: string;
   steps: string[];
-  trailsHeading: string;
-  trailsBody: string;
+  trailsHeading?: string;
+  trailsBody?: string;
   faqHeading: string;
   faq: { q: string; a: string }[];
   closingHeading: string;
@@ -43,12 +44,15 @@ export default function ActivityPlannerLanding({
   slug: string;
   /** planner deep-link activity, e.g. "hike" | "touring" | "mtb" | "run" */
   sport: string;
-  /** /trails sport filter, e.g. "hike" | "touring" | "mtb" (subset of planner sports) */
-  trailsSport: string;
+  /** /trails sport filter, e.g. "hike" | "touring" | "mtb". Omit on tool pages
+   *  (no activity) to hide the secondary CTA + trails section. */
+  trailsSport?: string;
   copy: ActivityCopy;
 }) {
   const base = `${SITE_URL}/${locale}`;
-  const planHref = `/${locale}?sport=${sport}`;
+  // sport "" → link to the planner without preselecting an activity (tool pages).
+  const planHref = sport ? `/${locale}?sport=${sport}` : `/${locale}`;
+  const showTrails = Boolean(trailsSport && c.ctaTrails);
   const trailsHref = `/${locale}/trails?sport=${trailsSport}`;
 
   const jsonLd = [
@@ -111,12 +115,14 @@ export default function ActivityPlannerLanding({
         >
           {c.ctaPlan}
         </Link>
-        <Link
-          href={trailsHref}
-          className="inline-flex items-center rounded-lg border border-emerald-700 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50"
-        >
-          {c.ctaTrails}
-        </Link>
+        {showTrails && (
+          <Link
+            href={trailsHref}
+            className="inline-flex items-center rounded-lg border border-emerald-700 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50"
+          >
+            {c.ctaTrails}
+          </Link>
+        )}
       </div>
 
       <h2 className="mt-10 text-lg font-semibold text-neutral-900">
@@ -143,19 +149,23 @@ export default function ActivityPlannerLanding({
         ))}
       </ol>
 
-      <h2 className="mt-10 text-lg font-semibold text-neutral-900">
-        {c.trailsHeading}
-      </h2>
-      <p className="mt-3 text-sm text-neutral-700">
-        {c.trailsBody}{" "}
-        <Link
-          href={trailsHref}
-          className="font-medium text-emerald-800 hover:underline"
-        >
-          {c.ctaTrails}
-        </Link>
-        .
-      </p>
+      {showTrails && (
+        <>
+          <h2 className="mt-10 text-lg font-semibold text-neutral-900">
+            {c.trailsHeading}
+          </h2>
+          <p className="mt-3 text-sm text-neutral-700">
+            {c.trailsBody}{" "}
+            <Link
+              href={trailsHref}
+              className="font-medium text-emerald-800 hover:underline"
+            >
+              {c.ctaTrails}
+            </Link>
+            .
+          </p>
+        </>
+      )}
 
       <h2 className="mt-10 text-lg font-semibold text-neutral-900">
         {c.faqHeading}
