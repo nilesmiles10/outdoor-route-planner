@@ -2,6 +2,36 @@
 
 Newest first. Each entry: what shipped and why it should help search visibility.
 
+## 2026-08-29 — Iteration 5: Multi-day route planner
+
+**Pages created**
+- `/[locale]/multi-day-route-planner` (nl: "Meerdaagse route plannen") — both
+  locales, SSG.
+
+**Content**
+- Built on the real stage-split feature (GEN-121: per-day distance/climbing +
+  a GPX per stage). Covers hut-to-hut hikes and bikepacking. No fabricated
+  claims — per-stage GPX and per-day stats are actual product behaviour.
+
+**Internal links**
+- Links out to hiking, cycling and GPX; inbound links added from the hiking and
+  cycling pages (so it's not an orphan). Added to `sitemap.ts` (both locales).
+
+**Technical validation**
+- `tsc` clean; `next build` green; both locale URLs pre-rendered (SSG).
+
+**Status of the backlog after this iteration**
+- High-value, low-risk cluster is now built: 6 pages (hike/cycle/MTB/run/GPX/
+  multi-day) × 2 locales = 12 URLs, densely cross-linked.
+- **Held:** "Komoot alternative" (P2) — needs verifiable, dated competitor facts
+  we can't source from the repo; building it now would risk stale/fabricated
+  claims, against the core principle. Revisit only with a carefully-scoped,
+  checkable comparison.
+- **Lower value / defer:** standalone how-to guide (overlaps the per-page
+  "how to…" step sections already shipped); elevation-profile feature page
+  (better as a section than a thin page).
+
+
 ## 2026-08-29 — Iteration 4: GPX page (create/export/import)
 
 **Pages created**
