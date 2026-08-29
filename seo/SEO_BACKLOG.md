@@ -40,7 +40,7 @@ Scores 1–5 (relevance / intent / conversion / usefulness / uniqueness / linkin
 | Opportunity | Search intent | URL | Type | Priority | Status | Notes |
 |---|---|---|---|---|---|---|
 | Hiking route planner | "wandelroute maken", "plan hiking route", "hiking route planner" | `/[locale]/hiking-route-planner` | Use-case | **P1** | DONE | Biggest outdoor category + Tarnoo's core activity. Distinct from generic homepage. Cluster hub for activity pages. |
-| Cycling route planner | "fietsroute plannen", "bike route planner" | `/[locale]/cycling-route-planner` | Use-case | P1 | IDEA | Sibling of hiking; touring+gravel+road+ebike. Links to `/trails?sport=touring`. |
+| Cycling route planner | "fietsroute plannen", "bike route planner" | `/[locale]/cycling-route-planner` | Use-case | P1 | DONE | Covers touring+gravel+road+ebike (MTB separate). Uses shared `ActivityPlannerLanding`. Reciprocal links with hiking. |
 | MTB route planner | "mtb route plannen", "mountain bike route planner" | `/[locale]/mtb-route-planner` | Use-case | P2 | IDEA | Emphasise surface/climbs/`is_gravel`. |
 | Running route planner | "hardlooproute maken", "running route planner" | `/[locale]/running-route-planner` | Use-case | P2 | IDEA | Round-trip + distance-target angle. |
 | GPX route planner / make a GPX | "gpx maken", "create gpx file", "gpx route planner" | `/[locale]/gpx` | Feature | P1 | IDEA | Import+export both real. Very high intent (Garmin/watch users). Clean segment. |

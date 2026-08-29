@@ -1,43 +1,21 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import SiteFooter from "@/components/SiteFooter";
+import ActivityPlannerLanding, {
+  type ActivityCopy,
+} from "@/components/seo/ActivityPlannerLanding";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 import { SITE_URL } from "@/app/sitemap";
 
 // SEO landing page — "hiking route planner" intent (nl: wandelroute maken).
 // Bewust NIET de generieke "routeplanner"-intentie: die dekt de homepage al
-// (kannibalisatie). Deze pagina is wandel-specifiek: officiële wandelroutes,
-// hoogte/klim, ondergrond, meerdaags, GPX. Alle claims staan 1-op-1 in het
-// product (zie seo/SEO_BACKLOG.md → product facts); niets verzonnen.
-//
-// Server component, zelfde patroon als /trails: generateMetadata + pageTitle +
-// self-canonical + SiteFooter. Chrome (AppHeader) komt uit de locale-layout.
+// (kannibalisatie). Wandel-specifiek: officiële wandelroutes, hoogte/klim,
+// ondergrond, meerdaags, GPX. Alle claims staan 1-op-1 in het product
+// (zie seo/SEO_BACKLOG.md → product facts); niets verzonnen.
 
 export const revalidate = 86400;
 
 const SLUG = "hiking-route-planner";
 
-type Copy = {
-  metaTitle: string;
-  metaDescription: string;
-  h1: string;
-  lede: string;
-  ctaPlan: string;
-  ctaTrails: string;
-  featuresHeading: string;
-  features: { h: string; p: string }[];
-  stepsHeading: string;
-  steps: string[];
-  trailsHeading: string;
-  trailsBody: string;
-  faqHeading: string;
-  faq: { q: string; a: string }[];
-  closingHeading: string;
-  closingBody: string;
-  breadcrumbHome: string;
-};
-
-const COPY: Record<"nl" | "en", Copy> = {
+const COPY: Record<"nl" | "en", ActivityCopy> = {
   en: {
     metaTitle: "Hiking route planner",
     metaDescription:
@@ -112,6 +90,8 @@ const COPY: Record<"nl" | "en", Copy> = {
         a: "Yes. Any route can be split into day stages, each with its own distance and climbing — handy for hut-to-hut and long-distance treks.",
       },
     ],
+    relatedHeading: "Other route planners",
+    related: [{ label: "Cycling route planner", slug: "cycling-route-planner" }],
     closingHeading: "Plan your walk",
     closingBody:
       "Open the planner, pick the walking activity, and build your route. No account, no cost.",
@@ -191,6 +171,8 @@ const COPY: Record<"nl" | "en", Copy> = {
         a: "Ja. Elke route kan worden gesplitst in dagetappes, elk met een eigen afstand en klimwerk — handig voor hut-tot-hut- en langeafstandstochten.",
       },
     ],
+    relatedHeading: "Andere routeplanners",
+    related: [{ label: "Fietsroute plannen", slug: "cycling-route-planner" }],
     closingHeading: "Plan je wandeling",
     closingBody:
       "Open de planner, kies de activiteit wandelen en bouw je route. Geen account, geen kosten.",
@@ -203,8 +185,7 @@ export async function generateMetadata({
 }: {
   params: { locale: string };
 }): Promise<Metadata> {
-  const nl = params.locale === "nl";
-  const c = COPY[nl ? "nl" : "en"];
+  const c = COPY[params.locale === "nl" ? "nl" : "en"];
   return {
     title: pageTitle(await getSiteSettings(), c.metaTitle),
     description: c.metaDescription,
@@ -218,147 +199,18 @@ export async function generateMetadata({
   };
 }
 
-export default async function HikingRoutePlannerPage({
+export default function HikingRoutePlannerPage({
   params,
 }: {
   params: { locale: string };
 }) {
-  const { locale } = params;
-  const nl = locale === "nl";
-  const c = COPY[nl ? "nl" : "en"];
-  const base = `${SITE_URL}/${locale}`;
-
-  const jsonLd = [
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        { "@type": "ListItem", position: 1, name: c.breadcrumbHome, item: base },
-        {
-          "@type": "ListItem",
-          position: 2,
-          name: c.metaTitle,
-          item: `${base}/${SLUG}`,
-        },
-      ],
-    },
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      mainEntity: c.faq.map((f) => ({
-        "@type": "Question",
-        name: f.q,
-        acceptedAnswer: { "@type": "Answer", text: f.a },
-      })),
-    },
-    {
-      // Truthful subset only: it is a free web app. No ratings (would be invented).
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      name: "Tarnoo",
-      applicationCategory: "TravelApplication",
-      operatingSystem: "Web",
-      url: `${base}/${SLUG}`,
-      offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
-    },
-  ];
-
   return (
-    <main className="mx-auto min-h-dvh max-w-3xl px-4 pb-16 pt-20">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-
-      <nav className="text-xs text-neutral-400">
-        <Link href={`/${locale}`} className="hover:underline">
-          {c.breadcrumbHome}
-        </Link>{" "}
-        <span aria-hidden>/</span> <span className="text-neutral-500">{c.metaTitle}</span>
-      </nav>
-
-      <h1 className="mt-3 text-2xl font-semibold text-neutral-900">{c.h1}</h1>
-      <p className="mt-3 text-neutral-700">{c.lede}</p>
-
-      <div className="mt-5 flex flex-wrap gap-3">
-        <Link
-          href={`/${locale}?sport=hike`}
-          className="inline-flex items-center rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
-        >
-          {c.ctaPlan}
-        </Link>
-        <Link
-          href={`/${locale}/trails?sport=hike`}
-          className="inline-flex items-center rounded-lg border border-emerald-700 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50"
-        >
-          {c.ctaTrails}
-        </Link>
-      </div>
-
-      <h2 className="mt-10 text-lg font-semibold text-neutral-900">
-        {c.featuresHeading}
-      </h2>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        {c.features.map((f) => (
-          <section
-            key={f.h}
-            className="rounded-xl border border-neutral-100 bg-white p-4"
-          >
-            <h3 className="text-sm font-semibold text-neutral-900">{f.h}</h3>
-            <p className="mt-1.5 text-sm text-neutral-600">{f.p}</p>
-          </section>
-        ))}
-      </div>
-
-      <h2 className="mt-10 text-lg font-semibold text-neutral-900">
-        {c.stepsHeading}
-      </h2>
-      <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-neutral-700 marker:text-emerald-700">
-        {c.steps.map((s) => (
-          <li key={s}>{s}</li>
-        ))}
-      </ol>
-
-      <h2 className="mt-10 text-lg font-semibold text-neutral-900">
-        {c.trailsHeading}
-      </h2>
-      <p className="mt-3 text-sm text-neutral-700">
-        {c.trailsBody}{" "}
-        <Link
-          href={`/${locale}/trails?sport=hike`}
-          className="font-medium text-emerald-800 hover:underline"
-        >
-          {c.ctaTrails}
-        </Link>
-        .
-      </p>
-
-      <h2 className="mt-10 text-lg font-semibold text-neutral-900">
-        {c.faqHeading}
-      </h2>
-      <dl className="mt-4 space-y-4">
-        {c.faq.map((f) => (
-          <div key={f.q}>
-            <dt className="text-sm font-semibold text-neutral-900">{f.q}</dt>
-            <dd className="mt-1 text-sm text-neutral-600">{f.a}</dd>
-          </div>
-        ))}
-      </dl>
-
-      <section className="mt-10 rounded-xl bg-emerald-50 p-5">
-        <h2 className="text-lg font-semibold text-emerald-900">
-          {c.closingHeading}
-        </h2>
-        <p className="mt-1.5 text-sm text-emerald-800">{c.closingBody}</p>
-        <Link
-          href={`/${locale}?sport=hike`}
-          className="mt-4 inline-flex items-center rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
-        >
-          {c.ctaPlan}
-        </Link>
-      </section>
-
-      <SiteFooter />
-    </main>
+    <ActivityPlannerLanding
+      locale={params.locale}
+      slug={SLUG}
+      sport="hike"
+      trailsSport="hike"
+      copy={COPY[params.locale === "nl" ? "nl" : "en"]}
+    />
   );
 }

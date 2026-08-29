@@ -2,6 +2,37 @@
 
 Newest first. Each entry: what shipped and why it should help search visibility.
 
+## 2026-08-29 — Iteration 2: Cycling route planner + shared component
+
+**Pages created**
+- `/[locale]/cycling-route-planner` (nl: "Fietsroute plannen", en: "Cycling
+  route planner") — both locales, SSG.
+
+**Refactor**
+- Extracted `src/components/seo/ActivityPlannerLanding.tsx` — one shared layout +
+  JSON-LD (Breadcrumb/FAQ/SoftwareApplication) for all activity landing pages.
+  Hiking page migrated to it; per-page bundle dropped ~9.4 kB → 723 B. New
+  activity pages (MTB, running) are now just a copy object + a few props.
+
+**Content**
+- Cycling-specific and factual: the four real cycling modes (touring, gravel,
+  road/racefiets, e-bike), road-vs-gravel surface, climbs, GPX for
+  Garmin/Wahoo, multi-day/bikepacking. MTB deliberately deferred to its own page
+  (distinct terrain/intent). No fabricated claims.
+
+**Internal links**
+- Reciprocal cross-links between hiking ↔ cycling ("Other route planners").
+- Added `/[locale]/cycling-route-planner` to `sitemap.ts` (both locales).
+
+**Technical validation**
+- `tsc` clean; `next build` green; all four locale URLs pre-rendered (SSG).
+
+**Expected impact**
+- Captures cycling-planner and sub-mode (gravel/road/e-bike) intent distinct
+  from the homepage, extends the activity cluster, and cross-links consolidate
+  topical relevance.
+
+
 ## 2026-08-29 — Iteration 1: Hiking route planner landing page
 
 **Pages created**
