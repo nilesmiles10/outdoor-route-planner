@@ -97,6 +97,7 @@ const COPY: Record<"nl" | "en", ActivityCopy> = {
       { label: "Running route planner", slug: "running-route-planner" },
       { label: "Make a GPX file", slug: "gpx" },
       { label: "Multi-day route planner", slug: "multi-day-route-planner" },
+      { label: "Loop route planner", slug: "loop-route-planner" },
     ],
     closingHeading: "Plan your walk",
     closingBody:
@@ -184,6 +185,7 @@ const COPY: Record<"nl" | "en", ActivityCopy> = {
       { label: "Hardlooproute maken", slug: "running-route-planner" },
       { label: "GPX maken", slug: "gpx" },
       { label: "Meerdaagse route plannen", slug: "multi-day-route-planner" },
+      { label: "Rondje maken", slug: "loop-route-planner" },
     ],
     closingHeading: "Plan je wandeling",
     closingBody:

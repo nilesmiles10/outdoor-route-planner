@@ -2,6 +2,34 @@
 
 Newest first. Each entry: what shipped and why it should help search visibility.
 
+## 2026-08-29 — Iteration 6: Loop / round-trip route planner
+
+**Pages created**
+- `/[locale]/loop-route-planner` (nl: "Rondje maken") — both locales, SSG.
+
+**Verified feature first**
+- Confirmed in code that "Rondje" is a genuine target-distance loop *generator*
+  (GEN-107, `lib/roundtrip` `loopVias`: set a start + distance → a loop of about
+  that length back to start; "Ander rondje" produces variations). Only then
+  wrote the copy — no claim beyond what the feature does.
+
+**Content**
+- Targets the distinct "circular walk / loop route generator / rondje van X km"
+  intent: set a distance, get a loop; generate variations; any activity;
+  elevation + surface; adjust + GPX export.
+
+**Internal links**
+- Links out to running, hiking, cycling, GPX; inbound from running + hiking.
+  Added to `sitemap.ts` (both locales).
+
+**Technical validation**
+- `tsc` clean; `next build` green; both locale URLs pre-rendered (SSG).
+
+**Session total: 7 SEO landing pages × 2 locales = 14 URLs**, one shared
+component, densely cross-linked, every claim product-true. Next real opportunity
+(Komoot comparison) remains held pending verifiable competitor facts.
+
+
 ## 2026-08-29 — Iteration 5: Multi-day route planner
 
 **Pages created**
