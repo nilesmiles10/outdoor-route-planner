@@ -43,10 +43,11 @@ Pillars: ROUTING · EUROPE · SEO · UX · DATA · COMPETITOR.
 - Impact: high. Confidence: med (depends on per-page data density passing the gate).
 - File: `SEO_GAPS.md`.
 
-**6. Routing regression/torture-test suite** · ROUTING/UX · M
+**6. Routing regression/torture-test suite** · ROUTING/UX · M · *started*
 - Problem: zero routing tests; quality is asserted, not measured.
 - Why: makes every future routing fix systemic + safe.
 - Impact: med (compounding). Confidence: high.
+- Status: first suite landed (`src/lib/geo.test.ts` — profile invariants + surface parsing, 2026-08-29). Extend to the torture-test scenarios.
 - File: `ROUTING_GAPS.md`.
 
 **7. Assess `gravel-nl` profile across Europe** · ROUTING · M

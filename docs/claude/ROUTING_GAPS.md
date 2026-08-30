@@ -34,8 +34,8 @@ Severity: 🔴 high · 🟠 med · 🟡 low. Most quality items need reproductio
 | Gap | Activity | Geography | User impact | Severity | Evidence | Proposed validation | Priority | Status |
 |---|---|---|---|---|---|---|---|---|
 | Long-route latency | all (worst MTB) | all | Long routes take 8–59s; feel broken | 🟠 | Measured: 250km≈8s, 460km≈30s, 250km MTB≈59s; cold≈warm | Time a distance×profile matrix; decide on a fast engine (GraphHopper) for a "fast/overview" mode | P1 | Open |
-| `ebike` reuses `trekking` profile | ebike | all | E-bike routes ≠ real e-bike preferences (range/hills) | 🟠 | `SPORT_PROFILES.ebike="trekking"`; comment says custom pending GEN-104 | Compare ebike vs trekking output; define an e-bike cost fn | P1 | Open |
-| `run` reuses `hiking-mountain` | run | all | Running routing = hiking; may over-prefer rough mountain paths | 🟡 | `SPORT_PROFILES.run="hiking-mountain"` | Compare run vs a road-lean foot profile on urban/park routes | P2 | Open |
+| `ebike` reuses `trekking` profile | ebike | all | E-bike returns a **byte-identical route to touring** | 🟠 | **Reproduced 2026-08-29:** ebike & touring both → `trekking`, identical geometry (Bolzano→Merano). No e-bike profile exists on the VPS | Fix = authored+tuned `ebike.brf` (GEN-104); no safe existing remap | P1 | Reproduced |
+| `run` reuses `hiking-mountain` | run | all | Running returns a **byte-identical route to hike**; over-prefers rough mountain paths | 🟡 | **Reproduced 2026-08-29:** run & hike both → `hiking-mountain`, identical geometry. Only foot profile on the VPS is `hiking-mountain` | Fix = road-lean foot profile (authored); no safe existing remap | P2 | Reproduced |
 | `gravel-nl` profile is NL-tuned | gravel | non-NL | Gravel preference may not generalise across Europe | 🟠 | `geo.ts` comment: tuned over 9 NL 40km loops | Run gravel loops in DE/ES/FR/IT; check unpaved % | P2 | Open |
 | No route alternatives | all | all | User can't pick between options | 🟡 | `alternativeidx=0` | Evaluate exposing 1–3 alternatives | P3 | Open |
 | Access handling is static only | all | all | Seasonal/conditional closures not reflected | 🟡 | GEN-129 comment | Assess conditional-tag support | P3 | Open |
@@ -44,8 +44,10 @@ Severity: 🔴 high · 🟠 med · 🟡 low. Most quality items need reproductio
 
 ## Routing regression test strategy
 
-There are **no routing tests today** (only `stages.test.ts` + SEO guards). Turn
-routing bugs into repeatable cases:
+The first routing-layer suite now exists: **`src/lib/geo.test.ts`** (locks the
+profile→activity invariants + the surface-bucket parsing; characterisation-tests
+the ebike/run aliases so a real profile is a deliberate, test-visible change).
+Extend it. Turn routing bugs into repeatable cases:
 
 1. Each confirmed bug → a fixture: `{ from, to, sport, profile }` + the asserted
    property (e.g. "unpaved% ≥ X", "no ferry", "length within N% of straight-line
@@ -83,6 +85,15 @@ here** — status is "untested" until run.
 4. **`gravel-nl` generalisation** — profile tuned only for NL. (P2)
 5. **Ferries/borders/islands behaviour** — UNKNOWN; reproduce before claiming. (P2)
 
+## Available BRouter profiles (VPS `/opt/brouter/.../profiles2/`, 2026-08-29)
+
+`trekking` (+ `-steep`/`-nosteps`/`-noferries`/`-ignore-cr`), `hiking-mountain`,
+`mtb`, `gravel` + custom `gravel-nl`, `fastbike` (+ `-lowtraffic`/
+`-verylowtraffic`), `shortest`, `safety`, `river`, `rail`, `skating`, `moped`,
+`car-*`. **No `ebike`, `run`, or plain `hiking`/`walking` profile** → the ebike
+and run gaps can't be fixed by a safe remap; they need an authored profile.
+
 ## Log
 
 - 2026-08 — long-route `maxDuration` widened to 120s + 110s BRouter abort; map recenters to off-view routes; long-route loading state added.
+- 2026-08-29 — `/routing` iteration 1: reproduced the ebike≡touring / run≡hike aliases (identical BRouter geometry); enumerated VPS profiles (no ebike/run profile); added the first routing regression suite `src/lib/geo.test.ts` (profile invariants + surface parsing). No production routing changed.
