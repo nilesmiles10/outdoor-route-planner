@@ -79,10 +79,10 @@ here** — status is "untested" until run.
 
 ## Top routing gaps (ranked)
 
-1. **Long-route "no route" failure UX** (follow-up to the decision) — routes >~300km fail at the 60s ceiling and are mislabeled `no_route`; show "too long → split into stages" + guide to multi-day. (P1, cheap)
-2. **`gravel-nl` generalisation** — profile tuned only for NL. (P2)
-3. **Ferries/borders/islands behaviour** — UNKNOWN; reproduce before claiming. (P2)
-4. **`ebike`/`run` v1 field-tuning** — profiles shipped; confirm on real rides/runs; consider surface-runnability for run. (P3)
+1. **`gravel-nl` generalisation** — profile tuned only for NL. (P2)
+2. **Ferries/borders/islands behaviour** — UNKNOWN; reproduce before claiming. (P2)
+3. **`ebike`/`run` v1 field-tuning** — profiles shipped; confirm on real rides/runs; consider surface-runnability for run. (P3)
+4. **Proactive long-route warning** (optional) — warn/guide *before* calculating when straight-line distance is very large, so the user never hits the 60s wait+fail. The error message now handles it after the fact. (P3)
 
 *(Decided: long-route latency — accept BRouter, don't build GraphHopper; see Decision above, 2026-08-29.)*
 *(Fixed: `ebike` + `run` aliases — authored `ebike.brf` + `run.brf` v1, 2026-08-29. All 7 activities now have distinct profiles.)*
@@ -136,5 +136,6 @@ and run gaps can't be fixed by a safe remap; they need an authored profile.
 - 2026-08-29 — `/routing` iteration 1: reproduced the ebike≡touring / run≡hike aliases (identical BRouter geometry); enumerated VPS profiles (no ebike/run profile); added the first routing regression suite `src/lib/geo.test.ts` (profile invariants + surface parsing). No production routing changed.
 - 2026-08-29 — `/routing` iteration 2: reproduced NL/DE cycling routing → cycleway-dominated, ~0% main road (good). Closed "node-network cycling" as a routing gap; re-routed the concern to discovery/data (EUROPE_COMPLETENESS). Recorded the NL fixtures as a torture-test baseline. No code changed.
 - 2026-08-29 — `/routing` iteration 3: **fixed the `ebike` alias** — authored `infra/brouter/ebike.brf` v1 (trekking base; `downhillcost` 60→20, `bikerPower` 100→250), deployed to VPS, `SPORT_PROFILES.ebike="ebike"`. Validated flat (no regression) + hilly (correct ~2× faster ETA).
+- 2026-08-29 — `/routing` iteration 6: **honest long-route failure UX.** Gateway 504 (>60s) now returns `route_too_long` (not `no_route`); i18n message "too long — add a waypoint or make it shorter" (a waypoint → per-leg routing, each under the 60s ceiling). Verified live (A'dam→Frankfurt → `route_too_long`; short routes unaffected). Corrected the misleading `maxDuration`/abort comments.
 - 2026-08-29 — `/routing` iteration 5: **long-route latency decision.** Measured the real curve (60s nginx `/geo/route` ceiling → routes >~300km fail, mislabeled `no_route`; app `maxDuration`/abort are ineffective). Decided: accept BRouter, do NOT build GraphHopper now; guide long routes to the multi-day split. Documented recommended cheap UX follow-up. No code changed.
 - 2026-08-29 — `/routing` iteration 4: **fixed the `run` alias** — authored `infra/brouter/run.brf` v1 (hiking-mountain base; `SAC_scale_limit` 3→2, `consider_elevation` on), deployed to VPS, `SPORT_PROFILES.run="run"`. Validated flat (no regression) + hilly (avoids exposed T3, no absurd routes). **All 7 activities now have distinct profiles — no aliases left.**
