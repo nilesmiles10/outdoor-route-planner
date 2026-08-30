@@ -1,45 +1,52 @@
-# Tarnoo — Claude project guide
+# Tarnoo — Claude operating file
 
-Tarnoo ([tarnoo.com](https://tarnoo.com)) is a **free, no-account outdoor route
-planner for the whole of Europe**. This file orients Claude in the repo and
-points to the continuous-improvement system under `docs/claude/` + `.claude/`.
+**Tarnoo** ([tarnoo.com](https://tarnoo.com)) is a **web-first outdoor route
+planner for Europe**, built on OpenStreetMap. Package name `tarnoo`, v0.1.0.
 
-## Stack
+**Main objective:** become the most complete and useful web-first outdoor route
+planner for Europe (a real Komoot competitor — see `@docs/claude/GOAL.md`).
 
-- **Next.js 14** (App Router) · TypeScript · Tailwind · deployed on **Vercel** (region `fra1`).
-- **i18n:** `nl` + `en` via next-intl, `[locale]` prefix, shared segment slugs (no localized pathnames).
-- **Data:** Supabase (Postgres, project `ivpkstpkzbbrttkqaops`). All map/route data from **OpenStreetMap**.
-- **Map:** MapLibre GL + openfreemap vector tiles.
-- **Routing:** self-hosted **BRouter** (VPS `:17777`, full-Europe `.rd5` tiles) → proxied via `/api/geo/route`.
-- **Geocoding:** self-hosted **Photon** (VPS `:2322`, full-Europe index) → proxied via `/api/geo/search` + `/api/geo/reverse`.
-- **Activities:** `hike`, `run`, `touring`, `gravel`, `road`, `ebike`, `mtb`.
+## Strategic documents
 
-## The improvement system
+- `@docs/claude/GOAL.md` — permanent product goal + success dimensions
+- `@docs/claude/ROADMAP.md` — NOW / NEXT / LATER / DO NOT BUILD
+- `@docs/claude/EUROPE_COMPLETENESS.md` — per-country coverage scorecard
+- `@docs/claude/SEO_GAPS.md` — SEO audit + opportunities
+- `@docs/claude/ROUTING_GAPS.md` — routing-quality gaps + torture tests
+- `@docs/claude/COMPETITOR_GAPS.md` — competitor capability matrix
 
-`docs/claude/` holds living **gap-trackers**, one per track. `.claude/commands/`
-holds the **slash commands** that run each track's continuous-improvement loop.
+Update the relevant document after any meaningful work. Run one improvement
+iteration with `/europe`, `/seo`, `/routing`, or `/competitor`.
 
-| Track | Gap doc | Command |
-|---|---|---|
-| Europe completeness | `docs/claude/EUROPE_COMPLETENESS.md` | `/europe` |
-| SEO content | `docs/claude/SEO_GAPS.md` | `/seo` |
-| Routing quality | `docs/claude/ROUTING_GAPS.md` | `/routing` |
-| Competitor parity | `docs/claude/COMPETITOR_GAPS.md` | `/competitor` |
+## Verified architecture (from the repository)
 
-North star and phasing: `docs/claude/GOAL.md`, `docs/claude/ROADMAP.md`.
+- **Frontend:** Next.js 14 (App Router) + TypeScript + Tailwind. Deployed on Vercel (`fra1`). Rendering: server components + ISR, with `Vercel-CDN-Cache-Control` on visitor-independent public routes (`next.config.mjs`).
+- **i18n:** next-intl, locales `en` + `nl`, `[locale]`-prefixed routes, shared segment slugs (no localized pathnames). hreflang via the next-intl HTTP `Link` header (not `alternates.languages`).
+- **Map:** MapLibre GL JS + OpenFreeMap vector tiles; `@protomaps/basemaps` + `pmtiles` present.
+- **Routing:** self-hosted **BRouter** (VPS), proxied by `/api/geo/route` (`GEO_ROUTE_BASE`). 7 sports → BRouter profiles (`src/lib/geo.ts` `SPORT_PROFILES`). Single route only (`alternativeidx=0`).
+- **Geocoding:** self-hosted **Photon** (VPS), proxied by `/api/geo/search` + `/api/geo/reverse`.
+- **Backend/data:** Supabase (Postgres, EU; project `ivpkstpkzbbrttkqaops`) for auth + content. All geodata from **OpenStreetMap**. DB schema is **not** in the repo (managed in Supabase); `scripts/` holds the OSM import pipeline (`import-trails.ts`, `import-highlights.ts`, `run-europe.sh`).
+- **Activities (7):** hike, run, touring, gravel, road, ebike, mtb. (`walking` = `hike`; `run` and `ebike` reuse other profiles — see ROUTING_GAPS.)
+- **Import/export:** GPX export (`src/lib/gpx.ts`, `ExportMenu`), turn-by-turn course; GPX + **FIT** import (`@garmin/fitsdk`, `fit-file-parser`).
+- **Structured data:** WebSite, ItemList, BreadcrumbList, Trip, Place, TouristAttraction, GeoCoordinates, Person, FAQPage.
 
-## Non-negotiable rules (every track)
+## Commands future sessions need
 
-1. **Never fabricate** product features, claims, statistics, ratings, or reviews.
-   Every claim must trace to real code or observed behaviour.
-2. **Verify a feature in code before writing copy or docs about it.**
-3. **Reuse** existing components and patterns; prefer improving an existing URL
-   over creating a thin new one. Quality over count.
-4. **Validate before deploy** (`tsc --noEmit` + `next build`) and **verify on
-   production** after (`tarnoo.com`, cache-bust when checking fresh renders).
-5. Keep the gap doc for a track **up to date** as part of finishing any work on it.
+```bash
+npm run dev      # local (http://localhost:3000/en or /nl)
+npm run build    # production build — run before deploy
+npm run lint     # eslint (next lint)
+npx tsc --noEmit # typecheck
+npm run test     # vitest (src/**/*.test.ts) — SEO guards + stages; NO routing tests yet
+```
+Local geo-services need an SSH tunnel to the VPS (see `.env.example`).
+Deploy = push to `main` (Vercel auto-deploys). Verify on `tarnoo.com` (cache-bust when checking fresh renders).
 
-## Related existing docs
+## Operating principles
 
-- `docs/API.md`, `docs/SEO_AUDIT.md`, `docs/SEO_PAGE_ARCHITECTURE.md` — pre-existing references.
-- `seo/SEO_BACKLOG.md` + `seo/SEO_CHANGELOG.md` — the SEO loop's detailed tracker/log (the `/seo` command and `SEO_GAPS.md` summarise from these).
+- **Inspect before implementing.** Do not assume a feature is missing — grep/read first.
+- **Fix root causes**, not single example routes; prefer **reusable systems** over country-specific hacks.
+- **Never fabricate** route, geographic, trail, or competitor data. **UNKNOWN is better than an invented answer.**
+- **Preserve planner speed and mobile usability.** Check **European impact** (does a change help many countries?) and **SEO impact** where relevant.
+- **Update the appropriate strategic document** after meaningful work.
+- One iteration = one meaningful problem. Do not batch huge multi-feature changes.

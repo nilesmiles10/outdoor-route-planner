@@ -1,32 +1,86 @@
 # Tarnoo — Roadmap
 
-Loose, living. Each track advances via its own loop (`/europe`, `/seo`,
-`/routing`, `/competitor`); this file is the cross-track view of what's done and
-what's next. Update as phases complete.
+Living, high-leverage only (not a wishlist). Effort: S / M / L / XL.
+Pillars: ROUTING · EUROPE · SEO · UX · DATA · COMPETITOR.
 
-## Done (foundation)
+**Prioritisation score** (higher = do sooner):
+`(UserValue×3) + (RoutingQuality×3) + (EuropeCoverage×2) + (SEOValue×2) + CompetitiveValue − Effort − Risk`
+(each factor 1–5). Use as a tie-breaker, not gospel.
 
-- Planner (all activities), `/trails`, `/discover`, `/collections`, detail pages,
-  auth, tours, highlights, GPX import/export, round-trip, multi-day stage split.
-- **Full-Europe geocoding** (Photon, ~78M docs) replacing NL+BE-only.
-- **Full-Europe routing** (BRouter, complete `.rd5` tile set).
-- **SEO cluster:** 7 use-case landing pages (hike/cycle/MTB/run/GPX/multi-day/
-  loop) × nl+en, sitewide footer nav, intro+FAQ on `/trails` and `/discover`.
-- Routing fixes: map recenters to off-view routes; function timeout widened for
-  long routes.
+---
 
-## Next (by track — see each gap doc for detail)
+## NOW
 
-- **Europe:** audit per-country coverage (trail density, geocoding quality,
-  routing edge cases); surface and fill the weakest regions.
-- **Routing:** decide whether long-route latency (BRouter 8–59s) warrants a fast
-  engine (GraphHopper) for a "fast/overview" mode; profile tuning.
-- **SEO:** per-page OG images; region-page intros; evaluate homepage H1; Komoot
-  comparison (only once competitor facts are verifiable).
-- **Competitor:** structured parity assessment vs Komoot/Strava/Outdooractive.
+**1. Instrument analytics + Search Console** · SEO/DATA · S–M
+- Problem: no analytics package in the repo → SEO/UX decisions are blind.
+- Why: can't prioritise or measure any of the below without it.
+- Impact: high (unlocks measurement of everything). Confidence: high (verified absent).
+- File: `SEO_GAPS.md`.
 
-## Not planned / rejected
+**2. Give `ebike` a real profile** · ROUTING · M
+- Problem: `ebike` reuses `trekking` (`geo.ts`, custom pending GEN-104).
+- Why: e-bike users get non-e-bike routes; clear correctness gap.
+- Impact: med–high for a headline activity. Confidence: high (verified in code).
+- File: `ROUTING_GAPS.md`.
 
-- Fabricated or thin SEO pages purely for keywords.
-- Claims about features Tarnoo doesn't have (offline, live tracking, etc.) unless
-  actually built.
+**3. Validate node-network cycling** · EUROPE/ROUTING · M (validate) → L (fix)
+- Problem: cycling under-counted/possibly under-routed in NL/BE/DE (node network, not `touring`).
+- Why: cycling is a core activity in Tarnoo's home + biggest markets.
+- Impact: high across several countries. Confidence: med (data signal; needs reproduction).
+- Files: `EUROPE_COMPLETENESS.md`, `ROUTING_GAPS.md`.
+
+**4. Decide long-route strategy** · ROUTING/UX · M
+- Problem: long routes take 8–59s (measured); a loading state ships but it's slow.
+- Why: multi-day/long planning feels broken; either a fast engine ("overview" mode) or clear signposting.
+- Impact: med. Confidence: high (measured).
+- File: `ROUTING_GAPS.md`.
+
+## NEXT
+
+**5. `activity × country/region` programmatic SEO pages (data-gated)** · SEO/DATA · L
+- Problem: real trail data for 28 countries, but no country/region activity pages.
+- Why: scalable, *honest* organic upside using the existing thin-content gate.
+- Impact: high. Confidence: med (depends on per-page data density passing the gate).
+- File: `SEO_GAPS.md`.
+
+**6. Routing regression/torture-test suite** · ROUTING/UX · M
+- Problem: zero routing tests; quality is asserted, not measured.
+- Why: makes every future routing fix systemic + safe.
+- Impact: med (compounding). Confidence: high.
+- File: `ROUTING_GAPS.md`.
+
+**7. Assess `gravel-nl` profile across Europe** · ROUTING · M
+- Problem: gravel profile tuned only on NL loops.
+- Why: gravel is a differentiator; must generalise.
+- Impact: med. Confidence: high (verified NL-only tuning).
+- Files: `ROUTING_GAPS.md`, `EUROPE_COMPLETENESS.md`.
+
+**8. Richer highlight pages via existing AI descriptions** · SEO/DATA · M
+- Problem: most highlights thin/noindex; AI-description pipeline already exists.
+- Why: raises the content-rich count → more honestly-indexable pages.
+- Impact: med. Confidence: med.
+- File: `SEO_GAPS.md`.
+
+## LATER
+
+**9. European footprint decision + imports for zero-coverage countries** · EUROPE/DATA · L
+- Problem: Balkans-ex-HR/SI, IS, CY, MT, Baltics-thin, GR-trails ≈ 0.
+- Why: "most complete for Europe" implies a deliberate footprint.
+- Impact: med. Confidence: high (verified gaps). File: `EUROPE_COMPLETENESS.md`.
+
+**10. More UI locales** · UX/EUROPE · L
+- Problem: UI only en/nl. Why: non-Benelux users get English. Confidence: high.
+
+**11. Route alternatives** · ROUTING · M
+- Problem: single route only (`alternativeidx=0`). Why: user choice. Confidence: high.
+
+**12. "Komoot alternative" comparison page** · SEO/COMPETITOR · M
+- Blocked on verified competitor facts. File: `COMPETITOR_GAPS.md`.
+
+## DO NOT BUILD (now)
+
+- **Community/social feed, following, activity sharing** — later phase at most; not a planner fundamental; easy to over-invest in. (`COMPETITOR_GAPS.md`)
+- **Live in-app navigation / offline maps** — large scope; export-to-device may already serve the need. Build only with demand evidence.
+- **Thin AI-generated doorway pages / `activity × country` pages below the data gate** — actively harmful to SEO.
+- **Region paywalling** — contradicts Tarnoo's free/all-Europe positioning.
+- **Route-quality claims without a regression test behind them.**

@@ -1,38 +1,49 @@
-# Tarnoo — Goal
+# Master goal
 
-## North star
+**Make Tarnoo the most complete web-first outdoor route planner for Europe.**
 
-Make Tarnoo the **best free outdoor route planner in Europe** — the place people
-reach for to plan a walk, run or ride, get a route they trust, and take it with
-them (GPX), without paying or signing up.
+Tarnoo should compete strongly with Komoot, but must **not blindly clone it**.
+The route **planner** is the core product; everything else exists to make
+planning and discovering excellent outdoor routes easier.
 
-"Best" breaks down into four tracks, each with its own gap-tracker and command:
+## What "complete" means
 
-1. **Europe completeness** (`/europe`) — routing, geocoding, trails and
-   highlights work well *everywhere* in Europe, not just the Benelux/core
-   markets. No dead regions, no missing coverage.
-2. **Routing quality** (`/routing`) — the routes themselves are good and fast:
-   correct profiles per activity, sensible surfaces, accurate elevation, and
-   acceptable response times even on long routes.
-3. **SEO content** (`/seo`) — people can *find* Tarnoo. Genuinely useful pages
-   that satisfy real search intent and funnel to the planner, with strong
-   internal linking and technical SEO.
-4. **Competitor parity** (`/competitor`) — understand where Tarnoo stands vs
-   Komoot / Strava / Outdooractive / Garmin, close the gaps that matter, and
-   lean into the differentiators (free, no account, all-Europe, elevation +
-   surface + GPX).
+| Dimension | Target |
+|---|---|
+| **Geographic coverage** | Every European country routable, geocodable, and worth browsing — not just the Benelux/DACH core. |
+| **Activity coverage** | Each supported activity gets routing tuned to how that activity actually moves. |
+| **Route quality** | Sensible road/trail selection, correct surfaces, accurate elevation/climbs, no absurd detours. |
+| **Official routes** | Waymarked/long-distance routes discoverable and usable as a planning base, everywhere they exist in OSM. |
+| **Route intelligence** | Elevation, climbs, surface breakdown, way types, difficulty — surfaced clearly per route. |
+| **Route discovery** | Trails, highlights and collections that help a user find something worth routing to. |
+| **SEO** | Genuinely useful, indexable pages that satisfy real search intent and feed the planner. |
+| **Localisation** | UI + content usable across Europe (today: `en` + `nl`). |
+| **Planner usability** | Fast, simple, obvious — draw, adjust, export in seconds. |
+| **Performance** | Sub-2s short routes; long routes complete and never silently fail. |
+| **Mobile** | Fully usable on a phone browser. |
+| **Interoperability** | GPX/FIT in, GPX + turn-by-turn out; loads onto Garmin/watch/apps. |
 
-## What Tarnoo already is (verified)
+## Activities (verified in repo — `src/lib/geo.ts`)
 
-Free planner (hike/run/cycling/gravel/road/e-bike/MTB), elevation profile +
-categorised climbs, paved/unpaved surface breakdown, 30,000+ waymarked OSM
-trails, highlights by region×category, GPX import + export + turn-by-turn
-course, round-trip (target-distance loop) generator, multi-day stage split
-(per-day stats + per-stage GPX), collections, optional accounts. Full-Europe
-geocoding (Photon) and routing (BRouter). nl + en.
+`hike`, `run`, `touring` (cycling), `gravel`, `road` (racefiets), `ebike`, `mtb`.
+`walking` maps to `hike`. Caveats: `run` reuses the hiking profile (speed model
+differs client-side); `ebike` currently reuses the `trekking` profile (custom
+cost function pending, GEN-104); `gravel` uses a custom `gravel-nl` profile.
 
-## Principles
+## Strategic principles
 
-- Every improvement must be **real and honest** — no fabricated features/claims.
-- Prefer **depth over breadth**: one excellent thing beats ten shallow ones.
-- Measure against the **actual product**, and against **real user/search intent**.
+- **Compete with Komoot where it creates real user value** — not feature-for-feature.
+- **Do not copy a feature just because a competitor has it.** Judge against Tarnoo's strategy.
+- **Prioritise route quality and European completeness** — these are the hardest to fake and the easiest to lose to.
+- **Data and planner functionality feed SEO**, not the other way around. SEO pages must provide genuine user value; never thin doorway pages.
+- **The route planner remains the core product.** Discovery, accounts, content and SEO support it.
+- Avoid social-network complexity unless there is strong evidence it solves an important Tarnoo problem.
+
+## Measurable success dimensions
+
+1. **European coverage** — # countries at "functional or better" across routing + trails + highlights + discovery.
+2. **Route quality** — pass rate on a routing regression/torture-test suite (see ROUTING_GAPS; not yet built).
+3. **Planner performance** — p50/p95 route latency by distance band.
+4. **Discovery depth** — indexable trail/region/highlight pages that pass the thin-content gate.
+5. **Organic reach** — impressions/clicks on planner + discovery + landing pages (needs analytics — not yet instrumented).
+6. **Interoperability** — import/export formats supported and round-trip fidelity.
