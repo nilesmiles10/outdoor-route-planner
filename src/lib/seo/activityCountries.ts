@@ -1,4 +1,6 @@
-// Data layer for the activity × country SEO landing pages
+import { slugify } from "@/lib/slug";
+
+// Data layer for the activity × country (and × region) SEO landing pages
 // (/[locale]/explore/[activity]/[country]). Pages are DATA-GATED: only a combo
 // with >= MIN_TRAILS real imported routes gets a page — no thin/doorway pages.
 // Counts come from the `trails` table (OSM import), aggregated per country per
@@ -72,69 +74,139 @@ export function resolveCountry(slug: string): Country | null {
 /** Thin-content gate: a combo needs at least this many real routes to get a page. */
 export const MIN_TRAILS = 25;
 
-type Facets = Record<string, { hike: number; touring: number; mtb: number; gravel: number }>;
+type CountFacet = { hike: number; touring: number; mtb: number; gravel: number };
+type Agg = {
+  countries: Record<string, CountFacet>; // [iso]
+  regions: Record<string, Record<string, CountFacet>>; // [iso][regionName]
+};
 
-// Aggregate trail counts per country per activity. Paged plain PostgREST fetch
-// (build-safe — no cookies); cached 1h. PostgREST caps at 1000 rows/request.
-const cache = { data: null as Facets | null, at: 0 };
-async function facets(): Promise<Facets> {
+const facetFor = (a: Activity, f: CountFacet) => (a.gravel ? f.gravel : f[a.sport!]);
+const addRow = (f: CountFacet, sport: string, gravel: boolean) => {
+  if (sport === "hike") f.hike++;
+  else if (sport === "touring") f.touring++;
+  else if (sport === "mtb") f.mtb++;
+  if (gravel) f.gravel++;
+};
+
+// Aggregate trail counts per country and per (country, region) per activity.
+// Paged plain PostgREST fetch (build-safe — no cookies); cached 1h. PostgREST
+// caps at 1000 rows/request.
+const cache = { data: null as Agg | null, at: 0 };
+async function facets(): Promise<Agg> {
   if (cache.data && Date.now() - cache.at < 3_600_000) return cache.data;
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const out: Facets = {};
-  if (!base || !key) return out;
+  const agg: Agg = { countries: {}, regions: {} };
+  if (!base || !key) return agg;
   const PAGE = 1000;
   try {
     for (let offset = 0; offset < 80_000; offset += PAGE) {
       const res = await fetch(
-        `${base}/rest/v1/trails?select=country,sport,is_gravel&limit=${PAGE}&offset=${offset}`,
+        `${base}/rest/v1/trails?select=country,region,sport,is_gravel&limit=${PAGE}&offset=${offset}`,
         { headers: { apikey: key }, next: { revalidate: 3600, tags: ["trails"] } },
       );
       if (!res.ok) break;
       const rows = (await res.json()) as {
         country: string | null;
+        region: string | null;
         sport: "hike" | "touring" | "mtb";
         is_gravel: boolean;
       }[];
       for (const r of rows) {
         if (!r.country) continue;
-        const f = (out[r.country] ??= { hike: 0, touring: 0, mtb: 0, gravel: 0 });
-        if (r.sport === "hike") f.hike++;
-        else if (r.sport === "touring") f.touring++;
-        else if (r.sport === "mtb") f.mtb++;
-        if (r.is_gravel) f.gravel++;
+        addRow((agg.countries[r.country] ??= { hike: 0, touring: 0, mtb: 0, gravel: 0 }), r.sport, r.is_gravel);
+        if (r.region) {
+          const cr = (agg.regions[r.country] ??= {});
+          addRow((cr[r.region] ??= { hike: 0, touring: 0, mtb: 0, gravel: 0 }), r.sport, r.is_gravel);
+        }
       }
       if (rows.length < PAGE) break;
     }
   } catch {
     /* fall through with whatever we have */
   }
-  cache.data = out;
+  cache.data = agg;
   cache.at = Date.now();
-  return out;
+  return agg;
 }
 
 export type Combo = { activity: Activity; country: Country; count: number };
 
 /** All activity × country combos that pass the thin-content gate. */
 export async function gatedCombos(): Promise<Combo[]> {
-  const f = await facets();
+  const { countries } = await facets();
   const out: Combo[] = [];
   for (const country of COUNTRIES) {
-    const c = f[country.iso];
+    const c = countries[country.iso];
     if (!c) continue;
     for (const activity of ACTIVITIES) {
-      const n = activity.gravel ? c.gravel : c[activity.sport!];
+      const n = facetFor(activity, c);
       if (n >= MIN_TRAILS) out.push({ activity, country, count: n });
     }
   }
   return out;
 }
 
-/** Count for one combo (for the page's own gate check on direct access). */
+/** Count for one activity × country combo (page's own gate check). */
 export async function comboCount(activity: Activity, country: Country): Promise<number> {
-  const f = await facets();
-  const c = f[country.iso];
-  if (!c) return 0;
-  return activity.gravel ? c.gravel : c[activity.sport!];
+  const { countries } = await facets();
+  const c = countries[country.iso];
+  return c ? facetFor(activity, c) : 0;
+}
+
+export type RegionCombo = {
+  activity: Activity;
+  country: Country;
+  region: string; // OSM region name (no localized form)
+  slug: string;
+  count: number;
+};
+
+/** All activity × country × region combos that pass the gate. */
+export async function gatedRegionCombos(): Promise<RegionCombo[]> {
+  const { regions } = await facets();
+  const out: RegionCombo[] = [];
+  for (const country of COUNTRIES) {
+    const cr = regions[country.iso];
+    if (!cr) continue;
+    for (const activity of ACTIVITIES) {
+      const seen = new Set<string>(); // slug collisions within a country/activity: first wins
+      for (const [region, f] of Object.entries(cr)) {
+        const n = facetFor(activity, f);
+        if (n < MIN_TRAILS) continue;
+        const slug = slugify(region);
+        if (!slug || seen.has(slug)) continue;
+        seen.add(slug);
+        out.push({ activity, country, region, slug, count: n });
+      }
+    }
+  }
+  return out;
+}
+
+export async function regionCombo(
+  activity: Activity,
+  country: Country,
+  regionSlug: string,
+): Promise<RegionCombo | null> {
+  const combos = await gatedRegionCombos();
+  return (
+    combos.find(
+      (c) =>
+        c.activity.key === activity.key &&
+        c.country.iso === country.iso &&
+        c.slug === regionSlug,
+    ) ?? null
+  );
+}
+
+/** Gated region pages for one activity × country (for the country page's list). */
+export async function regionsForCountryActivity(
+  activity: Activity,
+  country: Country,
+): Promise<RegionCombo[]> {
+  const combos = await gatedRegionCombos();
+  return combos
+    .filter((c) => c.activity.key === activity.key && c.country.iso === country.iso)
+    .sort((a, b) => b.count - a.count);
 }

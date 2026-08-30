@@ -10,24 +10,20 @@ import SiteFooter from "@/components/SiteFooter";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 import { SITE_URL } from "@/app/sitemap";
 import {
-  MIN_TRAILS,
-  comboCount,
-  gatedCombos,
+  gatedRegionCombos,
+  regionCombo,
   regionsForCountryActivity,
   resolveActivity,
   resolveCountry,
   type Activity,
-  type Country,
 } from "@/lib/seo/activityCountries";
 
-// Activity × country SEO landing page. Data-gated (>= MIN_TRAILS real routes;
-// see activityCountries.ts). Distinct from /trails filter views: those
-// self-canonical to /trails, so these pages are the indexable home for the
-// "hiking routes in Austria" intent. Every claim is backed by real trail data —
-// no fabricated routes or counts.
+// Activity × country × region SEO landing page (e.g. /en/explore/mtb/italy/dolomites).
+// Data-gated (>= MIN_TRAILS real routes; see activityCountries.ts). Nested under
+// the country page. Region names are raw OSM names (no localized form).
 
 export const revalidate = 86400;
-export const dynamicParams = true; // gated combos are pre-rendered; others fall to the runtime gate below
+export const dynamicParams = true;
 
 type TrailRow = {
   id: string;
@@ -42,15 +38,12 @@ type TrailRow = {
 
 const CARD_LIMIT = 60;
 
-function name(c: Country | Activity, nl: boolean): string {
-  return nl ? c.nl : c.en;
-}
-
-async function fetchTrails(activity: Activity, iso: string): Promise<TrailRow[]> {
+async function fetchTrails(activity: Activity, iso: string, region: string): Promise<TrailRow[]> {
   let q = supabasePublic()
     .from("trails")
     .select("id,name,sport,roundtrip,stats,is_gravel,gravel_m,thumb_coords")
     .eq("country", iso)
+    .eq("region", region)
     .order("name_sort")
     .limit(CARD_LIMIT);
   q = activity.gravel ? q.eq("is_gravel", true) : q.eq("sport", activity.sport!);
@@ -59,43 +52,50 @@ async function fetchTrails(activity: Activity, iso: string): Promise<TrailRow[]>
 }
 
 export async function generateStaticParams() {
-  const combos = await gatedCombos();
-  return combos.map((c) => ({ activity: c.activity.key, country: c.country.slug }));
+  const combos = await gatedRegionCombos();
+  return combos.map((c) => ({
+    activity: c.activity.key,
+    country: c.country.slug,
+    region: c.slug,
+  }));
 }
 
 export async function generateMetadata({
   params,
 }: {
-  params: { locale: string; activity: string; country: string };
+  params: { locale: string; activity: string; country: string; region: string };
 }): Promise<Metadata> {
   const activity = resolveActivity(params.activity);
   const country = resolveCountry(params.country);
   if (!activity || !country) return {};
+  const combo = await regionCombo(activity, country, params.region);
+  if (!combo) return {};
   const nl = params.locale === "nl";
-  // "in" is the same word in en + nl — handy for "Hiking routes in Austria" /
-  // "Wandelroutes in Oostenrijk".
-  const title = `${name(activity, nl)} in ${name(country, nl)}`;
-  const count = await comboCount(activity, country);
+  const actLabel = nl ? activity.nl : activity.en;
+  const title = `${actLabel} in ${combo.region}`;
+  const cName = nl ? country.nl : country.en;
   const desc = nl
-    ? `${count}+ ${name(activity, nl).toLowerCase()} in ${name(country, nl)}, uit OpenStreetMap. Bekijk afstand, hoogte en ondergrond, open in de planner en exporteer een GPX. Gratis, geen account.`
-    : `${count}+ ${name(activity, nl).toLowerCase()} in ${name(country, nl)}, from OpenStreetMap. See distance, elevation and surface, open in the planner and export a GPX. Free, no account.`;
+    ? `${combo.count}+ ${actLabel.toLowerCase()} in ${combo.region} (${cName}), uit OpenStreetMap. Bekijk afstand, hoogte en ondergrond, open in de planner en exporteer een GPX.`
+    : `${combo.count}+ ${actLabel.toLowerCase()} in ${combo.region} (${cName}), from OpenStreetMap. See distance, elevation and surface, open in the planner and export a GPX.`;
   return {
     title: pageTitle(await getSiteSettings(), title),
     description: desc,
-    alternates: { canonical: `/${params.locale}/explore/${activity.key}/${country.slug}` },
+    alternates: {
+      canonical: `/${params.locale}/explore/${activity.key}/${country.slug}/${combo.slug}`,
+    },
     openGraph: {
       title,
       description: desc,
-      url: `${SITE_URL}/${params.locale}/explore/${activity.key}/${country.slug}`,
+      url: `${SITE_URL}/${params.locale}/explore/${activity.key}/${country.slug}/${combo.slug}`,
       type: "website",
     },
   };
 }
 
-export default async function ActivityCountryPage({
+export default async function ActivityRegionPage({
   params,
 }: {
-  params: { locale: string; activity: string; country: string };
+  params: { locale: string; activity: string; country: string; region: string };
 }) {
   const { locale } = params;
   const nl = locale === "nl";
@@ -103,31 +103,26 @@ export default async function ActivityCountryPage({
   const country = resolveCountry(params.country);
   if (!activity || !country) notFound();
 
-  // Runtime thin-content gate: a combo below the threshold gets no page
-  // (covers direct hits on non-pre-rendered combos).
-  const count = await comboCount(activity, country);
-  if (count < MIN_TRAILS) notFound();
+  const combo = await regionCombo(activity, country, params.region);
+  if (!combo) notFound(); // below the gate or unknown region
 
-  const trails = await fetchTrails(activity, country.iso);
+  const trails = await fetchTrails(activity, country.iso, combo.region);
   const tp = await getTranslations({ locale, namespace: "planner" });
   const tt = await getTranslations({ locale, namespace: "trailsPage" });
-  const combos = await gatedCombos();
-  const regions = await regionsForCountryActivity(activity, country);
+  const allRegionCombos = await gatedRegionCombos();
   const base = `${SITE_URL}/${locale}`;
 
-  const actLabel = name(activity, nl);
-  const cName = name(country, nl);
-  const h1 = `${actLabel} in ${cName}`;
+  const actLabel = nl ? activity.nl : activity.en;
+  const cName = nl ? country.nl : country.en;
+  const h1 = `${actLabel} in ${combo.region}`;
   const activityLower = actLabel.toLowerCase();
+  const countryPath = `/${locale}/explore/${activity.key}/${country.slug}`;
 
-  // Internal-link mesh: other activities in this country + this activity in
-  // other countries (only combos that actually have a page).
-  const sameCountry = combos.filter(
-    (c) => c.country.iso === country.iso && c.activity.key !== activity.key,
+  const otherActivities = allRegionCombos.filter(
+    (c) => c.country.iso === country.iso && c.slug === combo.slug && c.activity.key !== activity.key,
   );
-  const sameActivity = combos
-    .filter((c) => c.activity.key === activity.key && c.country.iso !== country.iso)
-    .sort((a, b) => b.count - a.count)
+  const otherRegions = (await regionsForCountryActivity(activity, country))
+    .filter((c) => c.slug !== combo.slug)
     .slice(0, 8);
 
   const jsonLd = [
@@ -135,9 +130,10 @@ export default async function ActivityCountryPage({
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: nl ? "Home" : "Home", item: base },
+        { "@type": "ListItem", position: 1, name: "Home", item: base },
         { "@type": "ListItem", position: 2, name: tt("title"), item: `${base}/trails` },
-        { "@type": "ListItem", position: 3, name: h1, item: `${base}/explore/${activity.key}/${country.slug}` },
+        { "@type": "ListItem", position: 3, name: `${actLabel} in ${cName}`, item: `${base}/explore/${activity.key}/${country.slug}` },
+        { "@type": "ListItem", position: 4, name: h1, item: `${base}/explore/${activity.key}/${country.slug}/${combo.slug}` },
       ],
     },
     {
@@ -156,23 +152,22 @@ export default async function ActivityCountryPage({
 
   return (
     <main className="mx-auto min-h-dvh max-w-4xl px-4 pb-16 pt-20">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <nav className="text-xs text-neutral-400">
         <Link href={`/${locale}`} className="hover:underline">Home</Link>{" "}
         <span aria-hidden>/</span>{" "}
         <Link href={`/${locale}/trails`} className="hover:underline">{tt("title")}</Link>{" "}
-        <span aria-hidden>/</span> <span className="text-neutral-500">{h1}</span>
+        <span aria-hidden>/</span>{" "}
+        <Link href={countryPath} className="hover:underline">{cName}</Link>{" "}
+        <span aria-hidden>/</span> <span className="text-neutral-500">{combo.region}</span>
       </nav>
 
       <h1 className="mt-3 text-2xl font-bold text-neutral-900">{h1}</h1>
       <p className="mt-2 max-w-2xl text-sm text-neutral-600">
         {nl
-          ? `${count} bewegwijzerde ${activityLower} in ${cName}, geïmporteerd uit OpenStreetMap. Elke route toont afstand, hoogte en ondergrond — open 'm in de planner om aan te passen en als GPX te exporteren.`
-          : `${count} waymarked ${activityLower} in ${cName}, imported from OpenStreetMap. Every route shows its distance, elevation and surface — open it in the planner to adjust it and export a GPX.`}
+          ? `${combo.count} bewegwijzerde ${activityLower} in ${combo.region} (${cName}), uit OpenStreetMap. Open een route in de planner om aan te passen en als GPX te exporteren.`
+          : `${combo.count} waymarked ${activityLower} in ${combo.region} (${cName}), from OpenStreetMap. Open a route in the planner to adjust it and export a GPX.`}
       </p>
 
       <div className="mt-4 flex flex-wrap gap-3">
@@ -183,14 +178,13 @@ export default async function ActivityCountryPage({
           {nl ? "Plan een route" : "Plan a route"}
         </Link>
         <Link
-          href={`/${locale}/trails?country=${country.iso}&sport=${activity.trailsSport}`}
+          href={`/${locale}/trails?country=${country.iso}&region=${encodeURIComponent(combo.region)}&sport=${activity.trailsSport}`}
           className="inline-flex items-center rounded-lg border border-emerald-700 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50"
         >
           {nl ? "Filter alle routes" : "Filter all routes"}
         </Link>
       </div>
 
-      {/* Route list — same card as /trails. */}
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {trails.map((tr) => {
           const d = difficulty(tr.sport, tr.stats.distanceM, tr.stats.ascendM);
@@ -205,9 +199,7 @@ export default async function ActivityCountryPage({
               </div>
               <div className="px-3 py-2.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 truncate text-sm font-medium text-neutral-900">
-                    {tr.name}
-                  </span>
+                  <span className="min-w-0 truncate text-sm font-medium text-neutral-900">{tr.name}</span>
                   <span
                     className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
                       d === "easy"
@@ -229,48 +221,27 @@ export default async function ActivityCountryPage({
           );
         })}
       </div>
-      {count > trails.length && (
+      {combo.count > trails.length && (
         <p className="mt-3 text-xs text-neutral-400">
           {nl
-            ? `Nog ${count - trails.length} routes — bekijk alles via de filter hierboven.`
-            : `${count - trails.length} more routes — see them all via the filter above.`}
+            ? `Nog ${combo.count - trails.length} routes — bekijk alles via de filter hierboven.`
+            : `${combo.count - trails.length} more routes — see them all via the filter above.`}
         </p>
       )}
 
-      {regions.length > 0 && (
+      {otherActivities.length > 0 && (
         <>
           <h2 className="mt-10 text-lg font-semibold text-neutral-900">
-            {nl ? `${actLabel} per regio` : `${actLabel} by region`}
+            {nl ? `Andere activiteiten in ${combo.region}` : `Other activities in ${combo.region}`}
           </h2>
           <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-            {regions.map((r) => (
-              <li key={r.slug}>
-                <Link
-                  href={`/${locale}/explore/${activity.key}/${country.slug}/${r.slug}`}
-                  className="font-medium text-emerald-800 hover:underline"
-                >
-                  {r.region}
-                  <span className="text-neutral-400"> ({r.count})</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      {sameCountry.length > 0 && (
-        <>
-          <h2 className="mt-10 text-lg font-semibold text-neutral-900">
-            {nl ? `Andere activiteiten in ${cName}` : `Other activities in ${cName}`}
-          </h2>
-          <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-            {sameCountry.map((c) => (
+            {otherActivities.map((c) => (
               <li key={c.activity.key}>
                 <Link
-                  href={`/${locale}/explore/${c.activity.key}/${country.slug}`}
+                  href={`/${locale}/explore/${c.activity.key}/${country.slug}/${c.slug}`}
                   className="font-medium text-emerald-800 hover:underline"
                 >
-                  {name(c.activity, nl)}
+                  {nl ? c.activity.nl : c.activity.en}
                 </Link>
               </li>
             ))}
@@ -278,19 +249,19 @@ export default async function ActivityCountryPage({
         </>
       )}
 
-      {sameActivity.length > 0 && (
+      {otherRegions.length > 0 && (
         <>
           <h2 className="mt-8 text-lg font-semibold text-neutral-900">
-            {nl ? `${actLabel} in andere landen` : `${actLabel} in other countries`}
+            {nl ? `${actLabel} in andere regio's van ${cName}` : `${actLabel} in other ${cName} regions`}
           </h2>
           <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-            {sameActivity.map((c) => (
-              <li key={c.country.iso}>
+            {otherRegions.map((c) => (
+              <li key={c.slug}>
                 <Link
-                  href={`/${locale}/explore/${activity.key}/${c.country.slug}`}
+                  href={`/${locale}/explore/${activity.key}/${country.slug}/${c.slug}`}
                   className="font-medium text-emerald-800 hover:underline"
                 >
-                  {name(c.country, nl)}
+                  {c.region}
                 </Link>
               </li>
             ))}
@@ -299,14 +270,9 @@ export default async function ActivityCountryPage({
       )}
 
       <p className="mt-8 text-sm text-neutral-600">
-        {nl ? "Zelf een route tekenen? " : "Prefer to draw your own? "}
-        <Link
-          href={`/${locale}/${activity.key === "cycling" || activity.key === "gravel" ? "cycling-route-planner" : activity.key === "mtb" ? "mtb-route-planner" : "hiking-route-planner"}`}
-          className="font-medium text-emerald-800 hover:underline"
-        >
-          {nl ? "Open de routeplanner" : "Open the route planner"}
+        <Link href={countryPath} className="font-medium text-emerald-800 hover:underline">
+          {nl ? `← Alle ${activityLower} in ${cName}` : `← All ${activityLower} in ${cName}`}
         </Link>
-        .
       </p>
 
       <p className="mt-8 text-[11px] text-neutral-400">{tt("attribution")}</p>

@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { supabaseServer } from "@/lib/supabase/server";
 import { withRegionSlugs } from "@/lib/regionSlug";
 import { pageCount, trailRegions } from "@/lib/seo/trailRegions";
-import { gatedCombos } from "@/lib/seo/activityCountries";
+import { gatedCombos, gatedRegionCombos } from "@/lib/seo/activityCountries";
 
 // Dynamic sitemap over all public content (tours, highlights, collections),
 // both locales. Canonical host comes from NEXT_PUBLIC_SITE_URL (tarnoo.com).
@@ -40,8 +40,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // .catch([]) zodat een 402 (Supabase over egress-quota) de hele
   // sitemap.xml niet laat crashen — dan tijdelijk zonder regio-URL's.
   const trailRegionList = await trailRegions().catch(() => []);
-  // Data-gated activity × country pages (/explore/<activity>/<country>).
+  // Data-gated activity × country (+ × region) pages under /explore/.
   const exploreCombos = await gatedCombos().catch(() => []);
+  const exploreRegions = await gatedRegionCombos().catch(() => []);
   // Trail-URL's zitten in gesegmenteerde sitemaps: /trails-sitemap/sitemap/<n>.xml
   const [tours, regionRows, collections, pages] = await Promise.all([
     sb.from("tours").select("id,updated_at").eq("visibility", "public").eq("kind", "planned").limit(1000),
@@ -197,6 +198,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         url: `${SITE_URL}/${locale}/explore/${c.activity.key}/${c.country.slug}`,
         changeFrequency: "weekly",
         priority: 0.6,
+      });
+    }
+    for (const c of exploreRegions) {
+      entries.push({
+        url: `${SITE_URL}/${locale}/explore/${c.activity.key}/${c.country.slug}/${c.slug}`,
+        changeFrequency: "weekly",
+        priority: 0.5,
       });
     }
   }
