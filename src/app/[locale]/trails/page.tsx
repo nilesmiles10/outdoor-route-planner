@@ -8,6 +8,7 @@ import RegionFilterSelect from "@/components/RegionFilterSelect";
 import MiniMap from "@/components/MiniMap";
 import { getSiteSettings, pageTitle } from "@/lib/siteSettings";
 import { SITE_URL } from "@/app/sitemap";
+import { gatedCombos } from "@/lib/seo/activityCountries";
 
 // Cap op de JSON-LD-lijst: 200 items zouden de payload nog eens verdubbelen.
 const LD_ITEM_CAP = 100;
@@ -281,6 +282,13 @@ export default async function TrailsPage({
         { q: "Is it free?", a: "Yes. Browsing routes and exporting a GPX are free and need no account." },
       ];
 
+  // Entry point into the /explore activity×country cluster (otherwise reachable
+  // only via the sitemap + its own mesh). Top combos by route count.
+  const popular = (await gatedCombos())
+    .slice()
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 16);
+
   return (
     <main className="mx-auto min-h-dvh max-w-4xl px-4 pb-16 pt-20">
       {/* ItemList over de daadwerkelijk getoonde routes, zelfde patroon als de
@@ -323,6 +331,27 @@ export default async function TrailsPage({
         {locale === "nl" ? " met hoogte, ondergrond en GPX." : " with elevation, surface and GPX."}
       </p>
       <p className="mt-3 max-w-2xl text-sm text-neutral-600">{intro}</p>
+      {popular.length > 0 && (
+        <div className="mt-3">
+          <span className="text-xs font-medium text-neutral-500">
+            {locale === "nl" ? "Populair per land:" : "Popular by country:"}
+          </span>{" "}
+          <span className="text-sm">
+            {popular.map((c, i) => (
+              <span key={`${c.activity.key}-${c.country.iso}`}>
+                {i > 0 && <span className="text-neutral-300"> · </span>}
+                <a
+                  href={`/${locale}/explore/${c.activity.key}/${c.country.slug}`}
+                  className="text-emerald-800 hover:underline"
+                >
+                  {locale === "nl" ? c.activity.nl : c.activity.en} in{" "}
+                  {locale === "nl" ? c.country.nl : c.country.en}
+                </a>
+              </span>
+            ))}
+          </span>
+        </div>
+      )}
 
       {/* Land achter een label i.p.v. 28 vlaggen open en bloot (Komoot zet
           filters ook achter een knop). <details> = geen JS nodig, links
