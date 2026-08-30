@@ -30,6 +30,7 @@
     },
     "errors": {
       "no_route": "Geen route gevonden — verplaats je punten dichter naar een weg of pad.",
+      "route_too_long": "Deze route is te lang om in één keer te berekenen — voeg een tussenpunt toe of maak 'm korter.",
       "router_unavailable": "Route-service is even niet bereikbaar — probeer het zo opnieuw.",
       "generic": "Er ging iets mis. Probeer opnieuw.",
       "gpx_invalid": "Kon dit GPX-bestand niet lezen.",

@@ -2564,6 +2564,7 @@ export default function PlannerApp() {
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
             {[
               "no_route",
+              "route_too_long",
               "router_unavailable",
               "rate_limited",
               "gpx_invalid",

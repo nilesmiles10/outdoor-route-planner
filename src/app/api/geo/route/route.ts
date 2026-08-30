@@ -10,20 +10,18 @@ import {
 
 export const dynamic = "force-dynamic";
 
-// Defense-in-depth op de functie-timeout. BRouter is CPU-bound op route-lengte:
-// korte routes <2s, ~200 km 8-19s, extreme 250 km MTB tot ~59s. Empirisch liep
-// productie zulke lange calls al succesvol af (curl 59s → 200), dus de default
-// kapte niet op 10s — de "buitenlandse route doet niets"-klacht kwam NIET
-// hiervandaan (dat was de kaart die niet hercentreerde, zie MapView). Toch
-// pinnen we de grens expliciet op 120s zodat een toekomstige Vercel-default-
-// wijziging lange trajecten niet stilletjes kan afkappen. Ruim boven elke
-// echte route. Paid-plan.
+// Functie-timeout config. BRouter is CPU-bound op route-lengte: kort <2s,
+// ~130 km ~12s, ~250 km ~27s. De ECHTE bovengrens in productie is de geo-
+// gateway: nginx `/geo/route` heeft proxy_read_timeout 60s, dus routes die
+// >60s rekenen (~300 km+) krijgen een 504 van de gateway — die mappen we
+// hieronder naar "route_too_long" (géén "no route"; de route bestaat, hij duurt
+// te lang). Zie docs/claude/ROUTING_GAPS.md → Decision: bewust geen fast engine;
+// hele lange routes horen als meerdaagse etappes gepland te worden.
+//
+// maxDuration=120 en de 110s-abort zijn backstops BOVEN die 60s-grens: ze doen
+// er alleen toe als de gateway zelf hangt, en staan bewust > 60s zodat de 504
+// van de gateway ons bereikt en de juiste melding krijgt.
 export const maxDuration = 120;
-
-// Bovengrens op de BRouter-call zelf, ruim boven de traagste echte route (~59s)
-// en onder maxDuration: een écht hangende upstream valt zo netjes in de catch
-// → router_unavailable (vertaalde melding) i.p.v. de functie tot 120s te laten
-// hangen. Niet bedoeld om normale lange routes te raken.
 const BROUTER_TIMEOUT_MS = 110_000;
 
 // GET /api/geo/route?points=4.30,52.07|5.12,52.09&sport=gravel
@@ -67,6 +65,13 @@ export async function GET(req: NextRequest) {
     });
     const body = await res.text();
     if (!res.ok || !body.startsWith("{")) {
+      // Een 504/502 van de geo-gateway = BRouter overschreed de 60s
+      // proxy_read_timeout op een (te) lange route — GEEN "geen route": de
+      // route bestaat, hij duurt te lang. Apart signaal zodat de UI naar het
+      // opsplitsen-in-etappes stuurt i.p.v. "geen route gevonden" te tonen.
+      if (res.status === 504 || res.status === 502) {
+        return NextResponse.json({ error: "route_too_long" }, { status: 422 });
+      }
       // BRouter returns plain-text errors (e.g. "position not mapped")
       return NextResponse.json(
         { error: "no_route", detail: body.slice(0, 200) },
@@ -227,10 +232,14 @@ export async function GET(req: NextRequest) {
       unpavedRuns: runs,
       turns,
     });
-  } catch {
+  } catch (e) {
+    // AbortSignal.timeout fired (>110s) → treat as too-long (same guidance as a
+    // gateway 504). Anything else = the gateway/BRouter is genuinely down.
+    const timedOut =
+      e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
     return NextResponse.json(
-      { error: "router_unavailable" },
-      { status: 503 },
+      { error: timedOut ? "route_too_long" : "router_unavailable" },
+      { status: timedOut ? 422 : 503 },
     );
   }
 }

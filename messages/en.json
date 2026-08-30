@@ -30,6 +30,7 @@
     },
     "errors": {
       "no_route": "No route found — try moving your points closer to a road or path.",
+      "route_too_long": "This route is too long to calculate in one go — add a waypoint partway, or make it shorter.",
       "router_unavailable": "Route service is momentarily unreachable — please try again shortly.",
       "generic": "Something went wrong. Try again.",
       "gpx_invalid": "Could not read that GPX file.",
