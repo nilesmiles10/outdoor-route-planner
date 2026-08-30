@@ -35,7 +35,7 @@ Severity: 🔴 high · 🟠 med · 🟡 low. Most quality items need reproductio
 |---|---|---|---|---|---|---|---|---|
 | Long-route latency | all (worst MTB) | all | Long routes take 8–59s; feel broken | 🟠 | Measured: 250km≈8s, 460km≈30s, 250km MTB≈59s; cold≈warm | Time a distance×profile matrix; decide on a fast engine (GraphHopper) for a "fast/overview" mode | P1 | Open |
 | `ebike` reused `trekking` profile | ebike | all | E-bike returned a byte-identical route to touring | 🟢 | **Fixed 2026-08-29 (v1):** authored `infra/brouter/ebike.brf` (trekking base, `downhillcost` 60→20, `bikerPower` 100→250), `SPORT_PROFILES.ebike="ebike"`. Validated: no geometry regression, correct faster ETAs (Innsbruck→Seefeld 152→74 min). Route selection diverges only where a flat/hilly tradeoff exists | Field-tune v1; consider surface/road prefs later | P3 | Fixed (v1) |
-| `run` reuses `hiking-mountain` | run | all | Running returns a **byte-identical route to hike**; over-prefers rough mountain paths | 🟡 | **Reproduced 2026-08-29:** run & hike both → `hiking-mountain`, identical geometry. Only foot profile on the VPS is `hiking-mountain` | Fix = road-lean foot profile (authored); no safe existing remap | P2 | Reproduced |
+| `run` reused `hiking-mountain` | run | all | Running returned a byte-identical route to hike; could route over exposed T3 scrambling | 🟢 | **Fixed 2026-08-29 (v1):** authored `infra/brouter/run.brf` (hiking-mountain base, `SAC_scale_limit` 3→2 = no exposed T3, `consider_elevation` on = runnable/flatter), `SPORT_PROFILES.run="run"`. Validated: flat identical (no regression); differs in hilly/alpine terrain, no absurd routes | Field-tune; consider surface-runnability + step penalty | P3 | Fixed (v1) |
 | `gravel-nl` profile is NL-tuned | gravel | non-NL | Gravel preference may not generalise across Europe | 🟠 | `geo.ts` comment: tuned over 9 NL 40km loops | Run gravel loops in DE/ES/FR/IT; check unpaved % | P2 | Open |
 | No route alternatives | all | all | User can't pick between options | 🟡 | `alternativeidx=0` | Evaluate exposing 1–3 alternatives | P3 | Open |
 | Access handling is static only | all | all | Seasonal/conditional closures not reflected | 🟡 | GEN-129 comment | Assess conditional-tag support | P3 | Open |
@@ -81,11 +81,10 @@ here** — status is "untested" until run.
 
 1. **Long-route latency** — real, measured; decide fast-engine vs accept + signpost. (P1)
 2. **`gravel-nl` generalisation** — profile tuned only for NL. (P2)
-3. **`run` has no real profile** — reuses hiking-mountain; over-prefers mountain paths. (P2)
-4. **Ferries/borders/islands behaviour** — UNKNOWN; reproduce before claiming. (P2)
-5. **`ebike` v1 field-tuning** — profile shipped; confirm terrain tolerance + ETA on real rides. (P3)
+3. **Ferries/borders/islands behaviour** — UNKNOWN; reproduce before claiming. (P2)
+4. **`ebike`/`run` v1 field-tuning** — profiles shipped; confirm on real rides/runs; consider surface-runnability for run. (P3)
 
-*(Fixed: `ebike` alias — authored `ebike.brf` v1, 2026-08-29.)*
+*(Fixed: `ebike` + `run` aliases — authored `ebike.brf` + `run.brf` v1, 2026-08-29. All 7 activities now have distinct profiles.)*
 
 *(Removed: "node-network cycling" — reproduced 2026-08-29 as good routing; the
 under-count is a discovery/data gap, tracked in EUROPE_COMPLETENESS.)*
@@ -103,4 +102,5 @@ and run gaps can't be fixed by a safe remap; they need an authored profile.
 - 2026-08 — long-route `maxDuration` widened to 120s + 110s BRouter abort; map recenters to off-view routes; long-route loading state added.
 - 2026-08-29 — `/routing` iteration 1: reproduced the ebike≡touring / run≡hike aliases (identical BRouter geometry); enumerated VPS profiles (no ebike/run profile); added the first routing regression suite `src/lib/geo.test.ts` (profile invariants + surface parsing). No production routing changed.
 - 2026-08-29 — `/routing` iteration 2: reproduced NL/DE cycling routing → cycleway-dominated, ~0% main road (good). Closed "node-network cycling" as a routing gap; re-routed the concern to discovery/data (EUROPE_COMPLETENESS). Recorded the NL fixtures as a torture-test baseline. No code changed.
-- 2026-08-29 — `/routing` iteration 3: **fixed the `ebike` alias** — authored `infra/brouter/ebike.brf` v1 (trekking base; `downhillcost` 60→20, `bikerPower` 100→250), deployed to VPS, `SPORT_PROFILES.ebike="ebike"`. Validated flat (no regression) + hilly (correct ~2× faster ETA). Tests flipped (ebike now distinct; run still aliases hike). `run` profile remains open.
+- 2026-08-29 — `/routing` iteration 3: **fixed the `ebike` alias** — authored `infra/brouter/ebike.brf` v1 (trekking base; `downhillcost` 60→20, `bikerPower` 100→250), deployed to VPS, `SPORT_PROFILES.ebike="ebike"`. Validated flat (no regression) + hilly (correct ~2× faster ETA).
+- 2026-08-29 — `/routing` iteration 4: **fixed the `run` alias** — authored `infra/brouter/run.brf` v1 (hiking-mountain base; `SAC_scale_limit` 3→2, `consider_elevation` on), deployed to VPS, `SPORT_PROFILES.run="run"`. Validated flat (no regression) + hilly (avoids exposed T3, no absurd routes). **All 7 activities now have distinct profiles — no aliases left.**

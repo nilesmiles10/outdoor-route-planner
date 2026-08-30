@@ -35,23 +35,19 @@ describe("SPORT_PROFILES", () => {
   // against an accidental alias regression (e.g. someone remapping mtb→trekking).
   // Reproduced 2026-08-29: on the same Bolzano→Merano A→B these five returned
   // different length/ascend/geometry from BRouter.
-  it("distinct-intent activities keep distinct profiles", () => {
-    // ebike got its own profile (GEN-104 v1) — now 6 distinct-intent activities.
-    const profiles = (
-      ["hike", "touring", "gravel", "mtb", "road", "ebike"] as Sport[]
-    ).map((s) => SPORT_PROFILES[s]);
-    expect(new Set(profiles).size).toBe(profiles.length);
+  // All 7 activities now have their own profile — no aliases left (GEN-104:
+  // ebike and run got dedicated profiles). Guards against an accidental
+  // regression that re-aliases an activity.
+  it("every activity uses a distinct profile", () => {
+    const profiles = SPORTS.map((s) => SPORT_PROFILES[s]);
+    expect(new Set(profiles).size).toBe(SPORTS.length);
   });
 
-  it("ebike has its own profile, distinct from touring (GEN-104)", () => {
+  it("ebike and run have their own profiles (GEN-104)", () => {
     expect(SPORT_PROFILES.ebike).toBe("ebike");
     expect(SPORT_PROFILES.ebike).not.toBe(SPORT_PROFILES.touring);
-  });
-
-  // Remaining known alias: `run` still reuses `hiking-mountain` (no running
-  // profile yet). Locked so a future running profile is a deliberate change.
-  it("documents the remaining run/hike alias", () => {
-    expect(SPORT_PROFILES.run).toBe(SPORT_PROFILES.hike); // TODO: run needs a road-lean foot profile
+    expect(SPORT_PROFILES.run).toBe("run");
+    expect(SPORT_PROFILES.run).not.toBe(SPORT_PROFILES.hike);
   });
 });
 

@@ -18,7 +18,13 @@ export function geoHeaders(): HeadersInit {
 // Our 7 sports → BRouter profiles. Tuning/custom profiles = GEN-104.
 export const SPORT_PROFILES = {
   hike: "hiking-mountain",
-  run: "hiking-mountain", // no native run profile; speed model differs client-side
+  // Eigen profiel (infra/brouter/run.brf, op de VPS). Basis = hiking-mountain;
+  // twee wijzigingen: SAC_scale_limit 3->2 (geen blootgestelde T3-scrambling
+  // voor hardlopers) + consider_elevation aan (loopbare, vlakkere routes).
+  // Subtiel op normaal terrein (een run en een hike over hetzelfde pad zijn
+  // dezelfde route); zichtbaar in heuvel-/alpien terrein. v1. Pace-model blijft
+  // client-side.
+  run: "run",
   touring: "trekking",
   // Eigen profiel (infra/brouter/gravel-nl.brf, staat op de VPS in
   // profiles2/). Upstream gravel.brf heeft prefer_unpaved_paths uit staan én
