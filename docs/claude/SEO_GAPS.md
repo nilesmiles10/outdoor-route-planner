@@ -32,7 +32,28 @@ Run with `/seo`. Detailed backlog/log: `seo/SEO_BACKLOG.md`, `seo/SEO_CHANGELOG.
 | Activity × country programmatic pages absent | Programmatic | Trail data exists for 28 countries (DB) but no `hiking-routes-in-<country>` pages | High | High | High | L | P1 | Not built |
 | Client-rendered discovery text | Technical | `DiscoverClient` is `"use client"`; verify intro/FAQ land in SSR HTML | Medium | Medium | Low | S | P2 | Verify |
 | Competitor/"alternative" page | Content | "komoot alternative" intent uncovered | High | Medium | Medium | M | P2 | **Held** (needs verified competitor facts — see COMPETITOR_GAPS) |
-| No analytics = SEO is flying blind | Data | No analytics package in repo | — | High (measurement) | — | S–M | P1 | Not built |
+| ~~No analytics = SEO is flying blind~~ | Data | Vercel Web Analytics + Speed Insights instrumented (`layout.tsx`), verified live | — | High (measurement) | — | S–M | P1 | **Done (code)** — enable in Vercel dashboard + set up GSC (see Measurement setup) |
+
+## Measurement setup (2026-08-29)
+
+**Instrumented in code (done):** Vercel **Web Analytics** (`<Analytics/>`) +
+**Speed Insights** (`<SpeedInsights/>`) in `[locale]/layout.tsx` — cookieless,
+no consent banner. Verified live (`window.va`/`window.si` initialized, pageview
+queued). `.npmrc legacy-peer-deps=true` added (optional framework peers conflict
+with vite 5).
+
+**Requires manual (non-repo) steps — do these to actually get data:**
+1. **Vercel dashboard** → enable **Web Analytics** and **Speed Insights** for the
+   project (the `<...>` components only emit once the products are on).
+2. **Google Search Console** (the SEO-critical one — search queries, impressions,
+   clicks, positions, coverage): add `tarnoo.com` as a property, verify it, then
+   **submit `https://tarnoo.com/sitemap.xml`**. Verification is already wired:
+   the layout renders `verification.google` from `site_settings.google_site_verification`
+   — set that column to the GSC token (admin) and the meta tag appears; no code
+   change needed. (Bing Webmaster Tools is an easy optional add via the same path.)
+
+Until GSC is connected, the SEO track has traffic/CWV (Vercel) but **not** search-
+query data — treat ranking claims as unmeasured.
 
 ## Programmatic SEO opportunities
 
@@ -72,7 +93,7 @@ country/activity below the data gate, and pages that merely re-list what
 
 ## Top 10 SEO opportunities (ranked)
 
-1. **Instrument analytics + Search Console** — everything else is guesswork without it. (P1)
+1. ~~**Instrument analytics**~~ — ✅ done (Vercel Web Analytics + Speed Insights, verified live). Remaining: enable both in the Vercel dashboard + connect Google Search Console (see Measurement setup). (P1)
 2. **`activity × country/region` programmatic pages, data-gated** — biggest scalable, *honest* upside (real trail data for 28 countries). (P1)
 3. **Fix/validate node-network cycling** so cycling pages aren't hollow in NL/BE. (P1, cross-ref EUROPE)
 4. **Region-page intros + internal links** (unique text, not templated). (P2)

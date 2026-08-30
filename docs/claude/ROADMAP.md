@@ -11,11 +11,10 @@ Pillars: ROUTING · EUROPE · SEO · UX · DATA · COMPETITOR.
 
 ## NOW
 
-**1. Instrument analytics + Search Console** · SEO/DATA · S–M
-- Problem: no analytics package in the repo → SEO/UX decisions are blind.
-- Why: can't prioritise or measure any of the below without it.
-- Impact: high (unlocks measurement of everything). Confidence: high (verified absent).
-- File: `SEO_GAPS.md`.
+**1. Instrument analytics + Search Console** · SEO/DATA · S–M · ✅ *code done 2026-08-29*
+- Shipped: Vercel Web Analytics + Speed Insights in the root layout (cookieless), verified live.
+- Remaining (manual, not code): enable both products in the Vercel dashboard; connect Google Search Console + submit the sitemap (verification already wired via `site_settings.google_site_verification`). See `SEO_GAPS.md` → Measurement setup.
+- Impact: high (unlocks measurement of everything else).
 
 **2. Give `ebike` a real profile** · ROUTING · M · ✅ *done (v1, 2026-08-29)*
 - Was: `ebike` reused `trekking` → byte-identical routes.
