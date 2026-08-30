@@ -33,11 +33,9 @@ Pillars: ROUTING · EUROPE · SEO · UX · DATA · COMPETITOR.
 
 ## NEXT
 
-**5. `activity × country/region` programmatic SEO pages (data-gated)** · SEO/DATA · L
-- Problem: real trail data for 28 countries, but no country/region activity pages.
-- Why: scalable, *honest* organic upside using the existing thin-content gate.
-- Impact: high. Confidence: med (depends on per-page data density passing the gate).
-- File: `SEO_GAPS.md`.
+**5. `activity × country` programmatic SEO pages (data-gated)** · SEO/DATA · L · ✅ *done 2026-08-29*
+- Shipped: `/[locale]/explore/[activity]/[country]` (hiking/cycling/mtb/gravel), gated at ≥25 real routes → 64 combos × 2 locales, real route lists + ItemList schema + internal-link mesh, verified live (below-gate combos 404).
+- Next extension (M): `activity × region` pages where a region passes the gate.
 
 **6. Routing regression/torture-test suite** · ROUTING/UX · M · *started*
 - Problem: zero routing tests; quality is asserted, not measured.

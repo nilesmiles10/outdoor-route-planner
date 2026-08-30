@@ -29,7 +29,7 @@ Run with `/seo`. Detailed backlog/log: `seo/SEO_BACKLOG.md`, `seo/SEO_CHANGELOG.
 | Per-page OG images for landing pages | Technical | Landing pages use generic site OG (`ActivityPlannerLanding`); detail pages have custom OG | Low (CTR) | Low | Low | S | P3 | Open |
 | Region-page intros may be templated/thin | Content | `/trails/[region]`, `/discover/[region]/[category]` render mostly UI + lists | Medium | Medium | Medium | M | P2 | Needs review |
 | Homepage H1 = "Tarnoo" (brand only) | On-page | `[locale]/page.tsx` H1 is the logo | "route planner" head term | Low | Low | S (risky) | P3 | Open |
-| Activity × country programmatic pages absent | Programmatic | Trail data exists for 28 countries (DB) but no `hiking-routes-in-<country>` pages | High | High | High | L | P1 | Not built |
+| ~~Activity × country programmatic pages absent~~ | Programmatic | `/[locale]/explore/[activity]/[country]` — data-gated (≥25 real routes), 64 combos × 2 locales live | High | High | High | L | P1 | **Done** (2026-08-29) |
 | Client-rendered discovery text | Technical | `DiscoverClient` is `"use client"`; verify intro/FAQ land in SSR HTML | Medium | Medium | Low | S | P2 | Verify |
 | Competitor/"alternative" page | Content | "komoot alternative" intent uncovered | High | Medium | Medium | M | P2 | **Held** (needs verified competitor facts — see COMPETITOR_GAPS) |
 | ~~No analytics = SEO is flying blind~~ | Data | Vercel Web Analytics + Speed Insights instrumented (`layout.tsx`), verified live | — | High (measurement) | — | S–M | P1 | **Done (code)** — enable in Vercel dashboard + set up GSC (see Measurement setup) |
@@ -94,7 +94,7 @@ country/activity below the data gate, and pages that merely re-list what
 ## Top 10 SEO opportunities (ranked)
 
 1. ~~**Instrument analytics**~~ — ✅ done (Vercel Web Analytics + Speed Insights, verified live). Remaining: enable both in the Vercel dashboard + connect Google Search Console (see Measurement setup). (P1)
-2. **`activity × country/region` programmatic pages, data-gated** — biggest scalable, *honest* upside (real trail data for 28 countries). (P1)
+2. ~~**`activity × country` programmatic pages, data-gated**~~ — ✅ done: `/explore/[activity]/[country]`, 64 combos × 2 locales, ≥25-route gate. Next extension: **region-level** (`activity × region`) where a region passes the gate. (P1)
 3. **Fix/validate node-network cycling** so cycling pages aren't hollow in NL/BE. (P1, cross-ref EUROPE)
 4. **Region-page intros + internal links** (unique text, not templated). (P2)
 5. **Verify `/discover` client-rendered SEO text lands in SSR.** (P2)
