@@ -94,7 +94,7 @@ country/activity below the data gate, and pages that merely re-list what
 ## Top 10 SEO opportunities (ranked)
 
 1. ~~**Instrument analytics**~~ — ✅ done (Vercel Web Analytics + Speed Insights, verified live). Remaining: enable both in the Vercel dashboard + connect Google Search Console (see Measurement setup). (P1)
-2. ~~**`activity × country` programmatic pages, data-gated**~~ — ✅ done: `/explore/[activity]/[country]`, 64 combos × 2 locales, ≥25-route gate. Next extension: **region-level** (`activity × region`) where a region passes the gate. (P1)
+2. ~~**`activity × country` + `activity × region` programmatic pages, data-gated**~~ — ✅ done: `/explore/[activity]/[country]` (64 combos) + `/explore/[activity]/[country]/[region]` (~295 combos), all × 2 locales, ≥25-route gate, dense internal-link mesh. (P1)
 3. **Fix/validate node-network cycling** so cycling pages aren't hollow in NL/BE. (P1, cross-ref EUROPE)
 4. **Region-page intros + internal links** (unique text, not templated). (P2)
 5. **Verify `/discover` client-rendered SEO text lands in SSR.** (P2)
