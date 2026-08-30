@@ -2,6 +2,28 @@
 
 Newest first. Each entry: what shipped and why it should help search visibility.
 
+## 2026-08-29 — Iteration 8: homepage footer + intro/FAQ on /trails & /discover
+
+**Improvements to existing pages**
+- **Homepage** now renders `SiteFooter` below the fullscreen planner (below the
+  fold, no UX impact). The site's highest-authority page now links to all 7
+  landing pages — closing the last internal-linking gap.
+- **`/trails`** gained a factual intro paragraph + a 4-question FAQ with
+  `FAQPage` structured data. Turns a UI-heavy page into one with unique,
+  crawlable, keyword-relevant text.
+- **`/discover`** gained the same treatment (intro + FAQ + `FAQPage`), with
+  categories described generically ("viewpoints, natural features and points of
+  interest") — not invented specifics.
+
+**Why**
+- These are high-value existing pages that were thin on crawlable text; intros +
+  FAQs add topical relevance and structured data, and the homepage footer spreads
+  link equity to the cluster from the strongest page. No fabricated claims.
+
+**Technical validation**
+- `tsc` clean; `next build` green.
+
+
 ## 2026-08-29 — Iteration 7: sitewide footer links (link-equity distribution)
 
 **Technical SEO / internal linking**

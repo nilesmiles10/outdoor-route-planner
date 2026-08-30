@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import PlannerApp from "@/components/PlannerApp";
+import SiteFooter from "@/components/SiteFooter";
 import { getSiteSettings } from "@/lib/siteSettings";
 import { SITE_URL } from "@/app/sitemap";
 
@@ -46,6 +47,13 @@ export default async function Home({
         }}
       />
       <PlannerApp />
+      {/* Below-the-fold footer op de planner-homepage: geeft de sterkste pagina
+          van de site interne links naar de use-case landingspagina's (die de
+          planner-app zelf niet toont). h-dvh planner erboven, dus buiten beeld
+          tot je scrollt — geen impact op de app-UX. */}
+      <div className="mx-auto max-w-3xl px-4">
+        <SiteFooter />
+      </div>
     </>
   );
 }

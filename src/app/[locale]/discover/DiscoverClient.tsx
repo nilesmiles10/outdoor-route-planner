@@ -388,10 +388,32 @@ export default function DiscoverClient({
   const filtersActive =
     sport !== "all" || band !== "all" || diff !== "all" || loopOnly;
 
+  // Feitelijke intro + FAQ: unieke crawlbare tekst + FAQPage-structured-data op
+  // deze anders UI-zware pagina. Categorieën generiek benoemd (niet verzonnen).
+  const discoverIntro =
+    locale === "nl"
+      ? "Ontdek bijzondere plekken in heel Europa — uitzichtpunten, natuurlijke plekken en points of interest — uit OpenStreetMap, gegroepeerd op regio en categorie. Vind iets om naartoe te routeren, en plan er een wandeling of rit heen in de planner."
+      : "Discover standout places across Europe — viewpoints, natural features and points of interest — from OpenStreetMap, grouped by region and category. Find somewhere worth routing to, then plan a walk or ride there in the planner.";
+  const discoverFaq =
+    locale === "nl"
+      ? [
+          { q: "Wat is Ontdekken?", a: "Een overzicht van bijzondere plekken — uitzichtpunten, natuurlijke plekken en points of interest — uit OpenStreetMap, gegroepeerd op regio en categorie." },
+          { q: "Hoe is het geordend?", a: "Op regio en categorie, zodat je in één oogopslag de mooiste plekken in een gebied ziet." },
+          { q: "Kan ik een route naar een plek plannen?", a: "Ja. Open de planner en stippel een wandeling of rit uit die langs de plekken komt die je wilt zien." },
+          { q: "Is het gratis?", a: "Ja, en er is geen account nodig." },
+        ]
+      : [
+          { q: "What is Discover?", a: "A directory of standout places — viewpoints, natural features and points of interest — from OpenStreetMap, grouped by region and category." },
+          { q: "How is it organised?", a: "By region and category, so you can see the best spots in an area at a glance." },
+          { q: "Can I plan a route to a place?", a: "Yes. Open the planner and route a walk or ride that passes the places you want to see." },
+          { q: "Is it free?", a: "Yes, and no account is needed." },
+        ];
+
   return (
     <main className="mx-auto min-h-dvh max-w-4xl px-4 pb-16 pt-20">
       <h1 className="text-xl font-semibold text-neutral-900">{t("title")}</h1>
       <p className="mt-1 text-sm text-neutral-500">{t("subtitle")}</p>
+      <p className="mt-3 max-w-2xl text-sm text-neutral-600">{discoverIntro}</p>
 
       {featured.length > 0 && !filtersActive && (
         <section className="mt-4">
@@ -701,6 +723,33 @@ export default function DiscoverClient({
             </section>
           ))}
 
+      <section className="mt-12 max-w-2xl">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: discoverFaq.map((f) => ({
+                "@type": "Question",
+                name: f.q,
+                acceptedAnswer: { "@type": "Answer", text: f.a },
+              })),
+            }),
+          }}
+        />
+        <h2 className="text-lg font-semibold text-neutral-900">
+          {locale === "nl" ? "Veelgestelde vragen" : "Frequently asked questions"}
+        </h2>
+        <dl className="mt-3 space-y-3">
+          {discoverFaq.map((f) => (
+            <div key={f.q}>
+              <dt className="text-sm font-semibold text-neutral-800">{f.q}</dt>
+              <dd className="mt-1 text-sm text-neutral-600">{f.a}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
       <SiteFooter />
     </main>
   );

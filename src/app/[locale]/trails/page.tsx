@@ -261,6 +261,26 @@ export default async function TrailsPage({
     return `/${locale}/trails${s ? `?${s}` : ""}`;
   };
 
+  // Korte, feitelijke FAQ + intro — geeft deze anders UI-zware pagina unieke,
+  // crawlbare tekst en FAQPage-structured-data. Alle antwoorden productwaar.
+  const nl = locale === "nl";
+  const intro = nl
+    ? "Blader door duizenden bewegwijzerde wandel-, fiets- en mountainbikeroutes in heel Europa, geïmporteerd uit OpenStreetMap. Filter op activiteit, land, regio en afstand, open een route voor het hoogteprofiel en de ondergrond, en gebruik 'm als startpunt in de routeplanner."
+    : "Browse thousands of waymarked hiking, cycling and mountain-bike routes across Europe, imported from OpenStreetMap. Filter by activity, country, region and distance, open a route for its elevation profile and surface, and use it as a starting point in the route planner.";
+  const faq = nl
+    ? [
+        { q: "Wat voor routes zijn dit?", a: "Officiële, bewegwijzerde wandel-, fiets- en mountainbikeroutes uit OpenStreetMap. Elke route toont afstand, hoogte en ondergrond." },
+        { q: "Kan ik een route als startpunt gebruiken?", a: "Ja. Open een route om 'm op de kaart te zien, pas daarna de lijn aan, voeg een ommetje toe of maak er een rondje van in de planner — en exporteer een GPX." },
+        { q: "Hoe vind ik routes bij mij in de buurt?", a: "Filter op activiteit, land, regio en afstand, of zoek op naam." },
+        { q: "Is het gratis?", a: "Ja. Routes bekijken en een GPX exporteren is gratis en zonder account." },
+      ]
+    : [
+        { q: "What routes are these?", a: "Official, waymarked hiking, cycling and mountain-bike routes from OpenStreetMap. Each shows its distance, elevation and surface." },
+        { q: "Can I use a route as a starting point?", a: "Yes. Open any route to see it on the map, then adjust the line, add a detour or turn it into a loop in the planner — and export a GPX." },
+        { q: "How do I find routes near me?", a: "Filter by activity, country, region and distance, or search by name." },
+        { q: "Is it free?", a: "Yes. Browsing routes and exporting a GPX are free and need no account." },
+      ];
+
   return (
     <main className="mx-auto min-h-dvh max-w-4xl px-4 pb-16 pt-20">
       {/* ItemList over de daadwerkelijk getoonde routes, zelfde patroon als de
@@ -302,6 +322,7 @@ export default async function TrailsPage({
         </a>
         {locale === "nl" ? " met hoogte, ondergrond en GPX." : " with elevation, surface and GPX."}
       </p>
+      <p className="mt-3 max-w-2xl text-sm text-neutral-600">{intro}</p>
 
       {/* Land achter een label i.p.v. 28 vlaggen open en bloot (Komoot zet
           filters ook achter een knop). <details> = geen JS nodig, links
@@ -584,6 +605,33 @@ export default async function TrailsPage({
           {t("capHint", { count: TRAIL_LIMIT })}
         </p>
       )}
+      <section className="mt-12 max-w-2xl">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: faq.map((f) => ({
+                "@type": "Question",
+                name: f.q,
+                acceptedAnswer: { "@type": "Answer", text: f.a },
+              })),
+            }),
+          }}
+        />
+        <h2 className="text-lg font-semibold text-neutral-900">
+          {nl ? "Veelgestelde vragen" : "Frequently asked questions"}
+        </h2>
+        <dl className="mt-3 space-y-3">
+          {faq.map((f) => (
+            <div key={f.q}>
+              <dt className="text-sm font-semibold text-neutral-800">{f.q}</dt>
+              <dd className="mt-1 text-sm text-neutral-600">{f.a}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
       <p className="mt-8 text-[11px] text-neutral-400">{t("attribution")}</p>
       <SiteFooter />
     </main>
