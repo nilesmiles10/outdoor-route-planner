@@ -74,7 +74,8 @@ country/activity below the data gate, and pages that merely re-list what
 
 ## Internal linking opportunities
 
-- Landing cluster → sitewide footer nav (done). Extend: link **region pages** and **detail pages** to the matching activity landing page and vice-versa.
+- ✅ Landing cluster → sitewide footer nav; `/trails` → top `/explore` combos ("Popular by country"); `/explore` pages richly interlinked (country↔region↔activity).
+- Remaining: link the **activity landing pages** (hiking-/cycling-/mtb-route-planner) → `/explore/[activity]/[country]` for the top countries; link **tour/trail detail pages** → their country/region `/explore` hub.
 - Add contextual links from tour/trail detail pages to their **country/region** hub and to related routes (a "related routes" sort already exists via `sportFamily`).
 - Ensure every indexable page is reachable within ~3 clicks from the home/nav (audit orphan risk on deep region pages).
 
