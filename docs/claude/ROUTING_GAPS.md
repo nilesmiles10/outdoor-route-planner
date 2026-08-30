@@ -40,7 +40,7 @@ Severity: 🔴 high · 🟠 med · 🟡 low. Most quality items need reproductio
 | No route alternatives | all | all | User can't pick between options | 🟡 | `alternativeidx=0` | Evaluate exposing 1–3 alternatives | P3 | Open |
 | Access handling is static only | all | all | Seasonal/conditional closures not reflected | 🟡 | GEN-129 comment | Assess conditional-tag support | P3 | Open |
 | Ferries / borders / tunnels behaviour | cycling/hike | coastal/cross-border/islands | UNKNOWN — could produce absurd or blocked routes | 🟠 | Not surfaced in repo | Torture-test (below) before claiming pass/fail | P2 | Needs repro |
-| Node-network cycling routing | touring | NL/BE/DE | Cycling may not follow the node network users expect | 🟠 | Data model gap (see EUROPE) | Route a NL/BE city-to-city ride; inspect | P1 | Needs repro |
+| Node-network cycling routing | touring | NL/BE/DE | — | 🟢 | **Not reproduced 2026-08-29:** NL touring routes are cycleway-dominated (Utrecht→Amersfoort 82%, Haarlem→Amsterdam 90% cycle-friendly, ~0% main road); DE similar. Routing quality is good | Closed as a routing gap — the real under-count is **discovery/data** (see EUROPE_COMPLETENESS), not routing | — | Not a routing gap |
 
 ## Routing regression test strategy
 
@@ -65,7 +65,7 @@ here** — status is "untested" until run.
 
 | Scenario type | Why it stresses routing | Status |
 |---|---|---|
-| Dutch cycling node network (e.g. NL city→city) | Does cycling follow the node network? | untested |
+| Dutch cycling node network (e.g. NL city→city) | Does cycling follow the node network? | **PASS 2026-08-29** — baseline: Utrecht→Amersfoort touring 82% cycle-friendly / 0% main road; Haarlem→Amsterdam 90% / 1%. Regression = a big drop in cycle-friendly % or a rise in main-road % on these fixtures. |
 | Belgian gravel loop | Gravel profile off home turf | untested |
 | Alpine hut-to-hut hiking (AT/CH) | Steep terrain, path quality, elevation | untested |
 | Dolomite MTB (IT) | Technical trails, big climbs/descents | untested |
@@ -79,11 +79,14 @@ here** — status is "untested" until run.
 
 ## Top routing gaps (ranked)
 
-1. **Long-route latency** — real, measured; decide fast-engine vs accept + signpost. (P1)
-2. **`ebike` has no real profile** — reuses trekking; clear user-facing wrongness. (P1)
-3. **Node-network cycling** — systemic, affects the cycling story in core markets. (P1)
-4. **`gravel-nl` generalisation** — profile tuned only for NL. (P2)
-5. **Ferries/borders/islands behaviour** — UNKNOWN; reproduce before claiming. (P2)
+1. **`ebike` has no real profile** — reuses trekking (identical routes); clear user-facing wrongness. (P1)
+2. **Long-route latency** — real, measured; decide fast-engine vs accept + signpost. (P1)
+3. **`gravel-nl` generalisation** — profile tuned only for NL. (P2)
+4. **Ferries/borders/islands behaviour** — UNKNOWN; reproduce before claiming. (P2)
+5. **`run` has no real profile** — reuses hiking-mountain; over-prefers mountain paths. (P2)
+
+*(Removed: "node-network cycling" — reproduced 2026-08-29 as good routing; the
+under-count is a discovery/data gap, tracked in EUROPE_COMPLETENESS.)*
 
 ## Available BRouter profiles (VPS `/opt/brouter/.../profiles2/`, 2026-08-29)
 
@@ -97,3 +100,4 @@ and run gaps can't be fixed by a safe remap; they need an authored profile.
 
 - 2026-08 — long-route `maxDuration` widened to 120s + 110s BRouter abort; map recenters to off-view routes; long-route loading state added.
 - 2026-08-29 — `/routing` iteration 1: reproduced the ebike≡touring / run≡hike aliases (identical BRouter geometry); enumerated VPS profiles (no ebike/run profile); added the first routing regression suite `src/lib/geo.test.ts` (profile invariants + surface parsing). No production routing changed.
+- 2026-08-29 — `/routing` iteration 2: reproduced NL/DE cycling routing → cycleway-dominated, ~0% main road (good). Closed "node-network cycling" as a routing gap; re-routed the concern to discovery/data (EUROPE_COMPLETENESS). Recorded the NL fixtures as a torture-test baseline. No code changed.

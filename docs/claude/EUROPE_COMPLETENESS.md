@@ -69,7 +69,7 @@ OSM `touring` route tags and **understates node-network countries (esp. NL/BE)**
 
 ## Cross-Europe gaps
 
-- **Cycling under-representation in node-network countries** (NL, BE, parts of DE): OSM tags city-to-city cycling as node networks, not `touring` relations, so trail counts and cycling discovery *understate* real coverage. Systemic — affects the cycling story everywhere the node network dominates.
+- **Cycling under-representation in node-network countries** (NL, BE, parts of DE): OSM tags city-to-city cycling as node networks, not `touring` relations, so trail counts and cycling *discovery* understate real coverage. **This is a discovery/data gap, NOT a routing gap** — verified 2026-08-29 that NL cycling *routing* is cycleway-dominated (~0% main road; see ROUTING_GAPS). The fix is on the import/discovery side (surface node-network routes in `/trails`/`/discover`), not the routing profile.
 - **Gravel data is sparse everywhere except DE/PL/FR** — gravel is not a native OSM route type (derived `is_gravel` flag on `touring`). Discovery of gravel routes is weak Europe-wide.
 - **Trail density ≪ highlight density** in many countries (GB, NO, FI, GR, SK): plenty to *discover*, little *official-route* material to plan from.
 - **~17k null-country highlights** — an import/geocoding gap that hurts region grouping and SEO combos.
@@ -78,7 +78,7 @@ OSM `touring` route tags and **understates node-network countries (esp. NL/BE)**
 
 ## Highest-priority coverage gaps (by evidence)
 
-1. **Node-network cycling** — biggest systemic under-count; fixing it lifts cycling coverage/discovery across NL/BE/DE at once. (Validate first: is it a data-model or a display gap?)
+1. **Node-network cycling discovery** — biggest systemic under-count; fixing it lifts cycling coverage/discovery across NL/BE/DE at once. **Confirmed a data/discovery gap** (routing is fine — verified 2026-08-29): the fix is importing/surfacing node-network cycle routes in `/trails`+`/discover`, not touching the routing profile.
 2. **Long-tail countries with rich highlights but ~no trails** (GR, FI, NO, GB, RO, BG): discovery works, planning-from-official-routes doesn't. Decide whether to import more OSM routes there.
 3. **Zero-coverage countries** (Balkans ex-HR/SI, IS, CY, MT, Baltics-thin): decide the intended European footprint and run imports accordingly.
 4. **Gravel discovery** — thin outside DE; the `gravel-nl` profile is NL-tuned (see ROUTING_GAPS) — unclear it generalises.
