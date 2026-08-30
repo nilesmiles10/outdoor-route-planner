@@ -27,11 +27,10 @@ Pillars: ROUTING · EUROPE · SEO · UX · DATA · COMPETITOR.
 - Impact: high across several countries. Confidence: med (data signal; needs reproduction).
 - Files: `EUROPE_COMPLETENESS.md`, `ROUTING_GAPS.md`.
 
-**4. Decide long-route strategy** · ROUTING/UX · M
-- Problem: long routes take 8–59s (measured); a loading state ships but it's slow.
-- Why: multi-day/long planning feels broken; either a fast engine ("overview" mode) or clear signposting.
-- Impact: med. Confidence: high (measured).
-- File: `ROUTING_GAPS.md`.
+**4. Long-route strategy** · ROUTING/UX · ✅ *decided 2026-08-29* → S follow-up
+- Decided: **accept BRouter, don't build GraphHopper** (day-trips are fine; GraphHopper is heavy + loses per-segment detail; no analytics to justify it). See `ROUTING_GAPS.md` → Decision.
+- Found: routes >~300km **fail** at the nginx 60s ceiling, mislabeled `no_route`.
+- Follow-up (S, P1): map the timeout to a "route too long — split into stages" message + guide long routes to the multi-day split (don't just raise the timeout). Then correct the misleading `maxDuration`/abort comments in `route.ts`.
 
 ## NEXT
 
