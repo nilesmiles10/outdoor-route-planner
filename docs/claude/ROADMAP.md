@@ -17,11 +17,9 @@ Pillars: ROUTING · EUROPE · SEO · UX · DATA · COMPETITOR.
 - Impact: high (unlocks measurement of everything). Confidence: high (verified absent).
 - File: `SEO_GAPS.md`.
 
-**2. Give `ebike` a real profile** · ROUTING · M
-- Problem: `ebike` reuses `trekking` (`geo.ts`, custom pending GEN-104).
-- Why: e-bike users get non-e-bike routes; clear correctness gap.
-- Impact: med–high for a headline activity. Confidence: high (verified in code).
-- File: `ROUTING_GAPS.md`.
+**2. Give `ebike` a real profile** · ROUTING · M · ✅ *done (v1, 2026-08-29)*
+- Was: `ebike` reused `trekking` → byte-identical routes.
+- Shipped: `infra/brouter/ebike.brf` (trekking base; `downhillcost` 60→20, `bikerPower` 100→250); correct e-bike ETAs, no route regression. Field-tuning + optional surface/road prefs remain (now P3 in `ROUTING_GAPS.md`).
 
 **3. Validate node-network cycling** · EUROPE/ROUTING · M (validate) → L (fix)
 - Problem: cycling under-counted/possibly under-routed in NL/BE/DE (node network, not `touring`).

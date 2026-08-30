@@ -30,7 +30,13 @@ export const SPORT_PROFILES = {
   gravel: "gravel-nl",
   mtb: "mtb",
   road: "fastbike",
-  ebike: "trekking", // custom e-bike cost function comes with GEN-104
+  // Eigen profiel (infra/brouter/ebike.brf, op de VPS in profiles2/). Basis =
+  // trekking; twee gemotiveerde e-bike-wijzigingen: downhillcost 60->20 (de
+  // motor maakt hoogtemeters "goedkoper", dus minder terrein-mijden — trekking
+  // heeft uphillcost al op 0) en bikerPower 100->250 W (reële ETA met assist,
+  // bv. Innsbruck->Seefeld 152->74 min). Overige kosten identiek aan trekking,
+  // dus geen regressie in weg-/ondergrondkeuze. v1, veldtuning volgt.
+  ebike: "ebike",
 } as const;
 
 export type Sport = keyof typeof SPORT_PROFILES;
