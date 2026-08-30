@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { routing } from "@/i18n/routing";
 import AppHeader from "@/components/AppHeader";
 import { SiteSettingsProvider } from "@/components/SiteSettingsProvider";
@@ -91,6 +93,11 @@ export default async function LocaleLayout({
             {children}
           </SiteSettingsProvider>
         </NextIntlClientProvider>
+        {/* Cookieless, first-party analytics (geen consent-banner nodig).
+            Web Analytics = verkeer/gedrag; Speed Insights = Core Web Vitals
+            (SEO-signaal). Beide moeten in het Vercel-dashboard aangezet zijn. */}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
