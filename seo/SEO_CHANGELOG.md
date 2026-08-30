@@ -2,6 +2,24 @@
 
 Newest first. Each entry: what shipped and why it should help search visibility.
 
+## 2026-08-29 — Iteration 7: sitewide footer links (link-equity distribution)
+
+**Technical SEO / internal linking**
+- Added a "Plan a route" navigation group to `SiteFooter` (present on every
+  content page — trails, discover, tour/trail/collection detail pages, and the
+  landing pages) linking all 7 use-case pages with descriptive anchor text.
+
+**Why**
+- Audit finding: the 7 new landing pages were reachable only via sitemap + their
+  own reciprocal cross-links — not from any sitewide nav or footer. They were
+  effectively siloed. A footer nav gives them an internal link from many
+  higher-authority pages, spreading link equity and improving crawl/discovery —
+  usually the highest-leverage on-site SEO move after the pages themselves exist.
+
+**Technical validation**
+- `tsc` clean; `next build` green.
+
+
 ## 2026-08-29 — Iteration 6: Loop / round-trip route planner
 
 **Pages created**
