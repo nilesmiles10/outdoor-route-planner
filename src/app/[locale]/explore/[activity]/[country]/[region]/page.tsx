@@ -52,12 +52,11 @@ async function fetchTrails(activity: Activity, iso: string, region: string): Pro
 }
 
 export async function generateStaticParams() {
-  const combos = await gatedRegionCombos();
-  return combos.map((c) => ({
-    activity: c.activity.key,
-    country: c.country.slug,
-    region: c.slug,
-  }));
+  // Cost: ~295 region combos × 2 locales pre-rendered on every build was the
+  // bulk of the build-CPU spend. Render them fully on-demand via ISR instead
+  // (dynamicParams=true); still discoverable via the sitemap, cached after the
+  // first hit. Regions are long-tail, so on-demand is the right trade.
+  return [];
 }
 
 export async function generateMetadata({

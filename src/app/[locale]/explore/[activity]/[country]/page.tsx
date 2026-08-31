@@ -59,8 +59,14 @@ async function fetchTrails(activity: Activity, iso: string): Promise<TrailRow[]>
 }
 
 export async function generateStaticParams() {
+  // Cost: pre-rendering all combos on every build burned build-CPU minutes.
+  // Pre-render only the most popular (linked from /trails) for instant loads;
+  // the rest render on-demand via ISR and cache (dynamicParams=true).
   const combos = await gatedCombos();
-  return combos.map((c) => ({ activity: c.activity.key, country: c.country.slug }));
+  return combos
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 12)
+    .map((c) => ({ activity: c.activity.key, country: c.country.slug }));
 }
 
 export async function generateMetadata({

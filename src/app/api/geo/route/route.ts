@@ -18,11 +18,12 @@ export const dynamic = "force-dynamic";
 // te lang). Zie docs/claude/ROUTING_GAPS.md → Decision: bewust geen fast engine;
 // hele lange routes horen als meerdaagse etappes gepland te worden.
 //
-// maxDuration=120 en de 110s-abort zijn backstops BOVEN die 60s-grens: ze doen
-// er alleen toe als de gateway zelf hangt, en staan bewust > 60s zodat de 504
-// van de gateway ons bereikt en de juiste melding krijgt.
-export const maxDuration = 120;
-const BROUTER_TIMEOUT_MS = 110_000;
+// maxDuration en de abort zijn backstops nét BOVEN die 60s-grens: hoger heeft
+// geen zin (nginx kapt op 60s) en verlengt alleen het functie-/geheugenvenster
+// (kosten: Fluid provisioned memory). 70s laat de functie de 504 van de gateway
+// nog netjes verwerken tot route_too_long.
+export const maxDuration = 70;
+const BROUTER_TIMEOUT_MS = 62_000;
 
 // GET /api/geo/route?points=4.30,52.07|5.12,52.09&sport=gravel
 // Proxies BRouter and returns geometry + stats + surface/waytype breakdown.
