@@ -1,0 +1,20 @@
+Tarnoo — Proprietary License (All Rights Reserved)
+
+Copyright (c) 2026 Niels Baars / Intersumma. All rights reserved.
+
+This source code is made publicly available for evaluation and reference only.
+
+No permission is granted to any person to use, copy, modify, merge, publish,
+distribute, sublicense, or sell any part of this software or its source code,
+in whole or in part, except under a separate written agreement with the
+copyright holder. Viewing the source in this repository does not grant any such
+rights.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+
+The Tarnoo application depends on third-party open data and software under their
+own licenses — OpenStreetMap data (ODbL), BRouter (MIT), OpenFreeMap tiles.
+Those licenses are unaffected by this notice; see LEGAL.md.
+
+Licensing and acquisition enquiries — including the tarnoo.com domain name:
+niels@intersumma.nl
