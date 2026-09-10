@@ -5,7 +5,10 @@ A **Komoot alternative for Europe**: hiking, running, cycling, gravel, road,
 e-bike and MTB, with elevation profiles, surface breakdown, climbs, GPX/FIT
 import & export, round-trip generation and multi-day planning.
 
-**Live:** https://tarnoo.com
+**Status:** the hosted demo (tarnoo.com) is currently offline. The full stack —
+web front-end plus self-hosted routing (BRouter) and geocoding (Photon) —
+redeploys from this repo and `deploy/`. A live demo can be provided to serious
+buyers on request.
 
 > ### 🏷️ This project is for sale
 > The whole thing is available: the codebase, the self-hosted routing +
